@@ -89,32 +89,55 @@ expeditions: {
     types: {
         easy: {
             name: "Korte Verkenning",
-            duration: 30,
+            duration: 10,//30
             cost: { food: 50, scouts: 1 },
             successRate: 0.9, // 90%
             requirements: () => true 
         },
         medium: {
             name: "Handelsroute Zoeken",
-            duration: 120,
+            duration: 10,//120
             cost: { food: 200, gold: 50, scouts: 2 },
             successRate: 0.75,
             requirements: () => game.resources.population.amount >= 10
         },
         hard: {
             name: "Diplomatieke Missie",
-            duration: 300,
+            duration: 10,//300
             cost: { food: 500, gold: 200, scouts: 5 },
             successRate: 0.6,
             requirements: () => game.research.education.unlocked
         },
         expert: {
             name: "Verre Expeditie",
-            duration: 900,
+            duration: 10,//900
             cost: { food: 1500, gold: 1000, scouts: 10 },
             successRate: 0.4,
             requirements: () => game.buildings.school.count >= 3
         }
+    }
+},
+
+diplomacy: {
+    unlocked: false,
+    discoveredTribes: {} // Hier slaan we de ontdekte volken op
+},
+
+// Een 'bibliotheek' met mogelijke volken die je kunt ontdekken
+tribeTemplates: {
+    forest_dwellers: {
+        name: "De Bosjesmannen",
+        desc: "Een vreedzame stam die diep in de wouden leeft.",
+        relation: 50, // 0 = Oorlog, 50 = Neutraal, 100 = Bondgenoot
+        tradeUnlocked: true,
+        resources: { wood: 0.8, food: 1.2 } // Waar ze goed in zijn
+    },
+    mountain_clan: {
+        name: "De Bergstam",
+        desc: "Trotse krijgers die veel weten van mijnbouw.",
+        relation: 30, // Beginnen iets wantrouwiger
+        tradeUnlocked: false,
+        resources: { stone: 1.5, gold: 0.5 }
     }
 },
     lastSave: Date.now()
@@ -231,7 +254,21 @@ function checkUnlocks() {
         game.buildings.warehouse.unlocked = true;
     }
 }
+function discoverTribe() {
+    const keys = Object.keys(game.tribeTemplates);
+    // Kies een willekeurige stam die we nog niet ontdekt hebben
+    const available = keys.filter(k => !game.diplomacy.discoveredTribes[k]);
 
+    if (available.length > 0) {
+        const randomKey = available[Math.floor(Math.random() * available.length)];
+        // Kopieer de template naar onze ontdekte lijst
+        game.diplomacy.discoveredTribes[randomKey] = { ...game.tribeTemplates[randomKey] };
+        game.diplomacy.unlocked = true;
+        alert(`Nieuws van de grens: Je hebt ${game.tribeTemplates[randomKey].name} ontdekt!`);
+    } else {
+        alert("Je verkenners hebben de hele regio in kaart gebracht, maar geen nieuwe stammen gevonden.");
+    }
+}
 // --- ACTIONS ---
 
 function buyBuilding(key) {
@@ -445,6 +482,8 @@ function updateUI() {
     }
     // Verkennen Tab
     renderExplore();
+    // Diplomatie Tab
+    renderDiplomacy();
 }
 
 function renderBuildings() {
@@ -586,6 +625,47 @@ function renderExplore() {
                 </div>
             `;
         }
+    }
+}
+function renderDiplomacy() {
+    const container = document.getElementById('tab-diplomacy');
+    if (!container) return;
+    
+    container.innerHTML = '<h1>Diplomatie</h1>';
+
+    if (!game.diplomacy.unlocked || Object.keys(game.diplomacy.discoveredTribes).length === 0) {
+        container.innerHTML += '<p>Je hebt nog geen andere volken ontdekt. Stuur expedities uit om de wereld te verkennen.</p>';
+        return;
+    }
+
+    for (let key in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[key];
+        let relationText = tribe.relation > 80 ? "Bondgenoot" : tribe.relation > 40 ? "Neutraal" : "Vijandig";
+        
+        container.innerHTML += `
+            <div class="panel">
+                <h3>${tribe.name}</h3>
+                <p><em>${tribe.desc}</em></p>
+                <p>Relatie: <strong>${tribe.relation}/100 (${relationText})</strong></p>
+                <div style="width: 100%; background: #45475a; height: 8px; border-radius: 4px; margin-bottom: 10px;">
+                    <div style="width: ${tribe.relation}%; background: ${tribe.relation > 40 ? '#a6e3a1' : '#f38ba8'}; height: 100%; border-radius: 4px;"></div>
+                </div>
+                <button class="action-btn-small" onclick="sendGift('${key}')" ${game.resources.gold.amount >= 100 ? '' : 'disabled'}>
+                    Stuur Geschenk (100 Goud, +5 Relatie)
+                </button>
+            </div>
+        `;
+    }
+}
+
+function sendGift(tribeKey) {
+    if (game.resources.gold.amount >= 100) {
+        game.resources.gold.amount -= 100;
+        game.diplomacy.discoveredTribes[tribeKey].relation += 5;
+        if (game.diplomacy.discoveredTribes[tribeKey].relation > 100) {
+            game.diplomacy.discoveredTribes[tribeKey].relation = 100;
+        }
+        updateUI();
     }
 }
 
