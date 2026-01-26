@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civ Builder Incremental</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Beschaving</h2>
+            <nav>
+                <button class="nav-btn active" data-tab="jobs">Jobs & Gebouwen</button>
+                <button class="nav-btn" data-tab="resources">Goederen</button>
+                <button class="nav-btn" data-tab="population">Bevolking</button>
+                <button class="nav-btn" data-tab="research">Research</button>
+                <button class="nav-btn" data-tab="explore">Verkennen</button>
+                <button class="nav-btn" data-tab="diplomacy">Diplomatie</button>
+                <button class="nav-btn" data-tab="military">Leger</button>
+                <button class="nav-btn" data-tab="prestige">Prestige</button>
+            </nav>
+            
+            <div class="mini-stats">
+                <p>Hout: <span id="res-wood">0</span> / <span id="max-wood">100</span></p>
+                <p>Voedsel: <span id="res-food">0</span> / <span id="max-food">100</span></p>
+            </div>
+        </aside>
+
+        <main class="content">
+            
+            <section id="tab-jobs" class="tab-content active">
+                <h1>Handmatige Jobs & Gebouwen</h1>
+                
+                <div class="panel">
+                    <h3>Handmatige Acties</h3>
+                    <div id="manual-actions-container" class="action-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3>Gebouwen (Creëer werkplekken)</h3>
+                    <div id="building-list" class="building-grid"></div>
+                </div>
+            </section>
+
+            <section id="tab-resources" class="tab-content">
+                <h1>Goederen Overzicht</h1>
+                <table id="resource-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Huidig</th>
+                            <th>Max</th>
+                            <th>Per Seconde</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resource-tbody">
+                        </tbody>
+                </table>
+            </section>
+
+            <section id="tab-population" class="tab-content">
+                <h1>Bevolking Management</h1>
+                
+                <div class="panel">
+                    <p>Vrije bevolking: <span id="pop-idle">0</span> / <span id="pop-total">0</span></p>
+                    <p><small>Bouw hutten voor meer bevolking. Wijs jobs toe voor grondstoffen.</small></p>
+                </div>
+
+                <div class="panel">
+                    <h3>Banen Toewijzen</h3>
+                    <table id="jobs-table">
+                        <thead>
+                            <tr>
+                                <th>Baan</th>
+                                <th>Aantal</th>
+                                <th>Max (door gebouwen)</th>
+                                <th>Effect</th>
+                                <th>Actie</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobs-tbody">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <section id="tab-research" class="tab-content"><h1>Research</h1><p>WIP</p></section>
+            <section id="tab-explore" class="tab-content"><h1>Verkennen</h1><p>WIP</p></section>
+            <section id="tab-diplomacy" class="tab-content"><h1>Diplomatie</h1><p>WIP</p></section>
+            <section id="tab-military" class="tab-content"><h1>Leger</h1><p>WIP</p></section>
+            <section id="tab-prestige" class="tab-content"><h1>Prestige</h1><p>WIP</p></section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
