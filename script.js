@@ -1,7 +1,8 @@
 //const { act } = require("react");
-
+    let currentTab = 'jobs'; // De standaard tab bij het opstarten
 // --- DE DATA (HET BREIN VAN DE GAME) ---
 let game = {
+
     resources: {
         wood: { name: "Hout", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
         food: { name: "Voedsel", amount: 10, max: 100, perSec: 0, manualGain: 1, discovered: true },
@@ -17,6 +18,7 @@ let game = {
         miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 },unlocked: false},
         scout_job: { name: "Verkenner", count: 0, max: 0, effect: { food: -2 }, unlocked: false }
+        //Soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -1, food: -2 }, unlocked: false }
     },
     
     buildings: {
@@ -28,6 +30,7 @@ let game = {
         school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false }
+        //barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 5 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 5 soldaten.", unlocked: false }
     
     },
     research: {
@@ -130,6 +133,7 @@ tribeTemplates: {
         desc: "Een vreedzame stam die diep in de wouden leeft.",
         relation: 50, // 0 = Oorlog, 50 = Neutraal, 100 = Bondgenoot
         tradeUnlocked: true,
+        defenseValue: 200,
         resources: { wood: 0.8, food: 1.2 } // Waar ze goed in zijn
     },
     mountain_clan: {
@@ -137,9 +141,32 @@ tribeTemplates: {
         desc: "Trotse krijgers die veel weten van mijnbouw.",
         relation: 30, // Beginnen iets wantrouwiger
         tradeUnlocked: false,
+        defenseValue: 200,
         resources: { stone: 1.5, gold: 0.5 }
+    },
+    river_folk: {
+        name: "De Rivierbewoners",
+        desc: "Een handelend volk dat langs de grote rivieren woont.",
+        relation: 70,
+        tradeUnlocked: true,
+        defenseValue: 150,
+        resources: { food: 1.5, gold: 1.0 }
+    }    
+},
+// Voeg dit toe aan je 'game' object
+military: {
+    attackPower: 0,
+    defensePower: 0,
+    units: {swordsman: { name: "Zwaardvechter", total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, type: 'off', cost: { gold: 50, food: 20 }, desc: "Focus op aanval.", maintenance: { food: 1 } },
+        archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, wood: 30 }, desc: "Focus op verdediging." },
+        knight: { name: "Ridder", total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, type: 'both', cost: { gold: 150, food: 80 }, desc: "Sterk in beide." },
+        commander: { name: "Commandant", total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, type: 'support', cost: { gold: 500 }, desc: "Verhoogt totale kracht met 20%." }
     }
 },
+//stats: {
+//    militaryPower: 0
+//},
+
     lastSave: Date.now()
 };
 
@@ -225,6 +252,39 @@ function recalcRates() {
     if (game.resources.gold.perSec > 0) {
         game.resources.gold.discovered = true;
     }
+    // --- Handelsroutes opbrengsten ---
+    for (let key in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[key];
+        if (tribe.tradeRouteActive) {
+            // Kosten: Elke handelsroute kost bijv. 0.5 goud per seconde
+            game.resources.gold.perSec -= 0.5;
+
+            // Opbrengst: Voeg de resources van de stam toe aan jouw inkomsten
+            for (let resType in tribe.resources) {
+                const gain = tribe.resources[resType];
+                if (game.resources[resType]) {
+                    game.resources[resType].perSec += gain;
+                }
+            }
+        }
+    }
+    // Tribuut van overwonnen tribes
+    for (let key in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[key];
+        if (tribe.isConquered) {
+            game.resources.gold.perSec += tribe.tributeAmount || 5;
+        }
+}
+// --- Leger Onderhoud ---
+for (let key in game.military.units) {
+    const u = game.military.units[key];
+    if (u.count > 0 && u.maintenance) {
+        // Als je maintenance in de data hebt gezet, bijv: maintenance: { food: 2, gold: 1 }
+        if (u.maintenance.food) game.resources.food.perSec -= (u.count * u.maintenance.food);
+        if (u.maintenance.gold) game.resources.gold.perSec -= (u.count * u.maintenance.gold);
+    }
+}
+    recalcMilitary();
 }
 
 function checkUnlocks() {
@@ -357,7 +417,8 @@ function giveReward(type) {
     else if (type === 'hard') {
         // Hier kun je een functie aanroepen om een nieuw volk te maken
         discoverTribe(); 
-        msg += "Je hebt contact gelegd met een nieuw volk!";
+        // msg al in die functie afgehandeld
+        // msg += "Je hebt contact gelegd met een nieuw volk!";
     }
     else if (type === 'expert') {
         // Kans op een unieke unlock
@@ -370,6 +431,211 @@ function giveReward(type) {
         }
     }
     alert(msg);
+}
+
+function toggleTradeRoute(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    
+    // Als de route al open is, zetten we hem dicht (gratis)
+    if (tribe.tradeRouteActive) {
+        tribe.tradeRouteActive = false;
+    } else {
+        // Alleen openen als de relatie goed genoeg is
+        if (tribe.relation >= 60) {
+            tribe.tradeRouteActive = true;
+        } else {
+            alert("De relatie is niet goed genoeg om een handelsroute te starten.");
+        }
+    }
+    recalcRates();
+    updateUI();
+}
+
+function attackTribe(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    // Stel: een tribe heeft ook een defensePower (bijv. 500)
+    const tribeDefense = tribe.defenseValue || 500; 
+
+    if (game.military.attackPower > tribeDefense) {
+        alert(`Overwinning! Je hebt ${tribe.name} verslagen. Ze betalen je nu 5 goud per seconde tribuut.`);
+        tribe.isConquered = true;
+        tribe.relation = 0; // Ze haten je, maar ze betalen
+    } else {
+        alert("Je aanval is mislukt! De tribe slaat onmiddellijk terug.");
+        triggerCounterAttack(tribeKey);
+    }
+    updateUI();
+}
+
+function triggerCounterAttack(_tribeKey) {
+    const tribeAttack = 400; // Kracht van de vijand
+    if (tribeAttack > game.military.defensePower) {
+        const loss = 200;
+        game.resources.gold.amount = Math.max(0, game.resources.gold.amount - loss);
+        alert(`Je verdediging werd doorbroken! De tribe heeft ${loss} goud geplunderd.`);
+    } else {
+        alert("Je leger heeft de tegenaanval succesvol afgeslagen!");
+    }
+}
+function attackTribe(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    // Tribes hebben een random defense tussen 100 en 1000 voor nu
+    const tribeDefense = tribe.defenseValue || 300; 
+
+    if (game.military.attackPower > tribeDefense) {
+        const loot = {
+            wood: Math.floor(Math.random() * 1000) + 500,
+            stone: Math.floor(Math.random() * 1000) + 500,
+            gold: Math.floor(Math.random() * 500) + 200
+        };
+
+        // Grondstoffen toevoegen
+        game.resources.wood.amount += loot.wood;
+        game.resources.stone.amount += loot.stone;
+        game.resources.gold.amount += loot.gold;
+
+        alert(`⚔️ OVERWINNING! \n\nJe hebt ${tribe.name} verslagen!\n\nBuit:\n- ${loot.wood} Hout\n- ${loot.stone} Steen\n- ${loot.gold} Goud\n\nZe betalen vanaf nu ook elk uur tribuut.`);        tribe.isConquered = true;
+        tribe.tributeAmount = 10; // 10 goud per seconde
+        tribe.isConquered = true;
+        tribe.rebellionLevel = 0; // Begint op 0%
+    } else {
+        alert(`❌ NEDERLAAG!\n\nJe aanvalsleger (Kracht: ${Math.floor(game.military.attackPower)}) was niet sterk genoeg om door de verdediging van ${tribe.name} (Kracht: ${tribeDefense}) heen te breken.\n\nJe trekt je troepen terug.`);
+        
+        // Straf: Verlies 20% van je offensieve eenheden
+        for (let key in game.military.units) {
+            const u = game.military.units[key];
+            if (u.assignedOff > 0) {
+                const lost = Math.ceil(u.assignedOff * 0.2);
+                u.assignedOff -= lost;
+                u.total -= lost;
+            }
+        }
+    }
+    recalcRates();
+    updateUI();
+}
+
+function triggerEnemyAttack(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    // De aanvalskracht van de tribe (bijv. tussen 100 en 500)
+    const enemyPower = Math.floor(Math.random() * 400) + 100;
+
+    alert(`⚠️ ALARM! ${tribe.name} valt je stad aan met een kracht van ${enemyPower}!`);
+
+    if (game.military.defensePower >= enemyPower) {
+        alert(`Je defensieve leger heeft de aanval succesvol afgeslagen!`);
+        // Optioneel: verlies een paar verdedigingsunits
+    } else {
+        const goldLost = Math.floor(game.resources.gold.amount * 0.2);
+        game.resources.gold.amount -= goldLost;
+        alert(`Je verdediging werd doorbroken! ${tribe.name} heeft ${goldLost} goud geplunderd.`);
+    }
+    updateUI();
+}
+
+// Functie om een unit te trainen
+function trainUnit(unitKey) {
+    const unit = game.military.units[unitKey];
+    
+    // Check of we de kosten kunnen betalen
+    if (canAfford(unit.cost)) {
+        payCost(unit.cost);
+        unit.total++;
+        
+        // Direct de kracht herberekenen en de UI verversen
+        recalcMilitary();
+        recalcRates();
+        updateUI();
+        console.log(`${unit.name} getraind. Totaal: ${unit.total}`);
+    } else {
+        console.log("Niet genoeg resources om deze unit te trainen.");
+    }
+}
+
+function assignUnit(unitKey, target) {
+    const u = game.military.units[unitKey];
+    const unassigned = u.total - u.assignedOff - u.assignedDef;
+
+    if (target === 'off' && unassigned > 0) {
+        u.assignedOff++;
+    } else if (target === 'def' && unassigned > 0) {
+        u.assignedDef++;
+    } else if (target === 'unassignOff' && u.assignedOff > 0) {
+        u.assignedOff--;
+    } else if (target === 'unassignDef' && u.assignedDef > 0) {
+        u.assignedDef--;
+    }
+
+    recalcMilitary();
+    updateUI();
+}
+
+// De berekening van de aanvals- en verdedigingskracht
+function recalcMilitary() {
+    let offPower = 0;
+    let defPower = 0;
+    let offMultiplier = 1;
+    let defMultiplier = 1;
+
+    for (let key in game.military.units) {
+        const u = game.military.units[key];
+       // offPower += u.assignedOff * u.off;
+       // defPower += u.assignedDef * u.def;
+            const numOff = u.assignedOff || 0;
+            const numDef = u.assignedDef || 0;
+            const valOff = u.off || 0;
+            const valDef = u.def || 0;
+
+            offPower += numOff * valOff;
+            defPower += numDef * valDef;
+
+            if (u.offMultiplier) {
+                offMultiplier += (numOff * (u.offMultiplier - 1));
+            }
+            if (u.defMultiplier) {
+                defMultiplier += (numDef * (u.defMultiplier - 1));
+            }
+    }
+
+    // Pas de multiplier toe op het totaal
+    game.military.attackPower = isNaN(offPower) ? 0 : offPower * offMultiplier;
+    game.military.defensePower = isNaN(defPower) ? 0 : defPower * defMultiplier;
+}
+
+function checkRebellions() {
+    for (let key in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[key];
+        
+        if (tribe.isConquered) {
+            // Basis kans op rebellie stijgt elke minuut
+            // Maar wordt verlaagd door jouw Defense Power
+            const suppression = game.military.defensePower / 100; 
+            const rebellionRise = Math.max(0.1, 5 - suppression); 
+            
+            tribe.rebellionLevel += rebellionRise;
+            console.log("Rebellies gecontroleerd.", tribe.name, "niveau toegenomen met:", rebellionRise, "tot:", Math.round(tribe.rebellionLevel)); 
+            // Als het level boven de 100 komt, is er een opstand!
+            if (tribe.rebellionLevel >= 100) {
+                triggerRebellion(key);
+            }
+        }
+    
+   
+    }
+    updateUI();
+}
+
+function triggerRebellion(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    alert(`🚨 REBELLIE! De bevolking van ${tribe.name} is in opstand gekomen! Je ontvangt geen tribuut meer en moet ze opnieuw onderwerpen.`);
+    
+    tribe.isConquered = false;
+    tribe.rebellionLevel = 0;
+    tribe.relation = 0;
+    
+    // De tribe is nu weer aanvalbaar in de Leger tab
+    recalcRates();
+    updateUI();
 }
 
 // Helper functies voor kosten
@@ -428,6 +694,19 @@ function loadGame() {
             }
         }
 
+        // En voor de volken in diplomatie
+        // --- Diplomatie laden ---
+        if (loadedData.diplomacy) {
+            game.diplomacy.unlocked = loadedData.diplomacy.unlocked || false;
+            
+            // Laad de ontdekte volken
+            if (loadedData.diplomacy.discoveredTribes) {
+                for (let tKey in loadedData.diplomacy.discoveredTribes) {
+                    // We zetten de data over naar ons actuele game object
+                    game.diplomacy.discoveredTribes[tKey] = loadedData.diplomacy.discoveredTribes[tKey];
+                }
+            }
+        }
         // Voor de jobs
         for (let jKey in loadedData.jobs) {
             if (game.jobs[jKey]) {
@@ -435,7 +714,23 @@ function loadGame() {
                 game.jobs[jKey].unlocked = loadedData.jobs[jKey].unlocked;
             }
         }
-
+        // --- Militaire data laden ---
+        if (loadedData.military) {
+            game.military.attackPower = loadedData.military.attackPower || 0;
+            game.military.defensePower = loadedData.military.defensePower || 0;
+            
+            if (loadedData.military.units) {
+                for (let key in loadedData.military.units) {
+                    if (game.military.units[key]) {
+                        const loadedUnit = loadedData.military.units[key];
+                        // Zorg dat alle nieuwe variabelen correct worden ingeladen
+                        game.military.units[key].total = loadedUnit.total || 0;
+                        game.military.units[key].assignedOff = loadedUnit.assignedOff || 0;
+                        game.military.units[key].assignedDef = loadedUnit.assignedDef || 0;
+                    }
+                }
+            }
+}
         recalcLimits();
         recalcRates();
         checkUnlocks();
@@ -443,31 +738,58 @@ function loadGame() {
 }
 
 // --- UI RENDERING ---
-
 function updateUI() {
-    // Resources in sidebar
+    // Deze moet ALTIJD draaien (elke seconde)
+    renderSidebar(); 
+
+    // De rest draait alleen voor het tabblad waar de speler op kijkt
+    // Gebruik de ID's die in je HTML staan bij de buttons (data-tab)
+    switch(currentTab) {
+        case 'jobs':
+            renderResourceTable();
+            renderBuildings();
+            break;
+        case 'buildings':
+            renderBuildings();
+            break;
+        case 'population':
+            document.getElementById('pop-idle').innerText = getIdlePopulation();
+            document.getElementById('pop-total').innerText = Math.floor(game.resources.population.amount); 
+            renderJobs();
+            break;
+        case 'research':
+            renderResearch();
+            break;
+        case 'explore':
+            renderExplore();
+            break;
+        case 'diplomacy':
+            renderDiplomacy();
+            break;
+        case 'military':
+            renderMilitary();
+            break;
+    }
+}
+
+function renderSidebar() {
     const miniStats = document.querySelector('.mini-stats');
+    if (!miniStats) return;
+    
     miniStats.innerHTML = '';
     for(let key in game.resources) {
         const r = game.resources[key];
         if(r.discovered) {
-            miniStats.innerHTML += `<p>${r.name}: ${Math.floor(r.amount)} / ${r.max}</p>`;
+            // We gebruiken toFixed(1) zodat het goud niet flikkert met teveel decimalen
+            miniStats.innerHTML += `<p>${r.name}: ${Math.floor(r.amount)} / ${r.max} <small>(${r.perSec.toFixed(1)}/s)</small></p>`;
         }
     }
+}
 
-    // Bevolking Tab
-    document.getElementById('pop-idle').innerText = getIdlePopulation();
-    document.getElementById('pop-total').innerText = Math.floor(game.resources.population.amount);
-    renderJobs();
-
-    // Gebouwen Tab
-    renderBuildings();
-
-    // Research Tab
-    renderResearch();
-
-    // Resource Overzicht Tab
+function renderResourceTable() {
     const resBody = document.getElementById('resource-tbody');
+    if (!resBody) return;
+
     resBody.innerHTML = '';
     for(let key in game.resources) {
         const r = game.resources[key];
@@ -476,14 +798,10 @@ function updateUI() {
             <td>${r.name}</td>
             <td>${Math.floor(r.amount)}</td>
             <td>${r.max}</td>
-            <td style="color: ${r.perSec >= 0 ? '#a6e3a1' : '#f38ba8'}">${r.perSec.toFixed(1)}/s</td>
-            <td>${r.perSec !== 0 ? 'Productie loopt' : 'Stabiel'}</td>
+            <td style="color: ${r.perSec >= 0 ? '#a6e3a1' : '#f38ba8'}">${r.perSec.toFixed(2)}/s</td>
+            <td>${r.perSec !== 0 ? 'Actief' : 'Stabiel'}</td>
         </tr>`;
     }
-    // Verkennen Tab
-    renderExplore();
-    // Diplomatie Tab
-    renderDiplomacy();
 }
 
 function renderBuildings() {
@@ -633,30 +951,154 @@ function renderDiplomacy() {
     
     container.innerHTML = '<h1>Diplomatie</h1>';
 
+    // Check of er al iets ontdekt is
     if (!game.diplomacy.unlocked || Object.keys(game.diplomacy.discoveredTribes).length === 0) {
-        container.innerHTML += '<p>Je hebt nog geen andere volken ontdekt. Stuur expedities uit om de wereld te verkennen.</p>';
+        container.innerHTML += '<p>Je hebt nog geen andere volken ontdekt. Stuur expedities uit.</p>';
         return;
     }
 
+    // De loop begint hier
     for (let key in game.diplomacy.discoveredTribes) {
-        const tribe = game.diplomacy.discoveredTribes[key];
-        let relationText = tribe.relation > 80 ? "Bondgenoot" : tribe.relation > 40 ? "Neutraal" : "Vijandig";
+        const tribe = game.diplomacy.discoveredTribes[key]; // HIER wordt 'tribe' gedefinieerd
         
+        let relationText = tribe.relation > 80 ? "Bondgenoot" : tribe.relation > 40 ? "Neutraal" : "Vijandig";
+        const canTrade = tribe.relation >= 60;
+        const btnTradeText = tribe.tradeRouteActive ? "Handel Stoppen" : "Handelsroute Openen";
+
+        // We bouwen de HTML op BINNEN de loop, zodat 'tribe' bekend is
         container.innerHTML += `
             <div class="panel">
                 <h3>${tribe.name}</h3>
                 <p><em>${tribe.desc}</em></p>
                 <p>Relatie: <strong>${tribe.relation}/100 (${relationText})</strong></p>
+                
                 <div style="width: 100%; background: #45475a; height: 8px; border-radius: 4px; margin-bottom: 10px;">
                     <div style="width: ${tribe.relation}%; background: ${tribe.relation > 40 ? '#a6e3a1' : '#f38ba8'}; height: 100%; border-radius: 4px;"></div>
                 </div>
+
                 <button class="action-btn-small" onclick="sendGift('${key}')" ${game.resources.gold.amount >= 100 ? '' : 'disabled'}>
                     Stuur Geschenk (100 Goud, +5 Relatie)
                 </button>
+                <button class="action-btn-small" style="background: #fab387; color: #11111b;" onclick="deteriorateRelation('${key}', 'insult')">
+                    Beledig Stam (-10 Relatie)
+                </button>
+                <button class="action-btn-small" style="background: #f38ba8; color: #11111b;" onclick="deteriorateRelation('${key}', 'provoke')">
+                    Provoceer Leger (-25 Relatie)
+                </button>
+
+                <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 5px;">
+                    <p><small>Handel focus: ${Object.keys(tribe.resources).join(' & ')}</small></p>
+                    <button class="action-btn-small" 
+                            onclick="toggleTradeRoute('${key}')" 
+                            ${canTrade || tribe.tradeRouteActive ? '' : 'disabled'}>
+                        ${btnTradeText}
+                    </button>
+                    ${!canTrade && !tribe.tradeRouteActive ? '<br><small style="color:#f38ba8">Eis: Relatie 60+</small>' : ''}
+                </div>
+            </div>
+        `;
+    } // De loop eindigt pas HIER
+}
+function renderMilitary() {
+    const container = document.getElementById('tab-military');
+    if (!container) return; // Veiligheidscheck
+
+    recalcMilitary();
+    
+    // Deel 1: Header en Kracht Overzicht
+    container.innerHTML = `<h1>Militair Hoofdkwartier</h1>`;
+    container.innerHTML += `
+        <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+            <div class="panel" style="flex:1; border-left: 5px solid #f38ba8;">
+                <h3>Aanvalskracht: ${Math.floor(game.military.attackPower)}</h3>
+            </div>
+            <div class="panel" style="flex:1; border-left: 5px solid #a6e3a1;">
+                <h3>Verdedigingskracht: ${Math.floor(game.military.defensePower)}</h3>
+            </div>
+        </div>
+    `;
+
+    // Deel 2: Units beheren
+    for (let key in game.military.units) {
+        const u = game.military.units[key];
+        const unassigned = u.total - u.assignedOff - u.assignedDef;
+
+        container.innerHTML += `
+            <div class="panel" style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>${u.name}</strong>
+                    <span>Totaal: ${u.total} (Vrij: ${unassigned})</span>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
+                        <small>Offensief: ${u.assignedOff}</small><br>
+                        <button onclick="assignUnit('${key}', 'off')">+</button>
+                        <button onclick="assignUnit('${key}', 'unassignOff')">-</button>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
+                        <small>Defensief: ${u.assignedDef}</small><br>
+                        <button onclick="assignUnit('${key}', 'def')">+</button>
+                        <button onclick="assignUnit('${key}', 'unassignDef')">-</button>
+                    </div>
+                    <div style="flex: 1;">
+                        <button class="build-btn" onclick="trainUnit('${key}')">Train Nieuwe (${u.cost.gold}g)</button>
+                    </div>
+                </div>
             </div>
         `;
     }
+
+    // Deel 3: Doelwitten (Tribes met relatie < 30)
+    container.innerHTML += `
+        <div class="panel" style="margin-top: 20px; border-top: 4px solid #fab387;">
+            <h2>Beschikbare Doelwitten</h2>
+            <div id="military-targets"></div>
+        </div>
+    `;
+
+    const targetsDiv = document.getElementById('military-targets');
+    let hasTargets = false;
+
+    for (let tKey in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[tKey];
+        
+        // Alleen tonen als relatie laag is en nog niet veroverd
+        if (tribe.relation < 30 && !tribe.isConquered) {
+            hasTargets = true;
+            targetsDiv.innerHTML += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #45475a; background: rgba(243, 139, 168, 0.05);">
+                    <span>
+                        <strong>${tribe.name}</strong> (Relatie: ${tribe.relation})<br>
+                        <small>Verdediging: ~${tribe.defenseValue || 300}</small>
+                    </span>
+                    <button class="action-btn-small" style="background: #f38ba8; color: #11111b;" onclick="attackTribe('${tKey}')">
+                        ⚔️ Start Aanval
+                    </button>
+                </div>
+            `;
+        }
+        // Zoek in renderMilitary naar de loop van de tribes en voeg dit toe voor veroverde tribes:
+        if (tribe.isConquered) {
+            hasTargets = true; // Zodat de sectie niet leeg lijkt
+            const color = tribe.rebellionLevel > 70 ? '#f38ba8' : '#f9e2af';
+            
+            targetsDiv.innerHTML += `
+                <div style="padding: 10px; border-bottom: 1px solid #45475a; background: rgba(166, 227, 161, 0.05);">
+                    <span><strong>${tribe.name}</strong> (Onderworpen)</span>
+                    <div style="width: 100%; background: #313244; height: 5px; margin-top: 5px; border-radius: 2px;">
+                        <div style="width: ${tribe.rebellionLevel}%; background: ${color}; height: 100%; border-radius: 2px; transition: width 0.5s;"></div>
+                    </div>
+                    <small style="color: ${color}">Onrust: ${Math.floor(tribe.rebellionLevel)}% (Onderdrukking actief)</small>
+                </div>
+            `;
+        }
+    }
+
+    if (!hasTargets) {
+        targetsDiv.innerHTML = `<p style="opacity: 0.6; font-style: italic;">Geen vijandige stammen gevonden. Provoceer een stam in Diplomatie om een aanval mogelijk te maken.</p>`;
+    }
 }
+
 
 function sendGift(tribeKey) {
     if (game.resources.gold.amount >= 100) {
@@ -667,6 +1109,21 @@ function sendGift(tribeKey) {
         }
         updateUI();
     }
+}
+function deteriorateRelation(tribeKey, action) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    if (!tribe) return;
+
+    if (action === 'insult') {
+        tribe.relation = Math.max(0, tribe.relation - 10);
+        alert(`Je hebt de gezant van ${tribe.name} beledigd. De relatie is nu ${tribe.relation}.`);
+    } else if (action === 'provoke') {
+        tribe.relation = Math.max(0, tribe.relation - 25);
+        alert(`Je hebt je leger laten paraderen langs de grens van ${tribe.name}. Ze zijn woedend!`);
+    }
+
+    // Direct de UI updaten om de nieuwe knoppen in de Leger tab te activeren als relatie < 30
+    updateUI();
 }
 
 // --- GAME LOOP ---
@@ -693,17 +1150,98 @@ setInterval(() => {
 // Auto-save elke 30 seconden
 setInterval(saveGame, 30000);
 
+// Check elke 60 seconden voor een event
+setInterval(triggerRandomEvent, 60000);
+
+// Check elke 60 seconden voor rebellies
+setInterval(checkRebellions, 60000);//60000
+
+setInterval(() => {
+    for (let key in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[key];
+        
+        // Alleen tribes met een zeer slechte relatie vallen aan
+        if (tribe.relation < 20 && !tribe.isConquered) {
+            // 5% kans elke minuut op een aanval
+            if (Math.random() < 0.05) {
+                triggerEnemyAttack(key);
+            }
+        }
+    }
+}, 60000); // Check elke minuut 60000
+
+
+
 // --- INITIALISATIE ---
 loadGame();
 renderManualButtons();
 updateUI();
 
+
+function showTab(tabId) {
+    //console.log("Wisselen naar tab:", tabId); // Zie je dit in de console?
+    // 1. Vertel de game welke tab nu 'actief' is
+    currentTab = tabId;
+
+    // 2. Visueel de tabs wisselen (CSS)
+    const contents = document.getElementsByClassName('tab-content');
+    for (let content of contents) {
+        content.classList.remove('active');
+    }
+
+    const activeTab = document.getElementById('tab-' + tabId);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+
+    // 3. De navigatieknoppen ook een 'active' uiterlijk geven (optioneel, voor de looks)
+    const buttons = document.getElementsByClassName('nav-btn');
+    for (let btn of buttons) {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick')?.includes(tabId)) {
+            btn.classList.add('active');
+        }
+    }
+    
+    // 4. Meteen tekenen zodat de speler geen lege pagina ziet
+    updateUI();
+}
 // Tab navigatie
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-    });
-});
+//document.querySelectorAll('.nav-btn').forEach(btn => {
+//    btn.addEventListener('click', () => {
+//        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+//        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+//        btn.classList.add('active');
+//        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+//    });
+//});
+const gameEvents = [
+    {
+        title: "Goede Oogst",
+        text: "De weergoden zijn je gunstig gezind! De schuren puilen uit.",
+        action: () => { addResource('food', 200); },
+        chance: 0.4
+    },
+    {
+        title: "Diefstal!",
+        text: "Een sluwe dief heeft ingebroken in de opslag.",
+        action: () => { addResource('gold', -50); },
+        chance: 0.2
+    },
+    {
+        title: "Vluchteling",
+        text: "Een reiziger uit een ver land vraagt om onderdak.",
+        action: () => { game.resources.population.amount += 1; },
+        chance: 0.1
+    }
+];
+
+function triggerRandomEvent() {
+    // 10% kans elke minuut (of hoe vaak je de functie ook aanroept)
+    if (Math.random() < 0.1) {
+        const event = gameEvents[Math.floor(Math.random() * gameEvents.length)];
+        event.action();
+        alert(`EVENT: ${event.title}\n\n${event.text}`);
+        updateUI();
+    }
+}
