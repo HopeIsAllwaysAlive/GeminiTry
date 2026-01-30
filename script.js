@@ -17,8 +17,9 @@ let game = {
         farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: true },
         miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 },unlocked: false},
-        scout_job: { name: "Verkenner", count: 0, max: 0, effect: { food: -2 }, unlocked: false }
+        scout_job: { name: "Verkenner", count: 0, max: 0, effect: { food: -2 }, unlocked: false },
         //Soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -1, food: -2 }, unlocked: false }
+        banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false }
     },
     
     buildings: {
@@ -29,9 +30,9 @@ let game = {
         quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 }, desc: "Plek om steen te winnen.", unlocked: false },
         school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
-        scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false }
+        scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
         //barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 5 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 5 soldaten.", unlocked: false }
-    
+        bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
     },
     research: {
         toolmaking: { 
@@ -53,7 +54,7 @@ let game = {
             desc: "Ontgrendelt de School en Leraren.", 
             cost: { wood: 100, food: 100, stone: 20 }, 
             unlocked: false, 
-            requirement: () => game.buildings.hut.count >= 5 // Verschijnt bij 5 hutten
+            requirement: () => game.buildings.hut.count >= 2 // Verschijnt bij 2 hutten
         },
         warehouse: { 
             name: "Pakhuis", 
@@ -82,6 +83,48 @@ let game = {
             cost: { researchPoints: 100, gold: 100 },
             unlocked: false,
             requirement: () => game.resources.population.amount >= 25 // Verschijnt bij 25 bevolking
+        },
+        medium_expeditions: {
+            name: "Handelsroute zoeken",
+            desc: "Verbeterde expedities die handelsroutes kunnen vinden.",
+            cost: { researchPoints: 150, gold: 200 },
+            unlocked: false,
+            requirement: () => game.research.expeditions.unlocked
+        },
+        hard_expeditions: {
+            name: "Diplomatieke Missies",
+            desc: "Geavanceerde expedities die diplomatieke contacten kunnen leggen.",
+            cost: { researchPoints: 300, gold: 500 },
+            unlocked: false,
+            requirement: () => game.research.medium_expeditions.unlocked
+        },
+        expert_expeditions: {
+            name: "Verre Expedities",
+            desc: "Expert expedities die unieke ontdekkingen kunnen doen.",
+            cost: { researchPoints: 500, gold: 1001 },
+            unlocked: false,
+            requirement: () => game.research.hard_expeditions.unlocked
+        },
+        banking: {
+            name: "Bankenstelsel",
+            desc: "Maakt het mogelijk om een bank te bouwen voor extra goudopslag en rente.",
+            cost: { researchPoints: 400, gold: 800 },
+            unlocked: false,
+            requirement: () => game.resources.gold.amount >= 1000
+        },
+        knight_training: {
+            name: "Ridder Training",
+            desc: "Ontgrendelt de Ridder eenheid voor je leger.",
+            cost: { researchPoints: 200, gold: 300 },
+            unlocked: false,
+            requirement: () => game.buildings.hut.count >= 5
+        },
+        commander_tactics: {
+            name: "Commandant Tactieken",
+            desc: "Ontgrendelt de Commandant eenheid die de kracht van je leger verhoogt.",
+            cost: { researchPoints: 400, gold: 600 },
+            unlocked: false,
+            requirement: () => game.research.knight_training.unlocked
         }
     },
 expeditions: {
@@ -102,21 +145,21 @@ expeditions: {
             duration: 10,//120
             cost: { food: 200, gold: 50, scouts: 2 },
             successRate: 0.75,
-            requirements: () => game.resources.population.amount >= 10
+            requirements: () => game.research.medium_expeditions.unlocked && game.resources.scouts.amount >= 2
         },
         hard: {
             name: "Diplomatieke Missie",
             duration: 10,//300
             cost: { food: 500, gold: 200, scouts: 5 },
             successRate: 0.6,
-            requirements: () => game.research.education.unlocked
+            requirements: () => game.research.hard_expeditions.unlocked && game.resources.scouts.amount >= 5
         },
         expert: {
             name: "Verre Expeditie",
             duration: 10,//900
             cost: { food: 1500, gold: 1000, scouts: 10 },
             successRate: 0.4,
-            requirements: () => game.buildings.school.count >= 3
+            requirements: () => game.research.expert_expeditions.unlocked && game.buildings.school.count >= 3
         }
     }
 },
@@ -125,7 +168,6 @@ diplomacy: {
     unlocked: false,
     discoveredTribes: {} // Hier slaan we de ontdekte volken op
 },
-
 // Een 'bibliotheek' met mogelijke volken die je kunt ontdekken
 tribeTemplates: {
     forest_dwellers: {
@@ -153,22 +195,93 @@ tribeTemplates: {
         resources: { food: 1.5, gold: 1.0 }
     }    
 },
-// Voeg dit toe aan je 'game' object
+
 military: {
     attackPower: 0,
     defensePower: 0,
-    units: {swordsman: { name: "Zwaardvechter", total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, type: 'off', cost: { gold: 50, food: 20 }, desc: "Focus op aanval.", maintenance: { food: 1 } },
-        archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, wood: 30 }, desc: "Focus op verdediging." },
-        knight: { name: "Ridder", total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, type: 'both', cost: { gold: 150, food: 80 }, desc: "Sterk in beide." },
-        commander: { name: "Commandant", total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, type: 'support', cost: { gold: 500 }, desc: "Verhoogt totale kracht met 20%." }
+    units: {swordsman: { name: "Zwaardvechter", total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, type: 'off', cost: { gold: 50, food: 20 }, desc: "Focus op aanval.", maintenance: { food: 1 }, unlocked: true },
+        archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, wood: 30 }, desc: "Focus op verdediging.", maintenance: { food: 1 }, unlocked: true },
+        knight: { name: "Ridder", total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, type: 'both', cost: { gold: 150, food: 80 }, desc: "Sterk in beide.", maintenance: { food: 2, gold: 1 }, unlocked: false },
+        commander: { name: "Commandant", total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, type: 'support', cost: { gold: 500 }, desc: "Verhoogt totale kracht met 20%." , maintenance: { food: 2, gold: 1 }, unlocked: false }
     }
 },
-//stats: {
-//    militaryPower: 0
-//},
+prestige: {
+    points: 0,
+    totalEarned: 0,
+    upgrades: {
+        starter_pack: { name: "Snelle Start", level: 0, max: 5, cost: 10, desc: "Begin elke reset met +500 alle resources per level." },
+        military_academy: { name: "Militaire Academie", level: 0, max: 1, cost: 50, desc: "Unlockt de 'Ridder' unit vanaf het begin." },
+        efficient_scouting: { name: "Ervaren Gidsen", level: 0, max: 10, cost: 20, desc: "Verkenningen gaan 5% sneller per level (bovenop de 1% per onbesteed punt)." }
+    }
+},
 
     lastSave: Date.now()
 };
+
+function getInitialState() {
+    return {
+        resources: {
+            wood: { amount: 0, perSec: 0 },
+            stone: { amount: 0, perSec: 0 },
+            gold: { amount: 0, perSec: 0 },
+            food: { amount: 10, perSec: 0 },
+            population: { amount: 1, max: 5 },
+            researchPoints: { amount: 0, perSec: 0 },
+            scouts: { amount: 0, perSec: 0 }
+        },
+        buildings: { 
+            hut: { count: 0 },
+            lumber_camp: { count: 0 },
+            farm_plot: { count: 0 },
+            quarry: { count: 0 },
+            warehouse: { count: 0 },
+            school: { count: 0 },
+            irrigation_system: { count: 0 },
+            scout_post: { count: 0 },
+            //barracks: { count: 0 },
+            bank: { count: 0 }
+        },
+        jobs: {
+            woodcutter: { count: 0 },
+            farmer: { count: 0 },
+            miner: { count: 0 },
+            teacher: { count: 0 },
+            scout_job: { count: 0 },
+            //soldier: { count: 0 }
+            banker: { count: 0 }
+        },
+        research: { 
+            toolmaking: { unlocked: false },
+            agriculture: { unlocked: false },
+            education: { unlocked: false },
+            warehouse: { unlocked: false },
+            irrigation_tech: { unlocked: false },
+            plow_invention: { unlocked: false },
+            expeditions: { unlocked: false },
+            medium_expeditions: { unlocked: false },
+            hard_expeditions: { unlocked: false },
+            expert_expeditions: { unlocked: false },
+            banking: { unlocked: false },
+            knight_training: { unlocked: false },
+            commander_tactics: { unlocked: false }
+        },
+
+        military: {
+            attackPower: 0,
+            defensePower: 0,
+            units: {
+                swordsman: { total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, cost: { gold: 50, food: 20 },unlocked: true },
+                archer: { total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, cost: { gold: 40, wood: 30 }, unlocked: true },
+                knight: { total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, cost: { gold: 150, food: 80 }, unlocked: false },
+                commander: { total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, cost: { gold: 500 },  unlocked: false }
+            }
+        },
+        diplomacy: { discoveredTribes: {} },
+        // PRESTIGE WORDT HIER NIET GERESET, die bewaren we apart
+    };
+}
+
+
 
 // --- CORE LOGICA ---
 
@@ -223,6 +336,8 @@ function recalcRates() {
         // Bepaal de multiplier (standaard 1, dus 100%)
         let multiplier = 1;
         
+        const prestigeBoost = 1 + (game.prestige.points * 0.01);
+        multiplier *= prestigeBoost; // 1% sneller per prestige punt
         // Check specifieke researches voor upgrades
         if (key === 'farmer' && game.research.plow_invention.unlocked) {
             multiplier *= 1.5; // 50% sneller
@@ -236,7 +351,10 @@ function recalcRates() {
         for(let resType in job.effect) {
             game.resources[resType].perSec += (job.effect[resType] * job.count * multiplier);
         }
-    }
+    }   
+        // Voedselconsumptie voor elke idle inwoner        
+        game.resources.food.perSec += ( -0.5 * getIdlePopulation() ); // Kleine voedselconsumptie per job
+    //console.log(getIdlePopulation());
 
     // Link de Job 'scout_job' aan de Resource 'scouts'
     // Hierdoor heb je altijd precies evenveel scouts als mensen in die baan
@@ -285,6 +403,14 @@ for (let key in game.military.units) {
     }
 }
     recalcMilitary();
+    // Aan het einde van recalcRates():
+const prestigeMultiplier = 1 + (game.prestige.points * 0.01);
+
+for(let key in game.resources) {
+    if(key !== 'population') { // Bevolking groeit meestal niet sneller door prestige
+        game.resources[key].perSec *= prestigeMultiplier;
+    }
+}
 }
 
 function checkUnlocks() {
@@ -313,6 +439,18 @@ function checkUnlocks() {
     if (game.research.warehouse.unlocked) {
         game.buildings.warehouse.unlocked = true;
     }
+    if (game.research.banking.unlocked) {
+        game.buildings.bank.unlocked = true;
+        game.jobs.banker.unlocked = true;
+    }
+    if (game.research.knight_training.unlocked) {
+        game.military.units.knight.unlocked = true;
+    }
+    if (game.research.commander_tactics.unlocked) {
+        game.military.units.commander.unlocked = true;
+    }
+    // Je kunt hier later makkelijk meer toevoegen      
+
 }
 function discoverTribe() {
     const keys = Object.keys(game.tribeTemplates);
@@ -328,6 +466,60 @@ function discoverTribe() {
     } else {
         alert("Je verkenners hebben de hele regio in kaart gebracht, maar geen nieuwe stammen gevonden.");
     }
+}
+function calculatePrestigePoints() {
+    let points = 0;
+    
+    // 1. Goud: 1 punt per 10.000 goud
+    points += Math.floor(game.resources.gold.amount / 10000);
+    
+    // 2. Gebouwen: 1 punt per 10 gebouwen totaal
+    let totalBuildings = 0;
+    for(let key in game.buildings) totalBuildings += game.buildings[key].count;
+    points += Math.floor(totalBuildings / 10);
+    
+    // 3. Vijanden: 5 punten per veroverde tribe
+    for(let key in game.diplomacy.discoveredTribes) {
+        if(game.diplomacy.discoveredTribes[key].isConquered) points += 5;
+    }
+    
+    // 4. Research: 2 punten per voltooide research
+    for(let key in game.research) {
+        if(game.research[key].researched) points += 2;
+    }
+
+    return points;
+}
+function getPrestigeBreakdown() {
+    const goldPoints = Math.floor(game.resources.gold.amount / 10000);
+    
+    let totalBuildings = 0;
+    for(let key in game.buildings) totalBuildings += game.buildings[key].count;
+    const buildingPoints = Math.floor(totalBuildings / 10);
+    
+    let conqueredCount = 0;
+    for(let key in game.diplomacy.discoveredTribes) {
+        if(game.diplomacy.discoveredTribes[key].isConquered) conqueredCount++;
+    }
+    const tribePoints = conqueredCount * 5;
+    
+    let researchCount = 0;
+    for(let key in game.research) {
+        if(game.research[key].researched) researchCount++;
+    }
+    const researchPoints = researchCount * 2;
+
+    return {
+        total: goldPoints + buildingPoints + tribePoints + researchPoints,
+        details: `
+            <ul style="list-style: none; padding: 0; text-align: left; font-size: 0.9em;">
+                <li>💰 Goud: +${goldPoints}</li>
+                <li>🏠 Gebouwen: +${buildingPoints}</li>
+                <li>⚔️ Veroveringen: +${tribePoints}</li>
+                <li>🧪 Research: +${researchPoints}</li>
+            </ul>
+        `
+    };
 }
 // --- ACTIONS ---
 
@@ -349,6 +541,7 @@ function buyResearch(key) {
         payCost(r.cost);
         r.unlocked = true;
         checkUnlocks();
+        recalcRates();
         updateUI();
     }
 }
@@ -638,6 +831,46 @@ function triggerRebellion(tribeKey) {
     updateUI();
 }
 
+function performPrestige() {
+    const earnedPoints = calculatePrestigePoints();
+    
+    // 1. Punten bijschrijven
+    game.prestige.points += earnedPoints;
+    game.prestige.totalEarned += earnedPoints;
+
+    // 2. Prestige Upgrades & Punten veiligstellen
+    const permanentPrestige = JSON.parse(JSON.stringify(game.prestige));
+
+    // 3. De Game resetten naar de basis
+    game = getInitialState();
+    
+    // 4. Prestige data terugzetten
+    game.prestige = permanentPrestige;
+
+    // 5. "Starter Pack" bonus uitdelen
+    const starterLevel = game.prestige.upgrades.starter_pack.level;
+    if (starterLevel > 0) {
+        const bonus = starterLevel * 500;
+        game.resources.wood.amount += bonus;
+        game.resources.stone.amount += bonus;
+        game.resources.gold.amount += bonus;
+    }
+
+    // 6. Opslaan en herladen
+    saveGame();
+    alert(`Je bent herboren! Je start nu met ${game.prestige.points} prestige punten en je bonussen zijn actief.`);
+    updateUI();
+}
+function buyPrestigeUpgrade(key) {
+    const upg = game.prestige.upgrades[key];
+    if (game.prestige.points >= upg.cost && upg.level < upg.max) {
+        game.prestige.points -= upg.cost;
+        upg.level++;
+        saveGame();
+        renderPrestige(); // UI verversen
+    }
+}
+
 // Helper functies voor kosten
 function getCost(item) {
     let actualCost = {};
@@ -660,14 +893,30 @@ function payCost(cost) {
 
 // --- OPSLAAN & LADEN ---
 function saveGame() {
-    localStorage.setItem('civBuilderSave', JSON.stringify(game));
+    //localStorage.setItem('civBuilderSave', JSON.stringify(game));
+    localStorage.setItem('myGameSave', JSON.stringify(game));
     console.log("Game Saved");
 }
-
 function loadGame() {
-    const saved = localStorage.getItem('civBuilderSave');
-    if (saved) {
-        const loadedData = JSON.parse(saved);
+    const saved = localStorage.getItem('myGameSave');
+    if (!saved) return;
+    
+    const loadedData = JSON.parse(saved);
+    
+    // Gebruik Object.assign of een loop om de basis 'game' te vullen met loadedData
+    // Belangrijk voor Prestige:
+    if (loadedData.prestige) {
+        game.prestige.points = loadedData.prestige.points || 0;
+        game.prestige.totalEarned = loadedData.prestige.totalEarned || 0;
+        
+        // Laad de levels van de upgrades in de bestaande structuur
+        for (let key in loadedData.prestige.upgrades) {
+            if (game.prestige.upgrades[key]) {
+                game.prestige.upgrades[key].level = loadedData.prestige.upgrades[key].level || 0;
+            }
+        }
+    }
+
         
         // Loop door resources in de opgeslagen data
         for (let resKey in loadedData.resources) {
@@ -687,10 +936,11 @@ function loadGame() {
             }
         }
 
-        // En voor research
+        // Voor research
         for (let rKey in loadedData.research) {
             if (game.research[rKey]) {
                 game.research[rKey].unlocked = loadedData.research[rKey].unlocked;
+                game.research[rKey].researched = loadedData.research[rKey].researched; // Voeg deze toe!
             }
         }
 
@@ -734,7 +984,7 @@ function loadGame() {
         recalcLimits();
         recalcRates();
         checkUnlocks();
-    }
+        console.log("Game Loaded");
 }
 
 // --- UI RENDERING ---
@@ -742,15 +992,18 @@ function updateUI() {
     // Deze moet ALTIJD draaien (elke seconde)
     renderSidebar(); 
 
+
     // De rest draait alleen voor het tabblad waar de speler op kijkt
     // Gebruik de ID's die in je HTML staan bij de buttons (data-tab)
     switch(currentTab) {
         case 'jobs':
-            renderResourceTable();
             renderBuildings();
             break;
         case 'buildings':
             renderBuildings();
+            break;
+        case 'resources':
+            renderResourceTable();
             break;
         case 'population':
             document.getElementById('pop-idle').innerText = getIdlePopulation();
@@ -768,6 +1021,9 @@ function updateUI() {
             break;
         case 'military':
             renderMilitary();
+            break;
+        case 'prestige':
+            renderPrestige();
             break;
     }
 }
@@ -787,6 +1043,7 @@ function renderSidebar() {
 }
 
 function renderResourceTable() {
+ //   console.log("Rendering resource table...");
     const resBody = document.getElementById('resource-tbody');
     if (!resBody) return;
 
@@ -1098,6 +1355,50 @@ function renderMilitary() {
         targetsDiv.innerHTML = `<p style="opacity: 0.6; font-style: italic;">Geen vijandige stammen gevonden. Provoceer een stam in Diplomatie om een aanval mogelijk te maken.</p>`;
     }
 }
+function renderPrestige() {
+    const container = document.getElementById('tab-prestige');
+    const potential = calculatePrestigePoints();
+    const boost = game.prestige.points * 1; // 1% per punt
+
+    const breakdown = getPrestigeBreakdown();
+    container.innerHTML += `
+    <div class="panel" style="border: 1px dashed #fab387; margin-top: 10px;">
+        <h4>Verwachte opbrengst: ${breakdown.total} punten</h4>
+        ${breakdown.details}
+    </div>
+`;
+
+    container.innerHTML = `
+        <h1>Prestige (Ascension)</h1>
+        <div class="panel" style="background: linear-gradient(45deg, #1e1e2e, #313244); border: 1px solid #fab387;">
+            <h3>Huidige Prestige Punten: <span style="color:#fab387">${game.prestige.points}</span></h3>
+            <p>Onbestede punten geven een <strong>+${boost}%</strong> bonus op resource productie en verkenning snelheid.</p>
+            <hr>
+            <p>Als je nu reset, ontvang je: <strong>${potential}</strong> punten.</p>
+            <button class="build-btn" onclick="performPrestige()" ${game.resources.population.amount >= 100 ? '' : 'disabled'}>
+                Ascendeer (Min. 100 inwoners vereist)
+            </button>
+        </div>
+        
+        <h2>Prestige Upgrades</h2>
+        <div id="prestige-upgrades-list"></div>
+    `;
+
+    // Teken de upgrades (vergelijkbaar met gebouwen maar met prestige punten)
+    const list = document.getElementById('prestige-upgrades-list');
+    for (let key in game.prestige.upgrades) {
+        const upg = game.prestige.upgrades[key];
+        list.innerHTML += `
+            <div class="panel">
+                <strong>${upg.name} (Lvl ${upg.level}/${upg.max})</strong><br>
+                <small>${upg.desc}</small><br>
+                <button class="action-btn-small" onclick="buyPrestigeUpgrade('${key}')" ${game.prestige.points >= upg.cost && upg.level < upg.max ? '' : 'disabled'}>
+                    Koop (${upg.cost} Punten)
+                </button>
+            </div>
+        `;
+    }
+}
 
 
 function sendGift(tribeKey) {
@@ -1133,7 +1434,14 @@ setInterval(() => {
     
     // Bevolkingsgroei
     if (game.resources.population.amount < game.resources.population.max && game.resources.food.amount > 10) {
-        game.resources.population.amount += 0.02; 
+        game.resources.population.amount += 0.25; //0.02
+    }
+    if (game.resources.food.amount <= 0) {
+    game.resources.food.amount = 0;
+    // Mensen vertrekken of sterven bij honger
+        if (game.resources.population.amount > 0) {
+            game.resources.population.amount -= 0.1; // Langzame afname
+        }
     }
     
     if (game.expeditions.active && game.expeditions.timer > 0) {
@@ -1170,8 +1478,6 @@ setInterval(() => {
     }
 }, 60000); // Check elke minuut 60000
 
-
-
 // --- INITIALISATIE ---
 loadGame();
 renderManualButtons();
@@ -1206,15 +1512,7 @@ function showTab(tabId) {
     // 4. Meteen tekenen zodat de speler geen lege pagina ziet
     updateUI();
 }
-// Tab navigatie
-//document.querySelectorAll('.nav-btn').forEach(btn => {
-//    btn.addEventListener('click', () => {
-//        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-//        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-//        btn.classList.add('active');
-//        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-//    });
-//});
+
 const gameEvents = [
     {
         title: "Goede Oogst",
@@ -1234,7 +1532,7 @@ const gameEvents = [
         action: () => { game.resources.population.amount += 1; },
         chance: 0.1
     }
-];
+]; 
 
 function triggerRandomEvent() {
     // 10% kans elke minuut (of hoe vaak je de functie ook aanroept)
