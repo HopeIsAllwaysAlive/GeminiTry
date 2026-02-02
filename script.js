@@ -1487,7 +1487,7 @@ function renderPrestige() {
                 </button>
             </div>
         </div>
-        `;
+        `; 
     }
     // Systeembeheer sectie
     container.innerHTML += `
