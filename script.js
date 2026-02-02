@@ -13,22 +13,21 @@ let game = {
         scouts: { name: "Verkenners", amount: 0, max: 0, perSec: 0, discovered: false }
     },
     jobs: {
-        woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -0.5 }, unlocked: true },
-        farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: true },
+        woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -0.5 }, unlocked: false },
+        farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
         miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 },unlocked: false},
         scout_job: { name: "Verkenner", count: 0, max: 0, effect: { food: -2 }, unlocked: false },
         //Soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -1, food: -2 }, unlocked: false }
         banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false }
     },
-    
     buildings: {
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
-        lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 }, desc: "Werkplek voor houthakkers.", unlocked: true },
-        farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
+        lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
+        farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
         warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
-        quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 }, desc: "Plek om steen te winnen.", unlocked: false },
-        school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
+        quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
+        school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
         //barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 5 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 5 soldaten.", unlocked: false }
@@ -110,7 +109,7 @@ let game = {
             desc: "Maakt het mogelijk om een bank te bouwen voor extra goudopslag en rente.",
             cost: { researchPoints: 400, gold: 800 },
             unlocked: false,
-            requirement: () => game.resources.gold.amount >= 1000
+            requirement: () => game.resources.gold.amount >= 100 //1000
         },
         knight_training: {
             name: "Ridder Training",
@@ -125,6 +124,13 @@ let game = {
             cost: { researchPoints: 400, gold: 600 },
             unlocked: false,
             requirement: () => game.research.knight_training.unlocked
+        },
+        axe_tech: {
+            name: "Hak Techniek",
+            desc: "Door slim te hakken, wordt het houtproductie verhoogd.",
+            cost: { researchPoints: 100, gold: 100 },
+            unlocked: false,
+            requirement: () => game.jobs.woodcutter.count >= 25
         }
     },
 expeditions: {
@@ -163,7 +169,6 @@ expeditions: {
         }
     }
 },
-
 diplomacy: {
     unlocked: false,
     discoveredTribes: {} // Hier slaan we de ontdekte volken op
@@ -221,26 +226,26 @@ prestige: {
 function getInitialState() {
     return {
         resources: {
-            wood: { amount: 0, perSec: 0 },
-            stone: { amount: 0, perSec: 0 },
-            gold: { amount: 0, perSec: 0 },
-            food: { amount: 10, perSec: 0 },
-            population: { amount: 1, max: 5 },
+            wood: { amount: 0, max: 100, perSec: 0 , manualGain: 1 , unlocked: true}, 
+            stone: { amount: 0, max: 100, perSec: 0 , manualGain: 1},
+            gold: { amount: 0, max: 1000, perSec: 0 },
+            food: { amount: 10, max: 150, perSec: 0 , manualGain: 1 , unlocked: true},
+            population: { amount: 1, max: 5 , unlocked: true},
             researchPoints: { amount: 0, perSec: 0 },
             scouts: { amount: 0, perSec: 0 }
         },
-        buildings: { 
-            hut: { count: 0 },
-            lumber_camp: { count: 0 },
-            farm_plot: { count: 0 },
-            quarry: { count: 0 },
-            warehouse: { count: 0 },
-            school: { count: 0 },
-            irrigation_system: { count: 0 },
-            scout_post: { count: 0 },
-            //barracks: { count: 0 },
-            bank: { count: 0 }
-        },
+    buildings: {
+        hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
+        lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
+        farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
+        warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
+        quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
+        school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
+        irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
+        scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
+        //barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 5 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 5 soldaten.", unlocked: false }
+        bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
+    },
         jobs: {
             woodcutter: { count: 0 },
             farmer: { count: 0 },
@@ -276,6 +281,12 @@ function getInitialState() {
                 commander: { total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, cost: { gold: 500 },  unlocked: false }
             }
         },
+        expeditions: {
+            active: false,
+            timer: 0,
+            currentType: null,
+            unlocked: false
+        },
         diplomacy: { discoveredTribes: {} },
         // PRESTIGE WORDT HIER NIET GERESET, die bewaren we apart
     };
@@ -301,11 +312,14 @@ function getIdlePopulation() {
 }
 
 function recalcLimits() {
+    const starterLevel = game.prestige.upgrades.starter_pack?.level || 0;
+    const bonus = starterLevel * 500;
     // Reset naar basis
-    game.resources.wood.max = 100;
-    game.resources.food.max = 100;
-    game.resources.stone.max = 50;
-    game.resources.population.max = 5;
+    game.resources.wood.max = 100 + bonus;
+    game.resources.food.max = 100 + bonus;
+    game.resources.stone.max = 50 + bonus;
+    game.resources.population.max = 100;//5
+    game.resources.gold.max = 1000;
     for(let j in game.jobs) game.jobs[j].max = 0;
 
     // Gebouwen toepassen
@@ -345,6 +359,9 @@ function recalcRates() {
         if (key === 'farmer' && game.buildings.irrigation_system.count > 0) {
             multiplier *= game.buildings.irrigation_system.count; // per gebouw
         }
+        if (key === 'woodcutter' && game.research.axe_tech.unlocked) {
+            multiplier *= 2; // 2x sneller
+        }
         // Je kunt hier later makkelijk meer toevoegen, bijv:
         // if (key === 'woodcutter' && game.research.steel_axes.unlocked) multiplier *= 1.2;
 
@@ -354,7 +371,11 @@ function recalcRates() {
     }   
         // Voedselconsumptie voor elke idle inwoner        
         game.resources.food.perSec += ( -0.5 * getIdlePopulation() ); // Kleine voedselconsumptie per job
-    //console.log(getIdlePopulation());
+
+//(Optioneel) Voeg een melding toe in de UI als de hongersnood dreigt
+//if (game.resources.food.amount < 10 && game.resources.food.perSec < 0) {
+    // Hier zou je een rode waarschuwing in je HTML kunnen zetten
+ //   console.warn("Hongersnood dreigt!");
 
     // Link de Job 'scout_job' aan de Resource 'scouts'
     // Hierdoor heb je altijd precies evenveel scouts als mensen in die baan
@@ -412,9 +433,42 @@ for(let key in game.resources) {
     }
 }
 }
+function handleFamine() {
+    if (game.resources.food.amount <= 0) {
+        game.resources.food.amount = 0;
+        
+        // Hoeveel mensen gaan er weg?
+        let deathRate = 0.1; 
+        game.resources.population.amount -= deathRate;
 
+        // --- DE FIX: Banen opschonen ---
+        // Bereken hoeveel mensen er nu totaal werken
+        let totalWorkers = 0;
+        for (let jKey in game.jobs) {
+            totalWorkers += game.jobs[jKey].count;
+        }
+
+        // Als er meer werkers zijn dan mensen, moet er iemand ontslagen worden
+        if (totalWorkers > game.resources.population.amount) {
+            // We zoeken een job waar mensen werken en halen er eentje weg
+            // Je kunt hier prioriteiten stellen, maar we pakken de eerste de beste
+            for (let jKey in game.jobs) {
+                if (game.jobs[jKey].count > 0) {
+                    game.jobs[jKey].count--; 
+                    break; // Stop na 1 ontslag per cycle
+                }
+            }
+        }
+    }
+}
 function checkUnlocks() {
     // Check Research Unlocks
+    if (game.buildings.lumber_camp.count > 0) {
+        game.jobs.woodcutter.unlocked = true;
+    }
+    if (game.buildings.hut.count > 0) {
+        game.jobs.farmer.unlocked = true;
+    }
     if (game.research.toolmaking.unlocked) {
         game.buildings.quarry.unlocked = true;
         game.jobs.miner.unlocked = true;
@@ -449,8 +503,6 @@ function checkUnlocks() {
     if (game.research.commander_tactics.unlocked) {
         game.military.units.commander.unlocked = true;
     }
-    // Je kunt hier later makkelijk meer toevoegen      
-
 }
 function discoverTribe() {
     const keys = Object.keys(game.tribeTemplates);
@@ -521,6 +573,7 @@ function getPrestigeBreakdown() {
         `
     };
 }
+
 // --- ACTIONS ---
 
 function buyBuilding(key) {
@@ -559,7 +612,13 @@ function startExpedition(typeKey) {
     
     // 1. Maak een kopie van de kosten ZONDER de scouts om te kunnen betalen
     let resourceCosts = { ...type.cost };
-    delete resourceCosts.scouts; 
+    //delete resourceCosts.scouts; 
+    // Bereken de reductie: 1% per onbesteed punt + bonus van upgrades
+    const pointBonus = game.prestige.points * 0.01; 
+    const upgradeBonus = (game.prestige.upgrades.efficient_scouting?.level || 0) * 0.05;
+    const totalReduction = pointBonus + upgradeBonus;
+    const finalTime = type.duration * (1 - Math.min(0.9, totalReduction)); // Maximaal 90% sneller
+
 
     // 2. Check of we de grondstoffen hebben EN of we genoeg verkenners hebben
     const canPayResources = canAfford(resourceCosts);
@@ -568,10 +627,15 @@ function startExpedition(typeKey) {
     if (canPayResources && hasEnoughScouts && !game.expeditions.active) {
         // 3. Betaal alleen de grondstoffen
         payCost(resourceCosts);
+        // 4. Trek de verkenners af
+        //game.resources.scouts.amount -= (type.cost.scouts || 0);
+        game.resources.population.amount -= (type.cost.scouts || 0); // Verkenners zijn tijdelijk niet beschikbaar
+        game.jobs.scout_job.count -= (type.cost.scouts || 0); // Verlaag het aantal verkenners in dienst
+        // 5. Start de expeditie
         
         game.expeditions.active = true;
         game.expeditions.currentType = typeKey;
-        game.expeditions.timer = type.duration;
+        game.expeditions.timer = finalTime;
         
         updateUI();
     }
@@ -851,15 +915,17 @@ function performPrestige() {
     const starterLevel = game.prestige.upgrades.starter_pack.level;
     if (starterLevel > 0) {
         const bonus = starterLevel * 500;
-        game.resources.wood.amount += bonus;
-        game.resources.stone.amount += bonus;
-        game.resources.gold.amount += bonus;
+        game.resources.wood.amount += bonus ; game.resources.wood.max += bonus;
+        game.resources.stone.amount += bonus ; game.resources.stone.max += bonus;
+        game.resources.food.amount += bonus ; game.resources.food.max += bonus;
     }
 
     // 6. Opslaan en herladen
     saveGame();
     alert(`Je bent herboren! Je start nu met ${game.prestige.points} prestige punten en je bonussen zijn actief.`);
-    updateUI();
+    window.location.reload(); // Dit dwingt de browser alles vers in te laden
+    //updateUI();
+
 }
 function buyPrestigeUpgrade(key) {
     const upg = game.prestige.upgrades[key];
@@ -1257,8 +1323,11 @@ function renderDiplomacy() {
     } // De loop eindigt pas HIER
 }
 function renderMilitary() {
+
+
     const container = document.getElementById('tab-military');
     if (!container) return; // Veiligheidscheck
+
 
     recalcMilitary();
     
@@ -1275,9 +1344,10 @@ function renderMilitary() {
         </div>
     `;
 
-    // Deel 2: Units beheren
+
     for (let key in game.military.units) {
         const u = game.military.units[key];
+                if (u.unlocked === false) continue; // Sla niet-ontgrendelde units over
         const unassigned = u.total - u.assignedOff - u.assignedDef;
 
         container.innerHTML += `
@@ -1355,12 +1425,31 @@ function renderMilitary() {
         targetsDiv.innerHTML = `<p style="opacity: 0.6; font-style: italic;">Geen vijandige stammen gevonden. Provoceer een stam in Diplomatie om een aanval mogelijk te maken.</p>`;
     }
 }
+function renderPrestigeDashboard() {
+    const upgradeBonus = (game.prestige.upgrades.efficient_scouting?.level || 0) * 5; // 5% per level
+    const pointBonus = (game.prestige.points * 1).toFixed(0); // 1% per punt
+    const scoutBonus = parseInt(pointBonus) + parseInt(upgradeBonus); // 1% per punt + upgrade bonus
+    
+    return `
+        <div class="panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: rgba(250, 179, 135, 0.1);">
+            <div>
+                <small>Productie Boost</small>
+                <div style="color: #a6e3a1; font-weight: bold;">+${pointBonus}%</div>
+            </div>
+            <div>
+                <small>Scouting Snelheid</small>
+                <div style="color: #89b4fa; font-weight: bold;">+${scoutBonus}%</div>
+            </div>
+        </div>
+    `;
+}
 function renderPrestige() {
     const container = document.getElementById('tab-prestige');
     const potential = calculatePrestigePoints();
     const boost = game.prestige.points * 1; // 1% per punt
-
     const breakdown = getPrestigeBreakdown();
+
+
     container.innerHTML += `
     <div class="panel" style="border: 1px dashed #fab387; margin-top: 10px;">
         <h4>Verwachte opbrengst: ${breakdown.total} punten</h4>
@@ -1373,10 +1462,11 @@ function renderPrestige() {
         <div class="panel" style="background: linear-gradient(45deg, #1e1e2e, #313244); border: 1px solid #fab387;">
             <h3>Huidige Prestige Punten: <span style="color:#fab387">${game.prestige.points}</span></h3>
             <p>Onbestede punten geven een <strong>+${boost}%</strong> bonus op resource productie en verkenning snelheid.</p>
+            ${renderPrestigeDashboard()}
             <hr>
             <p>Als je nu reset, ontvang je: <strong>${potential}</strong> punten.</p>
             <button class="build-btn" onclick="performPrestige()" ${game.resources.population.amount >= 100 ? '' : 'disabled'}>
-                Ascendeer (Min. 100 inwoners vereist)
+                Prestige (Min. 100 inwoners vereist)
             </button>
         </div>
         
@@ -1396,9 +1486,24 @@ function renderPrestige() {
                     Koop (${upg.cost} Punten)
                 </button>
             </div>
+        </div>
         `;
     }
-}
+    // Systeembeheer sectie
+    container.innerHTML += `
+    <div class="panel" style="margin-top: 30px; border-top: 2px solid #f38ba8;">
+    <h3>Systeembeheer</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="action-btn-small" onclick="exportGame()">💾 Export Save</button>
+        <button class="action-btn-small" onclick="importGame()">📂 Import Save</button>
+        <button class="action-btn-small" style="background: #f38ba8; color: #11111b;" onclick="hardReset()">🧨 Harde Reset</button>
+    
+</div>
+        `;
+    }
+
+   
+
 
 
 function sendGift(tribeKey) {
@@ -1439,9 +1544,7 @@ setInterval(() => {
     if (game.resources.food.amount <= 0) {
     game.resources.food.amount = 0;
     // Mensen vertrekken of sterven bij honger
-        if (game.resources.population.amount > 0) {
-            game.resources.population.amount -= 0.1; // Langzame afname
-        }
+    handleFamine();
     }
     
     if (game.expeditions.active && game.expeditions.timer > 0) {
@@ -1541,5 +1644,61 @@ function triggerRandomEvent() {
         event.action();
         alert(`EVENT: ${event.title}\n\n${event.text}`);
         updateUI();
+    }
+}
+// EXPORT: Maakt een code van je savegame
+async function exportGame() {
+  const saveString = btoa(JSON.stringify(game));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(saveString);
+      alert("Savecode gekopieerd naar klembord!");
+      return;
+    } catch (e) {
+      // fallback below
+    }
+  }
+
+  // Fallback for older browsers / insecure contexts
+  const ta = document.createElement('textarea');
+  ta.value = saveString;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy'); // deprecated but useful as fallback
+    alert("Savecode gekopieerd naar klembord (fallback)!");
+  } catch (e) {
+    prompt("Kopieer deze code handmatig:", saveString);
+  }
+  document.body.removeChild(ta);
+}
+
+// IMPORT: Laadt een code in
+function importGame() {
+    const code = prompt("Plak je savecode hier:");
+    if (!code) return;
+    try {
+        const decoded = JSON.parse(atob(code));
+        if (confirm("Weet je het zeker? Dit overschrijft je huidige voortgang!")) {
+            game = decoded;
+            saveGame();
+            window.location.reload();
+        }
+    } catch (e) {
+        alert("Ongeldige savecode!");
+    }
+}
+
+// HARDE RESET: Alles weg, inclusief Prestige
+function hardReset() {
+    const confirm1 = confirm("⚠️ GEVAAR: Dit wist ALLES, ook je Prestige punten en upgrades. Weet je het zeker?");
+    if (confirm1) {
+        const confirm2 = confirm("Laatste kans: Weet je het écht heel zeker? Dit kan niet ongedaan worden gemaakt.");
+        if (confirm2) {
+            localStorage.removeItem('myGameSave');
+            window.location.reload();
+        }
     }
 }
