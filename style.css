@@ -45,7 +45,7 @@ body {
     text-align: left;
     cursor: pointer;
     border-radius: 8px;
-    transition: background 0.2s;
+    transition: background 0.2s; 
 }
 
 .nav-btn:hover { background-color: var(--panel-bg); }
