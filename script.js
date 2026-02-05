@@ -100,7 +100,7 @@ let game = {
         expert_expeditions: {
             name: "Verre Expedities",
             desc: "Expert expedities die unieke ontdekkingen kunnen doen.",
-            cost: { researchPoints: 500, gold: 1001 },
+            cost: { researchPoints: 500, gold: 1000 },
             unlocked: false,
             requirement: () => game.research.hard_expeditions.unlocked
         },
@@ -109,7 +109,7 @@ let game = {
             desc: "Maakt het mogelijk om een bank te bouwen voor extra goudopslag en rente.",
             cost: { researchPoints: 400, gold: 800 },
             unlocked: false,
-            requirement: () => game.resources.gold.amount >= 100 //1000
+            requirement: () => game.resources.gold.amount >= 1000 //1000
         },
         knight_training: {
             name: "Ridder Training",
@@ -205,7 +205,7 @@ military: {
     attackPower: 0,
     defensePower: 0,
     units: {swordsman: { name: "Zwaardvechter", total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, type: 'off', cost: { gold: 50, food: 20 }, desc: "Focus op aanval.", maintenance: { food: 1 }, unlocked: true },
-        archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, wood: 30 }, desc: "Focus op verdediging.", maintenance: { food: 1 }, unlocked: true },
+        archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, food: 30 }, desc: "Focus op verdediging.", maintenance: { food: 1 }, unlocked: true },
         knight: { name: "Ridder", total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, type: 'both', cost: { gold: 150, food: 80 }, desc: "Sterk in beide.", maintenance: { food: 2, gold: 1 }, unlocked: false },
         commander: { name: "Commandant", total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, type: 'support', cost: { gold: 500 }, desc: "Verhoogt totale kracht met 20%." , maintenance: { food: 2, gold: 1 }, unlocked: false }
     }
@@ -276,7 +276,7 @@ function getInitialState() {
             defensePower: 0,
             units: {
                 swordsman: { total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, cost: { gold: 50, food: 20 },unlocked: true },
-                archer: { total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, cost: { gold: 40, wood: 30 }, unlocked: true },
+                archer: { total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, cost: { gold: 40, food: 30 }, unlocked: true },
                 knight: { total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, cost: { gold: 150, food: 80 }, unlocked: false },
                 commander: { total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, cost: { gold: 500 },  unlocked: false }
             }
@@ -291,11 +291,7 @@ function getInitialState() {
         // PRESTIGE WORDT HIER NIET GERESET, die bewaren we apart
     };
 }
-
-
-
 // --- CORE LOGICA ---
-
 function addResource(type, amount) {
     const res = game.resources[type];
     if (!res) return;
@@ -366,7 +362,9 @@ function recalcRates() {
         // if (key === 'woodcutter' && game.research.steel_axes.unlocked) multiplier *= 1.2;
 
         for(let resType in job.effect) {
+            if (key !==  'food'){
             game.resources[resType].perSec += (job.effect[resType] * job.count * multiplier);
+            }else {game.resources[resType].perSec += (job.effect[resType] * job.count);}
         }
     }   
         // Voedselconsumptie voor elke idle inwoner        
@@ -417,10 +415,10 @@ function recalcRates() {
 // --- Leger Onderhoud ---
 for (let key in game.military.units) {
     const u = game.military.units[key];
-    if (u.count > 0 && u.maintenance) {
+    if (u.count > 0 && u.cost) {
         // Als je maintenance in de data hebt gezet, bijv: maintenance: { food: 2, gold: 1 }
-        if (u.maintenance.food) game.resources.food.perSec -= (u.count * u.maintenance.food);
-        if (u.maintenance.gold) game.resources.gold.perSec -= (u.count * u.maintenance.gold);
+        if (u.cost.food) game.resources.food.perSec -= (u.count * u.cost.food);
+        if (u.cost.gold) game.resources.gold.perSec -= (u.count * u.cost.gold);
     }
 }
     recalcMilitary();
@@ -680,7 +678,7 @@ function giveReward(type) {
     else if (type === 'expert') {
         // Kans op een unieke unlock
         if (!game.research.banking.unlocked && Math.random() < 0.5) {
-             game.research.banking.isVisible = true; 
+             game.research.banking.unlocked = true; 
              msg += "Je verkenners leerden over een 'Bankenstelsel' van een verre beschaving!";
         } else {
              addResource('gold', 2000);
@@ -793,12 +791,22 @@ function triggerEnemyAttack(tribeKey) {
 // Functie om een unit te trainen
 function trainUnit(unitKey) {
     const unit = game.military.units[unitKey];
-    
+    //check is er iemand om te trainen
+    const totalWorking = Object.values(game.jobs).reduce((a, b) => a + b.count, 0);
+    const totalMilitary = Object.values(game.military.units).reduce((a, b) => a + b.total, 0);
+    const idlePop = game.resources.population.amount - totalWorking;// - totalMilitary;
+
+    if (idlePop < 1) {
+        alert("Er is niemand beschikbaar om te trainen! Zorg voor meer werkloze inwoners.");
+        return;
+    }
+    console.log(`Beschikbare inwoners voor training: ${idlePop}, totalWorking: ${totalWorking}, totalMilitary: ${totalMilitary}`);
+
     // Check of we de kosten kunnen betalen
     if (canAfford(unit.cost)) {
         payCost(unit.cost);
         unit.total++;
-        
+        game.resources.population.amount -= 1; // Verlaag de bevolking met 1 voor elke getrainde soldaat
         // Direct de kracht herberekenen en de UI verversen
         recalcMilitary();
         recalcRates();
@@ -1368,7 +1376,7 @@ function renderMilitary() {
                         <button onclick="assignUnit('${key}', 'unassignDef')">-</button>
                     </div>
                     <div style="flex: 1;">
-                        <button class="build-btn" onclick="trainUnit('${key}')">Train Nieuwe (${u.cost.gold}g)</button>
+                        <button class="build-btn" onclick="trainUnit('${key}')">Train (${u.cost.gold}g,${u.cost.food}v,1 Pop)</button>
                     </div>
                 </div>
             </div>
@@ -1501,10 +1509,6 @@ function renderPrestige() {
 </div>
         `;
     }
-
-   
-
-
 
 function sendGift(tribeKey) {
     if (game.resources.gold.amount >= 100) {
