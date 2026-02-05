@@ -2,34 +2,23 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Civ Builder Incremental</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div class="app-container">
-        <aside class="sidebar">
-            <h2>Beschaving</h2>
-            <nav>
-                <button class="nav-btn active" onclick="showTab('jobs')">Jobs & Gebouwen</button>
-                <button class="nav-btn" onclick="showTab('resources')">Grondstoffen</button>
-                <button class="nav-btn" onclick="showTab('population')">Bevolking</button>
-                <button class="nav-btn" onclick="showTab('research')">Research</button>
-                <button class="nav-btn" onclick="showTab('explore')">Verkennen</button>
-                <button class="nav-btn" onclick="showTab('diplomacy')">Diplomatie</button>
-                <button class="nav-btn" onclick="showTab('military')">Leger</button>
-                <button class="nav-btn" onclick="showTab('prestige')">Prestige</button>
-            </nav>
-            
-            <div class="mini-stats">
-                <p>Hout: <span id="res-wood">0</span> / <span id="max-wood">100</span></p>
-                <p>Voedsel: <span id="res-food">0</span> / <span id="max-food">100</span></p>
-            </div>
-        </aside>
-
-        <main class="content">
-            
+   <div id="resource-bar">
+    <div class="res-item" title="Hout">🌲 Hout <span id="res-wood">0</span> <small id="rate-wood">+0</small></div>
+    <div class="res-item" title="Steen">🧱 Steen <span id="res-stone">0</span> <small id="rate-stone">+0</small></div>
+    <div class="res-item" title="Voedsel">🍞 Voedsel <span id="res-food">0</span> <small id="rate-food">+0</small></div>
+    <div class="res-item" title="Goud">💰 Goud <span id="res-gold">0</span> <small id="rate-gold">+0</small></div>
+    <div class="res-item" title="Onderzoekspunten">🧪Research <span id="res-research">0</span> <small id="rate-research">+0</small></div>
+<!--    <div class="res-item" title="Verkenners">🕵️ Scouts <span id="res-scouts">0</span></div> -->
+    <div class="res-item" title="Bevolking">👥 <span id="res-pop">0/0</span></div>
+    <div class="res-item" title="Legerkracht">⚔️ / 🛡️<span id="res-power">0</span></div>
+</div>
+    <div id="tab-content">
+        <main>           
             <section id="tab-jobs" class="tab-content active">
                 <h1>Handmatige Jobs & Gebouwen</h1>
                 
@@ -43,7 +32,8 @@
                     <div id="building-list" class="building-grid"></div>
                 </div>
             </section>
-
+        </main>
+    </div>
             <section id="tab-resources" class="tab-content">
                 <h1>Goederen Overzicht</h1>
                 <table id="resource-table">
@@ -92,10 +82,21 @@
             <section id="tab-diplomacy" class="tab-content"><h1>Diplomatie</h1><p>WIP</p></section>
             <section id="tab-military" class="tab-content"><h1>Leger</h1><p>WIP</p></section>
             <section id="tab-prestige" class="tab-content"><h1>Prestige</h1><p>WIP</p></section>
+            <section id="tab-settings" class="tab-content"><h1>Instellingen</h1><p>WIP</p></section>
 
         </main>
     </div>
-
-    <script src="script.js"></script>
+    <nav id="main-nav">
+    <button onclick="showTab('jobs')" id="nav-btn-jobs">🏠<span>Stad</span></button>
+    <button onclick="showTab('resources')" id="nav-btn-resources">📊<span>Grondstoffen</span></button>
+    <button onclick="showTab('population')" id="nav-btn-population">👥<span>Bevolking</span></button>
+    <button onclick="showTab('research')" id="nav-btn-research">🧪<span>Onderzoek</span></button>
+    <button onclick="showTab('explore')" id="nav-btn-explore">🧭<span>Verkennen</span></button>
+    <button onclick="showTab('diplomacy')" id="nav-btn-diplomacy">🤝<span>Diplomatie</span></button>
+    <button onclick="showTab('military')" id="nav-btn-military">⚔️<span>Leger</span></button>
+    <button onclick="showTab('prestige')" id="nav-btn-prestige">✨<span>Prestige</span></button>
+    <button onclick="showTab('settings')" id="nav-btn-settings">⚙️<span>Instellingen</span></button>
+</nav>
+            <script src="script.js"></script>
 </body>
 </html>

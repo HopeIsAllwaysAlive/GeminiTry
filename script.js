@@ -23,10 +23,10 @@ let game = {
     },
     buildings: {
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
-        lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
         farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
-        warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
+        lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
         quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
+        warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
         school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
@@ -300,6 +300,8 @@ function addResource(type, amount) {
     if (res.amount < 0) res.amount = 0;
     if (res.amount > 0) res.discovered = true;
 }
+
+
 
 function getIdlePopulation() {
     let employed = 0;
@@ -800,7 +802,7 @@ function trainUnit(unitKey) {
         alert("Er is niemand beschikbaar om te trainen! Zorg voor meer werkloze inwoners.");
         return;
     }
-    console.log(`Beschikbare inwoners voor training: ${idlePop}, totalWorking: ${totalWorking}, totalMilitary: ${totalMilitary}`);
+ //   console.log(`Beschikbare inwoners voor training: ${idlePop}, totalWorking: ${totalWorking}, totalMilitary: ${totalMilitary}`);
 
     // Check of we de kosten kunnen betalen
     if (canAfford(unit.cost)) {
@@ -821,14 +823,30 @@ function assignUnit(unitKey, target) {
     const u = game.military.units[unitKey];
     const unassigned = u.total - u.assignedOff - u.assignedDef;
 
-    if (target === 'off' && unassigned > 0) {
-        u.assignedOff++;
-    } else if (target === 'def' && unassigned > 0) {
-        u.assignedDef++;
-    } else if (target === 'unassignOff' && u.assignedOff > 0) {
-        u.assignedOff--;
-    } else if (target === 'unassignDef' && u.assignedDef > 0) {
-        u.assignedDef--;
+    if (target === 'off') {
+        if (unassigned > 0) {
+            // Er zijn vrije units, wijs toe aan off
+            u.assignedOff++;
+            //console.log(`Unit ${unitKey} toegewezen aan Offensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned - 1}`);
+        } else if (u.assignedDef > 0) {
+            // Geen vrije units, maar wel def units: verplaats van def naar off
+            u.assignedDef--;
+            u.assignedOff++;
+            //console.log(`Unit ${unitKey} verplaatst van Defensie naar Offensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned}`);
+        }
+        // Anders: geen vrije units en geen def units -> doe niets
+    } else if (target === 'def') {
+        if (unassigned > 0) {
+            // Er zijn vrije units, wijs toe aan def
+            u.assignedDef++;
+            //console.log(`Unit ${unitKey} toegewezen aan Defensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned - 1}`);
+        } else if (u.assignedOff > 0) {
+            // Geen vrije units, maar wel off units: verplaats van off naar def
+            u.assignedOff--;
+            u.assignedDef++;
+            //console.log(`Unit ${unitKey} verplaatst van Offensie naar Defensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned}`);
+        }
+        // Anders: geen vrije units en geen off units -> doe niets
     }
 
     recalcMilitary();
@@ -1064,9 +1082,8 @@ function loadGame() {
 // --- UI RENDERING ---
 function updateUI() {
     // Deze moet ALTIJD draaien (elke seconde)
-    renderSidebar(); 
-
-
+    updateResourceBar()
+    updateNavigationGlow();
     // De rest draait alleen voor het tabblad waar de speler op kijkt
     // Gebruik de ID's die in je HTML staan bij de buttons (data-tab)
     switch(currentTab) {
@@ -1078,6 +1095,7 @@ function updateUI() {
             break;
         case 'resources':
             renderResourceTable();
+            renderResources();
             break;
         case 'population':
             document.getElementById('pop-idle').innerText = getIdlePopulation();
@@ -1099,21 +1117,52 @@ function updateUI() {
         case 'prestige':
             renderPrestige();
             break;
+        case 'settings':
+            renderSettings();
+            break;
     }
 }
 
-function renderSidebar() {
-    const miniStats = document.querySelector('.mini-stats');
-    if (!miniStats) return;
+function updateResourceBar() {
+    // Resources updaten
+    document.getElementById('res-wood').innerText = Math.floor(game.resources.wood.amount);
+    document.getElementById('res-stone').innerText = Math.floor(game.resources.stone.amount);
+    document.getElementById('res-gold').innerText = Math.floor(game.resources.gold.amount);
+    document.getElementById('res-food').innerText = Math.floor(game.resources.food.amount);
+    document.getElementById('res-research').innerText = Math.floor(game.resources.researchPoints.amount);
+  //  document.getElementById('res-scouts').innerText = Math.floor(game.resources.scouts.amount);
     
-    miniStats.innerHTML = '';
-    for(let key in game.resources) {
-        const r = game.resources[key];
-        if(r.discovered) {
-            // We gebruiken toFixed(1) zodat het goud niet flikkert met teveel decimalen
-            miniStats.innerHTML += `<p>${r.name}: ${Math.floor(r.amount)} / ${r.max} <small>(${r.perSec.toFixed(1)}/s)</small></p>`;
-        }
+    // Bevolking en Leger
+    document.getElementById('res-pop').innerText = `${Math.floor(game.resources.population.amount)}/${game.resources.population.max}`;
+    document.getElementById('res-power').innerText = Math.floor(game.military.attackPower) + " / " + Math.floor(game.military.defensePower);
+
+    // Rates (per seconde) updaten met kleuren
+    updateRateDisplay('rate-wood', game.resources.wood.perSec);
+    updateRateDisplay('rate-stone', game.resources.stone.perSec);
+    updateRateDisplay('rate-gold', game.resources.gold.perSec);
+    updateRateDisplay('rate-food', game.resources.food.perSec);
+}
+
+function updateRateDisplay(id, rate) {
+    const el = document.getElementById(id);
+    const prefix = rate >= 0 ? "+" : "";
+    el.innerText = prefix + rate.toFixed(1);
+    el.className = rate >= 0 ? "rate-pos" : "rate-neg";
+}
+
+function updateNavigationGlow() {
+    const prestigeBtn = document.getElementById('nav-btn-prestige');
+    const potential = calculatePrestigePoints();
+    
+    // Voorwaarde 1: Je hebt minimaal 100 inwoners (de basis-eis)
+    // Voorwaarde 2: Je bent NIET op het prestige tabblad
+    // Voorwaarde 3: (Optioneel) Je hebt bijv. 50 potentiële punten verzameld
+    if (game.resources.population.amount >= 100  && potential >= 10) { //&& currentTab !== 'prestige'
+        prestigeBtn.classList.add('glow-active');
+    } else {
+        prestigeBtn.classList.remove('glow-active');
     }
+
 }
 
 function renderResourceTable() {
@@ -1134,6 +1183,49 @@ function renderResourceTable() {
         </tr>`;
     }
 }
+
+function renderResources() {
+    const container = document.getElementById('tab-resources');
+    container.innerHTML = '<h1>Grondstoffen</h1>';
+
+    for (let key in game.resources) {
+        const res = game.resources[key];
+        if (key === 'population') continue; // Bevolking doen we apart
+
+        const max = res.max || 1000;
+        const perc = Math.min(100, (res.amount / max) * 100);
+        
+        container.innerHTML += `
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between">
+                    <strong>${res.name.charAt(0).toUpperCase() + res.name.slice(1)}</strong>
+                    <span>${Math.floor(res.amount)} / ${max}</span>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${perc}%"></div>
+                    <div class="progress-text">${perc.toFixed(0)}%</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: ${res.manualGain ? '1fr 1fr' : '1fr'}; gap: 10px; margin-top: 10px;">
+                    ${res.manualGain ? `
+                    <button class="tap-btn" onclick="manualCollect(event, '${key}')">
+                        👆 +${res.manualGain} ${res.name}
+                    </button>
+                    ` : ''}
+                    <div style="font-size: 0.8em; align-self: center;">
+                        Netto: <span class="${res.perSec >= 0 ? 'rate-pos' : 'rate-neg'}">
+                            ${res.perSec >= 0 ? '+' : ''}${res.perSec.toFixed(1)}/s
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+    }
+}
+
+
 
 function renderBuildings() {
     const container = document.getElementById('building-list');
@@ -1228,12 +1320,39 @@ function renderManualButtons() {
         const res = game.resources[key];
         if (res.manualGain) {
             const btn = document.createElement('button');
-            btn.className = 'action-btn';
+            btn.className = 'action-btn-small';
             btn.innerText = `${res.name} +${res.manualGain}`;
             btn.onclick = () => addResource(key, res.manualGain);
             container.appendChild(btn);
         }
     }
+}
+
+function manualCollect(e, key) {
+    const res = game.resources[key];
+   // const max = res.max || 1000;
+   //if (res.manualGain > 0) {
+   addResource(key, res.manualGain || 1); 
+        if (e) {
+            showFloatingText(e, `+${res.manualGain || 1} ${res.name}`);
+        }
+   ;
+        updateUI();
+    
+}
+
+function showFloatingText(e, text) {
+    const el = document.createElement('div');
+    el.innerText = text;
+    el.style.position = 'absolute';
+    el.style.left = `${e.clientX}px`;
+    el.style.top = `${e.clientY}px`;
+    el.style.color = 'var(--accent)';
+    el.style.fontWeight = 'bold';
+    el.style.pointerEvents = 'none';
+    el.style.animation = 'floatUp 1s forwards';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
 }
 
 function renderExplore() {
@@ -1357,30 +1476,25 @@ function renderMilitary() {
         const u = game.military.units[key];
                 if (u.unlocked === false) continue; // Sla niet-ontgrendelde units over
         const unassigned = u.total - u.assignedOff - u.assignedDef;
+        const assigned = u.assignedOff + u.assignedDef;
+        const unitKey = key; // Voor de functie calls
+
 
         container.innerHTML += `
-            <div class="panel" style="margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong>${u.name}</strong>
-                    <span>Totaal: ${u.total} (Vrij: ${unassigned})</span>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
-                        <small>Offensief: ${u.assignedOff}</small><br>
-                        <button onclick="assignUnit('${key}', 'off')">+</button>
-                        <button onclick="assignUnit('${key}', 'unassignOff')">-</button>
-                    </div>
-                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
-                        <small>Defensief: ${u.assignedDef}</small><br>
-                        <button onclick="assignUnit('${key}', 'def')">+</button>
-                        <button onclick="assignUnit('${key}', 'unassignDef')">-</button>
-                    </div>
-                    <div style="flex: 1;">
-                        <button class="build-btn" onclick="trainUnit('${key}')">Train (${u.cost.gold}g,${u.cost.food}v,1 Pop)</button>
-                    </div>
-                </div>
-            </div>
-        `;
+    <div class="panel">
+        <div style="display:flex; justify-content:space-between">
+            <strong>${u.name}</strong>
+            <span>Toegewezen: ${assigned}/${u.total} eenheden</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <button class="action-btn-small" onclick="assignUnit('${unitKey}', 'off')">⚔️ Aanval: ${u.assignedOff}</button>
+            <button class="action-btn-small" onclick="assignUnit('${unitKey}', 'def')">🛡️ Verdediging: ${u.assignedDef}</button>
+        </div>
+        <button class="build-btn" style="background: var(--accent)" onclick="trainUnit('${key}')">
+            Train (1 pop, ${u.cost.gold} gold, ${u.cost.food} food)
+        </button>
+    </div>
+`;
     }
 
     // Deel 3: Doelwitten (Tribes met relatie < 30)
@@ -1497,8 +1611,15 @@ function renderPrestige() {
         </div>
         `;
     }
-    // Systeembeheer sectie
-    container.innerHTML += `
+//remove glow-active class van prestige button als we op het prestige tabblad zijn
+    const prestigeBtn = document.getElementById('nav-btn-prestige');
+    prestigeBtn.classList.remove('glow-active');
+}
+
+function renderSettings() {
+    const container = document.getElementById('tab-settings');
+    container.innerHTML = `
+        <h1>Instellingen</h1>
     <div class="panel" style="margin-top: 30px; border-top: 2px solid #f38ba8;">
     <h3>Systeembeheer</h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -1592,7 +1713,7 @@ updateUI();
 
 
 function showTab(tabId) {
-    //console.log("Wisselen naar tab:", tabId); // Zie je dit in de console?
+    console.log("Wisselen naar tab:", tabId); // Zie je dit in de console?
     // 1. Vertel de game welke tab nu 'actief' is
     currentTab = tabId;
 
