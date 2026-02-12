@@ -8,12 +8,13 @@
 </head>
 <body>
    <div id="resource-bar">
-    <div class="res-item" title="Hout">🌲 Hout <span id="res-wood">0</span> <small id="rate-wood">+0</small></div>
-    <div class="res-item" title="Steen">🧱 Steen <span id="res-stone">0</span> <small id="rate-stone">+0</small></div>
-    <div class="res-item" title="Voedsel">🍞 Voedsel <span id="res-food">0</span> <small id="rate-food">+0</small></div>
-    <div class="res-item" title="Goud">💰 Goud <span id="res-gold">0</span> <small id="rate-gold">+0</small></div>
-    <div class="res-item" title="Onderzoekspunten">🧪Research <span id="res-research">0</span> <small id="rate-research">+0</small></div>
-<!--    <div class="res-item" title="Verkenners">🕵️ Scouts <span id="res-scouts">0</span></div> -->
+    <div class="res-item" onclick="openResourceDetail('wood')">🌲 Hout <span id="res-wood">0</span> <small id="rate-wood">+0</small> </div>
+    <div class="res-item" onclick="openResourceDetail('stone')">🧱 Steen <span id="res-stone">0</span> <small id="rate-stone">+0</small></div>
+    <div class="res-item" onclick="openResourceDetail('food')">🍞 Voedsel <span id="res-food">0</span> <small id="rate-food">+0</small></div>
+    <div class="res-item" onclick="openResourceDetail('gold')">💰 Goud <span id="res-gold">0</span> <small id="rate-gold">+0</small></div>
+    <div class="res-item" onclick="openResourceDetail('researchPoints')">🧪Research <span id="res-research">0</span> <small id="rate-research">+0</small></div>
+    
+ <!--   <div class="res-item" title="Verkenners">🕵️ Scouts <span id="res-scouts">0</span></div>  -->
     <div class="res-item" title="Bevolking">👥 <span id="res-pop">0/0</span></div>
     <div class="res-item" title="Legerkracht">⚔️ / 🛡️<span id="res-power">0</span></div>
 </div>
@@ -24,7 +25,7 @@
                 
                 <div class="panel">
                     <h3>Handmatige Acties</h3>
-                    <div id="manual-actions-container" class="action-grid"></div>
+                            <div id="manual-actions-container" class="action-grid" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;"></div>
                 </div>
 
                 <div class="panel">
@@ -61,7 +62,8 @@
 
                 <div class="panel">
                     <h3>Banen Toewijzen</h3>
-                    <table id="jobs-table">
+                    <div id="jobs-container"></div>
+            <!--        <table id="jobs-table">
                         <thead>
                             <tr>
                                 <th>Baan</th>
@@ -73,7 +75,8 @@
                         </thead>
                         <tbody id="jobs-tbody">
                             </tbody>
-                    </table>
+                    </table>-->
+                    
                 </div>
             </section> 
             
@@ -98,5 +101,6 @@
     <button onclick="showTab('settings')" id="nav-btn-settings">⚙️<span>Instellingen</span></button>
 </nav>
             <script src="script.js"></script>
+<div id="modal-container" style="display:none;"></div>
 </body>
 </html>
