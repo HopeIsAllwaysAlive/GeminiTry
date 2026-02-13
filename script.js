@@ -27,12 +27,12 @@ let game = {
     },
     buildings: {
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
-        farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
+        farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
         wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 50, stone: 20 }, provides: { job_woodcutter: 4 , max_wood: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
         quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
-        warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
+        warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone :100 }, desc:"Vergroot opslagcapaciteit voor grondstoffen.", unlocked:false},
         school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
         barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 20 soldaten.", unlocked: false },
@@ -54,13 +54,13 @@ let game = {
             unlocked: false, 
             requirement: () => game.resources.wood.amount >= 20 
         },
-        agriculture: { 
+ /*       agriculture: { 
             name: "Landbouw", 
             desc: "Maakt Akkers mogelijk voor betere voedselproductie.", 
             cost: { wood: 40, food: 40 }, 
             unlocked: false, 
             requirement: () => game.resources.food.amount >= 30 
-        },
+        },*/
         education: { 
             name: "Educatie", 
             desc: "Ontgrendelt de School en Leraren.", 
@@ -80,14 +80,14 @@ let game = {
             desc: "Maakt het bouwen van irrigatiesystemen mogelijk.", 
             cost: { researchPoints: 50, gold: 20 }, 
             unlocked: false, 
-            requirement: () => game.research.education.unlocked 
+            requirement: () => game.research.plow_invention.unlocked 
         },
         plow_invention: { 
             name: "De Ploeg", 
             desc: "Door een betere ploeg werken boeren 50% effectiever.", 
             cost: { wood: 100, stone: 100, gold: 50 }, 
             unlocked: false, 
-            requirement: () => game.research.agriculture.unlocked // Pas beschikbaar na Landbouw
+            requirement: () => game.buildings.farm_plot.count >= 10 // Pas beschikbaar na Landbouw
         },
         expeditions: { 
             name: "Expedities", 
@@ -137,6 +137,13 @@ let game = {
             cost: { researchPoints: 400, gold: 600 },
             unlocked: false,
             requirement: () => game.research.knight_training.unlocked
+        },
+        wood_tech: {
+            name: "Hout Techniek",
+            desc: "Door betere houtbewerking, wordt het houtproductie verhoogd.",
+            cost: { researchPoints: 50, gold: 50 },
+            unlocked: false,
+            requirement: () => game.jobs.woodcutter.count >= 10
         },
         axe_tech: {
             name: "Hak Techniek",
@@ -244,13 +251,13 @@ let game = {
                 gold: { amount: 0, max: 1000, perSec: 0 },
                 food: { amount: 10, max: 150, perSec: 0 , manualGain: 1 , unlocked: true},
                 population: { amount: 1, max: 5 , unlocked: true},
-                researchPoints: { amount: 0, perSec: 0 },
+                researchPoints: { amount: 0, max: 500, perSec: 0 },
                 scouts: { amount: 0, max: 0, perSec: 0, unlocked: false }
             },
         buildings: {
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
+            farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
             lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
-            farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
             warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
             quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
             school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
@@ -270,11 +277,13 @@ let game = {
             },
             research: { 
                 toolmaking: { unlocked: false },
-                agriculture: { unlocked: false },
+               // agriculture: { unlocked: false },
                 education: { unlocked: false },
                 warehouse: { unlocked: false },
                 irrigation_tech: { unlocked: false },
                 plow_invention: { unlocked: false },
+                wood_tech: { unlocked: false },
+                axe_tech: { unlocked: false },
                 expeditions: { unlocked: false },
                 medium_expeditions: { unlocked: false },
                 hard_expeditions: { unlocked: false },
@@ -288,10 +297,10 @@ let game = {
                 attackPower: 0,
                 defensePower: 0,
                 units: {
-                    swordsman: { total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, cost: { gold: 50, food: 20 },unlocked: true },
-                    archer: { total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, cost: { gold: 40, food: 30 }, unlocked: true },
-                    knight: { total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, cost: { gold: 150, food: 80 }, unlocked: false },
-                    commander: { total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, cost: { gold: 500 },  unlocked: false }
+                    swordsman: { total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, cost: { gold: 50, food: 2000 },unlocked: true },
+                    archer: { total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, cost: { gold: 40, food: 3000 }, unlocked: true },
+                    knight: { total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, cost: { gold: 150, food: 8000 }, unlocked: false },
+                    commander: { total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, cost: { gold: 500, food: 10000 },  unlocked: false }
                 }
             },
             expeditions: {
@@ -345,6 +354,7 @@ function recalcLimits() {
     game.resources.stone.max = 50 + bonus;
     game.resources.population.max = 100;//5
     game.resources.gold.max = 1000;
+    game.resources.researchPoints.max = 500;
     for(let j in game.jobs) game.jobs[j].max = 0;
 
     // Gebouwen toepassen
@@ -369,7 +379,8 @@ function recalcwood() {
     const job = game.jobs.woodcutter;
     let multiplier = 1;
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    if (game.research.axe_tech.unlocked) multiplier *= 2;
+    if (game.research.axe_tech.unlocked) multiplier += 1;
+    if (game.research.wood_tech.unlocked) multiplier += 0.5;
     game.resources.wood.perSec += (job.effect.wood * job.count * multiplier * prestigeBoost);
     for (let key in game.diplomacy.discoveredTribes) {
         const tribe = game.diplomacy.discoveredTribes[key];
@@ -501,6 +512,7 @@ function renderResourceDetail(key) {
     // Bonussen berekenen
     let researchMult = getResearchMultiplier(key);
     let researchaddition = researchMult * totalBase; 
+    
     let prestigeMult = 1 + (game.prestige.points * 0.01);
     let prestigeAddition = prestigeMult * researchaddition; 
     
@@ -520,7 +532,7 @@ function renderResourceDetail(key) {
         
         relevantResearches.forEach(research => {
             const multiplier = research.effect;
-            const bonus = ((multiplier - 1) * 100).toFixed(0); // Bijv. 1.1 -> +10%
+            const bonus = research.effect;//((multiplier - 1) * 100).toFixed(0); // Bijv. 1.1 -> +10%
             const statusIcon = research.unlocked ? '✓' : '✗';
             const statusColor = research.unlocked ? '#a6e3a1' : '#6c7086';
             
@@ -530,7 +542,7 @@ function renderResourceDetail(key) {
                         <span style="color: ${statusColor}">${statusIcon}</span>
                         ${research.name}
                     </span>
-                    <span style="color: #a6e3a1">+${bonus}%</span>
+                    <span style="color: #a6e3a1">${bonus}x → +${(bonus*totalBase).toFixed(1)}</span>
                 </div>
             `;
         });
@@ -538,12 +550,18 @@ function renderResourceDetail(key) {
         // Totaal research multiplier
         researchListHTML += `
             <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
+                <span><strong>Totaal na Research</strong></span>
+                <span style="color: #a6e3a1"><strong>+${(researchMult*totalBase).toFixed(1)}</strong></span>
+            </div>
+        `;
+        // //${researchMult.toFixed(2)}x → +
+        researchListHTML += `</div>`;
+    } else {researchListHTML +=`
+            <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
                 <span><strong>Totaal Multiplier</strong></span>
                 <span style="color: #a6e3a1"><strong>${researchMult.toFixed(2)}x</strong></span>
             </div>
         `;
-        
-        researchListHTML += `</div>`;
     }
 
     // HTML voor consumptie sectie
@@ -632,7 +650,7 @@ function renderResourceDetail(key) {
                     </div>
                     <small class="sub-line">+1% per prestige punt</small>
                     <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
-                        <span><strong>Totaal Productie</strong></span>
+                        <span><strong>Totaal na Prestigebonus</strong></span>
                         <span class="rate-pos"><strong>+${finalProduction.toFixed(1)}</strong></span>
                     </div>
                 </div>
@@ -655,26 +673,45 @@ function renderResourceDetail(key) {
     `;
 }
 
+function getResearchMultiplier(resourceKey) {
+    let mult = 1.0;
+    // Voorbeeld logica: pas aan op basis van jouw research namen
+    if (resourceKey === 'food' && game.research.plow_invention?.researched) mult += 0.5;
+    if (resourceKey === 'wood' && game.research.axe_tech?.researched) mult += 1;
+    if (resourceKey === 'wood' && game.research.wood_tech?.researched) mult += 0.5;
+    return mult;
+}
+
     // NIEUWE FUNCTIE: Vind alle researches die deze resource beïnvloeden
-    function getRelevantResearches(resourceKey) {
-        let relevantResearches = [];
-        
-        for (let researchKey in game.research) {
-            const research = game.research[researchKey];
-            
-            // Check of deze research een effect heeft op onze resource
-            if (research.effect && research.effect[resourceKey]) {
-                relevantResearches.push({
-                    name: research.name,
-                    effect: research.effect[resourceKey],
-                    unlocked: research.unlocked,
-                    key: researchKey
-                });
-            }
+function getRelevantResearches(resourceKey) {
+    let relevantResearches = [];
+
+    for (let researchKey in game.research) {
+        const research = game.research[researchKey];
+        let researchEffect = null;
+
+        // Bepaal het effect op basis van resourceKey en welke research het is
+        if (resourceKey === 'wood' && researchKey === 'axe_tech' && research.researched) {
+            researchEffect = 1.00;
+        } else if (resourceKey === 'food' && researchKey === 'plow_invention' && research.researched) {
+            researchEffect = 1.50;
+        } else if (resourceKey === 'wood' && researchKey === 'wood_tech' && research.researched) {
+            researchEffect = 0.50;
         }
-        
-        return relevantResearches;
+
+        // Alleen toevoegen als er een relevant effect is
+        if (researchEffect !== null) {
+            relevantResearches.push({
+                name: research.name,
+                effect: researchEffect,
+                unlocked: research.unlocked,
+                key: researchKey
+            });
+        }
     }
+
+    return relevantResearches;
+}
 
 function findJobForResource(resourceKey) {
     // We lopen door alle banen heen
@@ -706,13 +743,7 @@ function findJobsForConsumption(resourceKey) {
   return consumingJobs; // Array met alle consumerende jobs (kan leeg zijn)
 }
 
-function getResearchMultiplier(resourceKey) {
-    let mult = 1.0;
-    // Voorbeeld logica: pas aan op basis van jouw research namen
-    if (resourceKey === 'food' && game.research.plow_invention?.researched) mult += 0.5;
-    if (resourceKey === 'wood' && game.research.axe_tech?.researched) mult += 1;
-    return mult;
-}
+
 
 function getResourceIcon(key) {
     const icons = { wood: '🌲', stone: '🧱', gold: '💰', food: '🍞', population: '👥' };
@@ -727,12 +758,6 @@ function openResourceDetail(key) {
 
 function closeDetail() {
     document.getElementById('modal-container').style.display = 'none';
-}
-
-// Hulpje om de juiste icoontjes te vinden
-function getResourceIcon(key) {
-    const icons = { wood: '🌲', stone: '🧱', gold: '💰', food: '🍞' };
-    return icons[key] || '📦';
 }
 
 function handleFamine() {
@@ -775,9 +800,9 @@ function checkUnlocks() {
         game.buildings.quarry.unlocked = true;
         game.jobs.miner.unlocked = true;
     }
-    if (game.research.agriculture.unlocked) {
+  /*  if (game.research.agriculture.unlocked) {
         game.buildings.farm_plot.unlocked = true;
-    }
+    }*/
     if (game.research.expeditions.unlocked) {
         game.buildings.scout_post.unlocked = true;
         game.jobs.scout_job.unlocked = true;
@@ -921,25 +946,9 @@ function assignJob(jobKey, direction) {
         
         job.count -= amountToChange;
     }
-    
+    recalcRates();
     updateUI();
 }
-  
- //oude versie:
-    //   const job = game.jobs[jobKey];
- //   if (change === 1 && getIdlePopulation() > 0 && job.count < job.max) job.count++;
- //   if (change === -1 && job.count > 0) job.count--;
-   // if (jobKey === 'scout_job' && change === 1) addResource('scouts', 1); // Voeg een scout toe bij het aannemen van een verkenner
-    //if (jobKey === 'scout_job' && change === -1) addResource('scouts', -1); // Verwijder een scout bij het ontslaan van een verkenner{
-     //   recalcScouts(); // Direct bijwerken van het aantal scouts
-      //  addResource('scouts', job.count); // Update de scouts resource met het nieuwe aantal
-       // console.log(`Job ${jobKey} count: ${job.count} ${game.resources.scouts.amount} scouts`);
-
- //   recalcRates();
-  //      console.log(`Job ${jobKey} count: ${job.count} ${game.resources.scouts.amount} scouts`);
- //   updateUI();
-  // console.log(`Job ${jobKey} count: ${job.count} ${game.resources.scouts.amount} scouts`);
-//}
 
 function startExpedition(typeKey) {
     const type = game.expeditions.types[typeKey];
