@@ -6,10 +6,10 @@ let game = {
 
 
     resources: {
-        wood: { name: "Hout", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
         food: { name: "Voedsel", amount: 10, max: 100, perSec: 0, manualGain: 1, discovered: true },
-        stone: { name: "Steen", amount: 0, max: 50, perSec: 0, manualGain: 1, discovered: false },
+        wood: { name: "Hout", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
         beam: { name: "Balken", amount: 0, max: 50, perSec: 0, discovered: false },
+        stone: { name: "Steen", amount: 0, max: 50, perSec: 0, manualGain: 1, discovered: false },
         brick: { name: "Bakstenen", amount: 0, max: 50, perSec: 0, discovered: false },
         population: { name: "Bevolking", amount: 1, max: 5, perSec: 0, discovered: true },
         gold: { name: "Goud", amount: 0, max: 1000, perSec: 0, discovered: false },
@@ -17,12 +17,14 @@ let game = {
         scouts: { name: "Verkenners", amount: 0, max: 0, perSec: 0, discovered: false }
     },
     jobs: {
-        woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -0.5 }, unlocked: false },
         farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
+        woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -0.5 }, unlocked: false },
+        woodworker: { name: "Houtbewerker", count: 0, max: 0, effect: { wood: -1, food: -1, beam: 0.2 }, unlocked: false },
         miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
+        stoneworker: { name: "Steenhouwer", count: 0, max: 0, effect: { stone: -1, food: -1, brick: 0.2 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 },unlocked: false},
         scout_job: { name: "Verkenner", count: 0, max: 0, effect: { food: -2 }, unlocked: false },
-        soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -0.1, food: -2 }, unlocked: false },
+        soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold:-0.1 , food:-2 }, unlocked:false },
         banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false }
     },
     buildings: {
@@ -30,21 +32,15 @@ let game = {
         farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
-        wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 50, stone: 20 }, provides: { job_woodcutter: 4 , max_wood: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
+        wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_woodworker: 1 , max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
         quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
+        stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 2000, stone: 3000 }, provides: { job_stoneworker: 1 , max_brick: 50 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
         warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone :100 }, desc:"Vergroot opslagcapaciteit voor grondstoffen.", unlocked:false},
         school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
         barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 20 soldaten.", unlocked: false },
         bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
     },
-
-    industries: {
-        woodworking: { name: "Houtbewerking", count: 0, max: 10, cost: { wood: 100, stone: 50 }, effect: { wood: -1, beam: 0.2 }, unlocked: false },
-        masonry: { name: "Metselarij", count: 0, max: 10, cost: { wood: 50, stone: 100 }, effect: { stone: -1, brick: 0.2 }, unlocked: false }
-        // Andere industrieën kunnen hier worden toegevoegd
-    },
-
 
     research: {
         toolmaking: { 
@@ -143,7 +139,7 @@ let game = {
             desc: "Door betere houtbewerking, wordt het houtproductie verhoogd.",
             cost: { researchPoints: 50, gold: 50 },
             unlocked: false,
-            requirement: () => game.jobs.woodcutter.count >= 10
+            requirement: () => game.resources.wood.amount >= 5000
         },
         axe_tech: {
             name: "Hak Techniek",
@@ -151,8 +147,23 @@ let game = {
             cost: { researchPoints: 100, gold: 100 },
             unlocked: false,
             requirement: () => game.jobs.woodcutter.count >= 25
+        },
+        wood_workshop: {
+            name: "Houtbewerkerij",
+            desc: "Verbetert houtproductie en opslag.",
+            cost: { researchPoints: 600, gold: 500 },
+            unlocked: false,
+            requirement: () => game.buildings.lumber_camp.count >= 40
+        },
+        stone_workshop: {
+            name: "Steenbewerkerij",
+            desc: "Verbetert steenproductie en opslag.",
+            cost: { researchPoints: 600, gold: 500 },
+            unlocked: false,
+            requirement: () => game.buildings.quarry.count >= 30
         }
     },
+
     expeditions: {
         active: false,
         timer: 0,
@@ -224,10 +235,10 @@ let game = {
     military: {
         attackPower: 0,
         defensePower: 0,
-        units: {swordsman: { name: "Zwaardvechter", total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, type: 'off', cost: { gold: 50, food: 20 }, desc: "Focus op aanval.", maintenance: { food: 1 }, unlocked: true },
-            archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, food: 30 }, desc: "Focus op verdediging.", maintenance: { food: 1 }, unlocked: true },
-            knight: { name: "Ridder", total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, type: 'both', cost: { gold: 150, food: 80 }, desc: "Sterk in beide.", maintenance: { food: 2, gold: 1 }, unlocked: false },
-            commander: { name: "Commandant", total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, type: 'support', cost: { gold: 500 }, desc: "Verhoogt totale kracht met 20%." , maintenance: { food: 2, gold: 1 }, unlocked: false }
+        units: {swordsman: { name: "Zwaardvechter", total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, type: 'off', cost: { gold: 50, food: 2000 }, desc: "Focus op aanval.", maintenance: { food: 1 }, unlocked: true },
+            archer: { name: "Boogschutter", total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, type: 'def', cost: { gold: 40, food: 3000 }, desc: "Focus op verdediging.", maintenance: { food: 1 }, unlocked: true },
+            knight: { name: "Ridder", total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, type: 'both', cost: { gold: 150, food: 8000 }, desc: "Sterk in beide.", maintenance: { food: 2, gold: 1 }, unlocked: false },
+            commander: { name: "Commandant", total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, type: 'support', cost: { gold: 500, food: 10000 }, desc: "Verhoogt totale kracht met 20%." , maintenance: { food: 2, gold: 1 }, unlocked: false }
         }
     },
     prestige: {
@@ -247,7 +258,9 @@ let game = {
         return {
             resources: {
                 wood: { amount: 0, max: 100, perSec: 0 , manualGain: 1 , unlocked: true}, 
+                beam: { amount: 0, max: 50, perSec: 0 , unlocked: false},
                 stone: { amount: 0, max: 100, perSec: 0 , manualGain: 1},
+                brick: { amount: 0, max: 50, perSec: 0 , unlocked: false},
                 gold: { amount: 0, max: 1000, perSec: 0 },
                 food: { amount: 10, max: 150, perSec: 0 , manualGain: 1 , unlocked: true},
                 population: { amount: 1, max: 5 , unlocked: true},
@@ -258,6 +271,8 @@ let game = {
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
             farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
             lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
+            wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_woodworker: 1 , max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
+            stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_stone_worker: 1 , max_brick: 50 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
             warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false }, 
             quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
             school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
@@ -268,8 +283,10 @@ let game = {
         },
             jobs: {
                 woodcutter: { count: 0 },
+                woodworker: { count: 0 },
                 farmer: { count: 0 },
                 miner: { count: 0 },
+                stoneworker: { count: 0 },
                 teacher: { count: 0 },
                 scout_job: { count: 0 },
                 //soldier: { count: 0 }
@@ -290,7 +307,9 @@ let game = {
                 expert_expeditions: { unlocked: false },
                 banking: { unlocked: false },
                 knight_training: { unlocked: false },
-                commander_tactics: { unlocked: false }
+                commander_tactics: { unlocked: false },
+                wood_workshop: { unlocked: false },
+                stone_workshop: { unlocked: false }
             },
 
             military: {
@@ -352,6 +371,8 @@ function recalcLimits() {
     game.resources.wood.max = 100 + bonus;
     game.resources.food.max = 100 + bonus;
     game.resources.stone.max = 50 + bonus;
+    game.resources.brick.max = 50;
+    game.resources.beam.max = 50;
     game.resources.population.max = 100;//5
     game.resources.gold.max = 1000;
     game.resources.researchPoints.max = 500;
@@ -374,7 +395,7 @@ function recalcLimits() {
     }
 }
 
-function recalcwood() {
+function recalcWood() {
     game.resources.wood.perSec = 0;
     const job = game.jobs.woodcutter;
     let multiplier = 1;
@@ -396,6 +417,15 @@ function recalcwood() {
             
         }
     }
+    game.resources.wood.perSec += (game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost); // Houtbewerker consumeert hout, afhankelijk van het aantal houthakkers
+}
+
+function recalcBeam() {
+    game.resources.beam.perSec = 0;
+    const job = game.jobs.woodworker;
+    let multiplier = 1;
+    const prestigeBoost = 1 + (game.prestige.points * 0.01);
+    game.resources.beam.perSec += (job.effect.beam * job.count * multiplier * prestigeBoost);
 }
 
 function recalcFood() {
@@ -428,6 +458,14 @@ function recalcStone() {
     let multiplier = 1;
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
     game.resources.stone.perSec += (job.effect.stone * job.count * multiplier * prestigeBoost);
+    game.resources.stone.perSec += (game.jobs.stoneworker.effect.stone * game.jobs.stoneworker.count * prestigeBoost); // Steenhouwer consumeert steen, afhankelijk van het aantal mijnwerkers
+}
+function recalcBrick() {
+    game.resources.brick.perSec = 0;
+    const job = game.jobs.stoneworker;
+    let multiplier = 1;
+    const prestigeBoost = 1 + (game.prestige.points * 0.01);
+    game.resources.brick.perSec += (job.effect.brick * job.count * multiplier * prestigeBoost);
 }
 
 function recalcResearch() {
@@ -476,9 +514,11 @@ function recalcScouts() {
 
 function recalcRates() {
     recalcLimits();
-    recalcwood();
+    recalcWood();
+    recalcBeam();
     recalcFood();
     recalcStone();
+    recalcBrick();
     recalcResearch();
     recalcGold();
     recalcMilitary();
@@ -831,6 +871,16 @@ function checkUnlocks() {
     if (game.research.commander_tactics.unlocked) {
         game.military.units.commander.unlocked = true;
     }
+    if (game.research.wood_workshop.unlocked) {
+        game.resources.beam.discovered = true;
+        game.buildings.wood_workshop.unlocked = true;
+        game.jobs.woodworker.unlocked = true;
+    }
+    if (game.research.stone_workshop.unlocked) {
+        game.resources.brick.discovered = true;
+        game.buildings.stone_workshop.unlocked = true;
+        game.jobs.stoneworker.unlocked = true;
+    }
 }
 function discoverTribe() {
     const keys = Object.keys(game.tribeTemplates);
@@ -903,8 +953,43 @@ function getPrestigeBreakdown() {
 }
 
 // --- ACTIONS ---
-
 function buyBuilding(key) {
+    const b = game.buildings[key];
+    
+    let amountToBuy = 0;
+    let totalCost = {};
+    let limit = buyAmount === 'max' ? Infinity : buyAmount;
+
+    // Simuleer aankopen en bereken totale kosten
+    for (let i = 0; i < limit; i++) {
+        b.count += 1; // Tijdelijk verhogen zodat getCost de juiste prijs berekent
+        const cost = getCost(b);
+        b.count -= 1; // Terugzetten
+
+        // Check of we deze aankoop kunnen betalen bovenop wat al gereserveerd is
+        let combinedCost = {};
+        for (let res in cost) {
+            combinedCost[res] = (totalCost[res] || 0) + cost[res];
+        }
+
+        if (canAfford(combinedCost)) {
+            totalCost = combinedCost;
+            amountToBuy++;
+        } else {
+            break;
+        }
+    }
+
+    if (amountToBuy > 0) {
+        payCost(totalCost);
+        b.count += amountToBuy;
+        recalcLimits();
+        recalcRates();
+        updateUI();
+    }
+}
+
+/*function buyBuilding(key) {
     const b = game.buildings[key];
     const cost = getCost(b);
     if (canAfford(cost)) {
@@ -914,7 +999,7 @@ function buyBuilding(key) {
         recalcRates();  // Toegevoegd om productie bij te werken
         updateUI();
     }
-}
+}*/
 
 function buyResearch(key) {
     const r = game.research[key];
@@ -1330,6 +1415,7 @@ function payCost(cost) {
 function setBuyAmount(amount) {
     buyAmount = amount;
     renderJobs(); // Herteken de jobs om de knoppen te updaten
+    renderBuildings(); // Herteken de gebouwen om de knoppen te updaten
     // Optioneel: voeg een 'active' class toe aan de knoppen in de UI
 }
 
@@ -1544,6 +1630,7 @@ function renderResources() {
     for (let key in game.resources) {
         const res = game.resources[key];
         if (key === 'population') continue; // Bevolking doen we apart
+        if (!res.discovered) continue; // ← Alleen ontdekte resources tonen
 
         const max = res.max || 1000;
         const perc = Math.min(100, (res.amount / max) * 100);
@@ -1625,24 +1712,60 @@ function getProductionDetails(key) {
 
     return details;
 }
-
 function renderBuildings() {
     const container = document.getElementById('building-list');
-    container.innerHTML = '';
+    container.innerHTML = `
+        <div class="buy-amount-bar">
+            <button class="${buyAmount === 1 ? 'active' : ''}" onclick="setBuyAmount(1)">1</button>
+            <button class="${buyAmount === 10 ? 'active' : ''}" onclick="setBuyAmount(10)">10</button>
+            <button class="${buyAmount === 100 ? 'active' : ''}" onclick="setBuyAmount(100)">100</button>
+            <button class="${buyAmount === 'max' ? 'active' : ''}" onclick="setBuyAmount('max')">MAX</button>
+        </div>
+    `;
     for (let key in game.buildings) {
         const b = game.buildings[key];
         if (!b.unlocked) continue;
 
-        const cost = getCost(b);
-        let costTxt = [];
-        for (let r in cost) costTxt.push(`${cost[r]} ${game.resources[r].name}`);
+        // Bereken totale kosten voor buyAmount gebouwen
+        let totalCost = {};
+        let actualAmount = 0;
+        const limit = buyAmount === 'max' ? Infinity : buyAmount;
 
+        for (let i = 0; i < limit; i++) {
+            b.count += 1;
+            const cost = getCost(b);
+            b.count -= 1;
+
+            let combinedCost = {};
+            for (let res in cost) {
+                combinedCost[res] = (totalCost[res] || 0) + cost[res];
+            }
+
+            if (canAfford(combinedCost)) {
+                totalCost = combinedCost;
+                actualAmount++;
+            } else {
+                break;
+            }
+        }
+
+        // Knoptekst
+        // Knoptekst
+        let costTxt = [];
+        for (let r in totalCost) costTxt.push(`${totalCost[r]} ${game.resources[r].name}`);
+
+        const label = buyAmount === 'max' ? `MAX (${actualAmount})` : buyAmount;
+
+        // Bij een vast getal: alleen betaalbaar als je exact dat aantal kunt kopen
+        const affordable = buyAmount === 'max' ? actualAmount > 0 : actualAmount === buyAmount;
+        const costDisplay = costTxt.length > 0 ? costTxt.join(', ') : 'Niet betaalbaar';
+        
         container.innerHTML += `
             <div class="panel">
                 <strong>${b.name}</strong> (Aantal: ${b.count})<br>
                 <small>${b.desc}</small><br>
-                <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyBuilding('${key}')" ${canAfford(cost) ? '' : 'disabled'}>
-                    Bouw (${costTxt.join(', ')})
+                <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyBuilding('${key}')" ${affordable ? '' : 'disabled'}>
+                    Bouw ${label} (${costDisplay})
                 </button>
             </div>`;
     }
@@ -1905,6 +2028,8 @@ function renderMilitary() {
         const unitKey = key; // Voor de functie calls
 
 
+        const canTrainUnit = getIdlePopulation() >= 1 && canAfford(u.cost);
+
         container.innerHTML += `
     <div class="panel">
         <div style="display:flex; justify-content:space-between">
@@ -1915,7 +2040,7 @@ function renderMilitary() {
             <button class="action-btn-small" onclick="assignUnit('${unitKey}', 'off')">⚔️ Aanval: ${u.assignedOff}</button>
             <button class="action-btn-small" onclick="assignUnit('${unitKey}', 'def')">🛡️ Verdediging: ${u.assignedDef}</button>
         </div>
-        <button class="build-btn" style="background: var(--accent)" onclick="trainUnit('${key}')">
+        <button class="build-btn" style="background: var(--accent)" onclick="trainUnit('${key}')" ${canTrainUnit ? '' : 'disabled'}>
             Train (1 pop, ${u.cost.gold} gold, ${u.cost.food} food)
         </button>
     </div>

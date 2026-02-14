@@ -289,6 +289,30 @@ button.build-btn, button.action-btn-small {
     cursor: not-allowed;
 }
 
+/* Disabled styling voor alle buttons */
+button:disabled,
+.tap-btn:disabled,
+.build-btn:disabled,
+.action-btn-small:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: #45475a !important;
+    border-color: #585b70 !important;
+    color: #6c7086 !important;
+}
+
+.tap-btn:disabled {
+    background: #45475a;
+    border: 1px solid #585b70;
+    color: #6c7086;
+}
+
+.build-btn:disabled,
+.action-btn-small:disabled {
+    background: #45475a !important;
+    color: #6c7086 !important;
+}
+
 .big-num {
     color: var(--accent);
     font-weight: bold;
