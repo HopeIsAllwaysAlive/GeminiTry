@@ -162,7 +162,14 @@ let game = {
             cost: { researchPoints: 600, gold: 500 },
             unlocked: false,
             requirement: () => game.buildings.quarry.count >= 15
-        }
+        },
+        houses:{
+            name: "Huis",
+            desc: "Een mooi stenen huis",
+            cost: { researchPoints: 300},
+            unlocked: false,
+            requirement: () => game.buildings.hut.count >= 47
+            }
     },
 
     expeditions: {
@@ -881,6 +888,9 @@ function checkUnlocks() {
         game.resources.brick.discovered = true;
         game.buildings.stone_workshop.unlocked = true;
         game.jobs.stoneworker.unlocked = true;
+    }
+    if (game.research.houses.unlocked) {
+        game.buildings.house.unlocked = true;
     }
 }
 function discoverTribe() {
