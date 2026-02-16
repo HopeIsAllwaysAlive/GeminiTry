@@ -1,8 +1,8 @@
 :root {
-    --bg: #1e1e2e;
-    --panel: #313244;
-    --text: #cdd6f4;
-    --accent: #fab387; /* Prestige/Accent kleur */
+    --bg: #ebeee3;
+    --panel: #d6e2c8;
+    --text: #1b1c20;
+    --accent: #b1a756; /* Prestige/Accent kleur #fab387*/
     --red: #f38ba8;
     --green: #a6e3a1;
 }
@@ -12,17 +12,33 @@ body {
     color: var(--text);
     font-family: 'Segoe UI', sans-serif;
     margin: 0;
-    padding-bottom: 70px; /* Ruimte voor het menu onderaan */
+    /* Gebruik svh (Small Viewport Height) voor mobiel */
+    height: 100svh; 
     display: flex;
     flex-direction: column;
-    align-items: center;
+    overflow: hidden; /* Voorkom dat de hele body scrolt */
+}
+
+/* Een container die wel mag scrollen */
+.scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    width: 100%;
+    display: flex;          /* Nodig voor centreren */
+    flex-direction: column; /* Content onder elkaar */
+    align-items: center;    /* CENTREERT de content horizontaal */
+    
+    /* De truc: zorg dat de container zelf stopt boven de nav */
+    height: calc(100svh - 70px - 60px); /* 100vh minus nav minus resource-bar */
+    padding-bottom: 20px;   /* Extra ademruimte onderaan */
+    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
 }
 
 #resource-bar {
     position: sticky;
     top: 0;
-    width: 95%;
-    background: #181825; /* Iets donkerder dan het paneel voor contrast */
+    width: 100%;
+    background: #ccdccc; /* Iets donkerder dan het paneel voor contrast */
     display: grid;
     grid-template-columns: repeat(4, 1fr); /* 3 kolommen op mobiel */
     gap: 8px;
@@ -30,6 +46,7 @@ body {
     z-index: 1001;
     border-bottom: 2px solid var(--accent);
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
 }
 
 .res-item {
@@ -63,11 +80,12 @@ body {
     }
 }
 
+/* Zorg dat de tabs zelf ook gecentreerd zijn en niet te breed worden */
 .tab-content {
     width: 100%;
-    max-width: 600px;
-    padding: 15px;
-    box-sizing: border-box;
+    max-width: 500px; /* Mooie breedte voor mobiel en desktop */
+    margin: 0 auto;
+    display: none;    /* Wordt aangestuurd door JS */
 }
 
 .tab-content { display: none; }
@@ -78,6 +96,14 @@ body {
     box-sizing: border-box;
  animation: fadeIn 0.3s; }
 
+ /* Optioneel: Maak de scrollbar zelf wat subtieler (alleen voor Chrome/Safari) */
+.scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.scroll-container::-webkit-scrollbar-thumb {
+    background: var(--panel);
+    border-radius: 10px;
+}
 
 .panel {
     background: var(--panel);
@@ -85,19 +111,67 @@ body {
     padding: 15px;
     margin-bottom: 15px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
 }
 
 /* Navigatie onderaan voor mobiel */
 nav#main-nav {
     position: fixed;
     bottom: 0;
+    left: 0;
     width: 100%;
+    height: 70px; /* Geef de balk een vaste hoogte */
     background: var(--panel);
     display: flex;
     justify-content: space-around;
-    padding: 10px 0;
-    border-top: 1px solid #45475a;
-    z-index: 1000;
+    align-items: center;
+    border-top: 2px solid #45475a;
+    z-index: 2000;
+    /* Zorg dat het ook op iPhones met een 'notch' onderaan goed staat */
+    padding-bottom: env(safe-area-inset-bottom); 
+    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
+}
+
+nav#main-nav button {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    margin: 2px;
+}
+
+/* De tekst onder het icoontje */
+nav#main-nav button span {
+    font-size: 1em;
+    margin-top: 4px;
+}
+
+/* De icoontjes zelf (we gebruiken emoji of font-awesome) */
+nav#main-nav button .icon {
+    font-size: 1.5rem;
+}
+
+/* MEDIA QUERY: Voor smalle schermen (< 400px) */
+@media (max-width: 400px) {
+    nav#main-nav {
+        height: 60px; /* Iets minder hoog */
+    }
+    nav#main-nav button span {
+        display: none; /* Verberg de tekst */
+    }
+    nav#main-nav button .icon {
+        font-size: 1.8rem; /* Maak het icoon groter */
+    }
+}
+
+/* Actieve tab krijgt een subtiele achtergrond */
+nav#main-nav button.active {
+    background: rgba(250, 179, 135, 0);
+    border-bottom: 3px solid var(--accent);
 }
 
 nav button {
@@ -217,6 +291,7 @@ button.build-btn, button.action-btn-small {
     z-index: 2000;
     padding: 20px;
     overflow-y: auto; /* Maak de overlay scrollbaar */
+    overflow-x: auto; /* Voeg horizontale scroll toe indien nodig */
 }
 
 .detail-content {
@@ -301,7 +376,7 @@ button:disabled,
     color: #6c7086 !important;
 }
 
-.tap-btn:disabled {
+/*.tap-btn:disabled {
     background: #45475a;
     border: 1px solid #585b70;
     color: #6c7086;
@@ -311,7 +386,7 @@ button:disabled,
 .action-btn-small:disabled {
     background: #45475a !important;
     color: #6c7086 !important;
-}
+}*/
 
 .big-num {
     color: var(--accent);

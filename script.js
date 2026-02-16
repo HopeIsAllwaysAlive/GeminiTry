@@ -29,12 +29,13 @@ let game = {
     },
     buildings: {
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
+        house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
         farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
         irrigation_system: {  name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
         wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_woodworker: 1 , max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
         quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2 , max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
-        stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 2000, stone: 3000 }, provides: { job_stoneworker: 1 , max_brick: 50 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
+        stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 2000, stone: 3000 }, provides: { job_stoneworker: 1 , max_brick: 100 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
         warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone :100 }, desc:"Vergroot opslagcapaciteit voor grondstoffen.", unlocked:false},
         school: {  name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1 , max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.",  unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
@@ -153,14 +154,14 @@ let game = {
             desc: "Verbetert houtproductie en opslag.",
             cost: { researchPoints: 600, gold: 500 },
             unlocked: false,
-            requirement: () => game.buildings.lumber_camp.count >= 40
+            requirement: () => game.buildings.lumber_camp.count >= 20
         },
         stone_workshop: {
             name: "Steenbewerkerij",
             desc: "Verbetert steenproductie en opslag.",
             cost: { researchPoints: 600, gold: 500 },
             unlocked: false,
-            requirement: () => game.buildings.quarry.count >= 30
+            requirement: () => game.buildings.quarry.count >= 15
         }
     },
 
@@ -373,7 +374,7 @@ function recalcLimits() {
     game.resources.stone.max = 50 + bonus;
     game.resources.brick.max = 50;
     game.resources.beam.max = 50;
-    game.resources.population.max = 100;//5
+    game.resources.population.max = 5;//100
     game.resources.gold.max = 1000;
     game.resources.researchPoints.max = 500;
     for(let j in game.jobs) game.jobs[j].max = 0;
@@ -942,13 +943,38 @@ function getPrestigeBreakdown() {
     return {
         total: goldPoints + buildingPoints + tribePoints + researchPoints,
         details: `
-            <ul style="list-style: none; padding: 0; text-align: left; font-size: 0.9em;">
-                <li>💰 Goud: +${goldPoints}</li>
-                <li>🏠 Gebouwen: +${buildingPoints}</li>
-                <li>⚔️ Veroveringen: +${tribePoints}</li>
-                <li>🧪 Research: +${researchPoints}</li>
-            </ul>
-        `
+<table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+    <thead>
+        <tr style="border-bottom: 1px solid var(--accent); opacity: 0.6;">
+            <th style="text-align: left; padding: 4px 6px;">Categorie</th>
+            <th style="text-align: center; padding: 4px 6px;">Punten</th>
+            <th style="text-align: left; padding: 4px 6px;">Voortgang</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 5px 6px;">💰 Goud</td>
+            <td style="text-align: center; color: var(--green);">+${goldPoints}</td>
+            <td style="opacity: 0.7;">Nog ${Math.floor(Math.max(0, 10000 - (game.resources.gold.amount % 10000)))} voor volgend</td>
+        </tr>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 5px 6px;">🏠 Gebouwen</td>
+            <td style="text-align: center; color: var(--green);">+${buildingPoints}</td>
+            <td style="opacity: 0.7;">Nog ${Math.max(0, 10 - (totalBuildings % 10))} gebouwen</td>
+        </tr>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 5px 6px;">⚔️ Veroveringen</td>
+            <td style="text-align: center; color: var(--green);">+${tribePoints}</td>
+            <td style="opacity: 0.7;">${conqueredCount} stammen veroverd</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px 6px;">🧪 Research</td>
+            <td style="text-align: center; color: var(--green);">+${researchPoints}</td>
+            <td style="opacity: 0.7;">Nog ${Math.max(0, 10 - (researchCount % 10))} onderzoeken</td>
+        </tr>
+    </tbody>
+</table>
+`
     };
 }
 
@@ -988,18 +1014,6 @@ function buyBuilding(key) {
         updateUI();
     }
 }
-
-/*function buyBuilding(key) {
-    const b = game.buildings[key];
-    const cost = getCost(b);
-    if (canAfford(cost)) {
-        payCost(cost);
-        b.count++;
-        recalcLimits();
-        recalcRates();  // Toegevoegd om productie bij te werken
-        updateUI();
-    }
-}*/
 
 function buyResearch(key) {
     const r = game.research[key];
@@ -1086,7 +1100,7 @@ function completeExpedition() {
 }
 
 function giveReward(type) {
-    let msg = "Succes! ";
+//    let msg = "Succes! ";
     
     if (type === 'easy') {
         let wood = Math.floor(Math.random() * 50) + 20;
@@ -1136,7 +1150,7 @@ function toggleTradeRoute(tribeKey) {
     recalcRates();
     updateUI();
 }
-
+/*
 function attackTribe(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
     // Stel: een tribe heeft ook een defensePower (bijv. 500)
@@ -1151,7 +1165,7 @@ function attackTribe(tribeKey) {
         triggerCounterAttack(tribeKey);
     }
     updateUI();
-}
+}*/
 
 function triggerCounterAttack(_tribeKey) {
     const tribeAttack = 400; // Kracht van de vijand
@@ -2121,24 +2135,22 @@ function renderPrestige() {
     const boost = game.prestige.points * 1; // 1% per punt
     const breakdown = getPrestigeBreakdown();
 
-
-    container.innerHTML += `
-    <div class="panel" style="border: 1px dashed #fab387; margin-top: 10px;">
-        <h4>Verwachte opbrengst: ${breakdown.total} punten</h4>
-        ${breakdown.details}
-    </div>
-`;
-
     container.innerHTML = `
-        <h1>Prestige (Ascension)</h1>
-        <div class="panel" style="background: linear-gradient(45deg, #1e1e2e, #313244); border: 1px solid #fab387;">
-            <h3>Huidige Prestige Punten: <span style="color:#fab387">${game.prestige.points}</span></h3>
+        <h1>Prestige</h1>
+        <div class="panel" style="background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;">
+            <h3>Huidige Prestige Punten: <span style="color:#d6e2c8">${game.prestige.points}</span></h3>
             <p>Onbestede punten geven een <strong>+${boost}%</strong> bonus op resource productie en verkenning snelheid.</p>
             ${renderPrestigeDashboard()}
             <hr>
-            <p>Als je nu reset, ontvang je: <strong>${potential}</strong> punten.</p>
-            <button class="build-btn" onclick="performPrestige()" ${game.resources.population.amount >= 100 ? '' : 'disabled'}>
-                Prestige (Min. 100 inwoners vereist)
+
+        </div>
+        
+        <div class="panel" style="background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;">
+            <h4>Verwachte opbrengst: ${breakdown.total} punten</h4>
+            ${breakdown.details}
+            <p></p>
+                        <button class="tap-btn" style="width: 100%; height: 50px; background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;" onclick="performPrestige()" ${game.resources.population.amount >= 100 ? '' : 'disabled'}>
+                Prestige
             </button>
         </div>
         
@@ -2154,16 +2166,15 @@ function renderPrestige() {
             <div class="panel">
                 <strong>${upg.name} (Lvl ${upg.level}/${upg.max})</strong><br>
                 <small>${upg.desc}</small><br>
-                <button class="action-btn-small" onclick="buyPrestigeUpgrade('${key}')" ${game.prestige.points >= upg.cost && upg.level < upg.max ? '' : 'disabled'}>
+                <button class="action-btn-small" style="width: 100%; height: 50px; background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;"onclick="buyPrestigeUpgrade('${key}')" ${game.prestige.points >= upg.cost && upg.level < upg.max ? '' : 'disabled'}>
                     Koop (${upg.cost} Punten)
                 </button>
             </div>
-        </div>
         `;
     }
 //remove glow-active class van prestige button als we op het prestige tabblad zijn
-    const prestigeBtn = document.getElementById('nav-btn-prestige');
-    prestigeBtn.classList.remove('glow-active');
+ //   const prestigeBtn = document.getElementById('nav-btn-prestige');
+  //  prestigeBtn.classList.remove('glow-active');
 }
 
 function renderSettings() {
@@ -2173,9 +2184,10 @@ function renderSettings() {
     <div class="panel" style="margin-top: 30px; border-top: 2px solid #f38ba8;">
     <h3>Systeembeheer</h3>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="action-btn-small" onclick="exportGame()">💾 Export Save</button>
-        <button class="action-btn-small" onclick="importGame()">📂 Import Save</button>
-        <button class="action-btn-small" style="background: #f38ba8; color: #11111b;" onclick="hardReset()">🧨 Harde Reset</button>
+        <button class="tap-btn" onclick="saveGame()">💾 Save</button>
+        <button class="tap-btn" onclick="exportGame()">💾 Export Save</button>
+        <button class="tap-btn" onclick="importGame()">📂 Import Save</button>
+        <button class="tap-btn" style="background: #f38ba8; color: #11111b;" onclick="hardReset()">🧨 Harde Reset</button>
     
 </div>
         `;
@@ -2274,7 +2286,13 @@ function showTab(tabId) {
     const activeTab = document.getElementById('tab-' + tabId);
     if (activeTab) {
         activeTab.classList.add('active');
-        document.documentElement.scrollTop = 0; // Scroll naar boven bij tabwissel
+        // NIEUW: Scroll de container zelf naar boven
+        const container = activeTab.closest('.scroll-container'); // Pas de selector aan naar je werkelijke container class
+        if (container) {
+            container.scrollTop = 0;
+        } else {
+            window.scrollTo(0, 0); // Fallback voor het volledige viewport
+        }
     }
 
     // 3. De navigatieknoppen ook een 'active' uiterlijk geven
