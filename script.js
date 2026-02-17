@@ -277,6 +277,7 @@ let game = {
             },
         buildings: {
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
+            house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
             farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
             lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2 ,max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
             wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_woodworker: 1 , max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
@@ -290,9 +291,9 @@ let game = {
             bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
         },
             jobs: {
+                farmer: { count: 0 },
                 woodcutter: { count: 0 },
                 woodworker: { count: 0 },
-                farmer: { count: 0 },
                 miner: { count: 0 },
                 stoneworker: { count: 0 },
                 teacher: { count: 0 },
@@ -317,7 +318,8 @@ let game = {
                 knight_training: { unlocked: false },
                 commander_tactics: { unlocked: false },
                 wood_workshop: { unlocked: false },
-                stone_workshop: { unlocked: false }
+                stone_workshop: { unlocked: false },
+                houses: { unlocked: false }
             },
 
             military: {
@@ -338,6 +340,7 @@ let game = {
             },
             diplomacy: { discoveredTribes: {} },
             // PRESTIGE WORDT HIER NIET GERESET, die bewaren we apart
+            lastTick: Date.now()
         };
     }
 // --- CORE LOGICA ---
@@ -791,8 +794,6 @@ function findJobsForConsumption(resourceKey) {
   return consumingJobs; // Array met alle consumerende jobs (kan leeg zijn)
 }
 
-
-
 function getResourceIcon(key) {
     const icons = { wood: '🌲', stone: '🧱', gold: '💰', food: '🍞', population: '👥' };
     return icons[key] || '📦';
@@ -1110,7 +1111,7 @@ function completeExpedition() {
 }
 
 function giveReward(type) {
-//    let msg = "Succes! ";
+    let msg = "Succes! ";
     
     if (type === 'easy') {
         let wood = Math.floor(Math.random() * 50) + 20;
@@ -1445,6 +1446,7 @@ function setBuyAmount(amount) {
 
 // --- OPSLAAN & LADEN ---
 function saveGame() {
+    game.lastTick = Date.now();
     //localStorage.setItem('civBuilderSave', JSON.stringify(game));
     localStorage.setItem('myGameSave', JSON.stringify(game));
     console.log("Game Saved");
@@ -1532,11 +1534,88 @@ function loadGame() {
                     }
                 }
             }
-}
+        }
+
         recalcLimits();
         recalcRates();
         checkUnlocks();
+        if (loadedData.lastTick) {
+    game.lastTick = loadedData.lastTick;
+} else {
+    game.lastTick = Date.now(); // Fallback als het ontbreekt
+}
         console.log("Game Loaded");
+}
+function handleOfflineProgress() {
+    const now = Date.now();
+    const diffInSeconds = Math.floor((now - game.lastTick) / 1000);
+
+    // Alleen verwerken als er meer dan 10 seconden voorbij zijn
+    if (diffInSeconds > 10) {
+        // Bereken eerst de rates (voor het geval ze nog niet geüpdatet zijn)
+        recalcRates();
+
+        let summary = {};
+        
+        // Pas de rates toe op elke resource
+        for (let key in game.resources) {
+            const res = game.resources[key];
+            if (res.perSec) {
+                const gained = res.perSec * diffInSeconds;
+                const oldAmount = res.amount;
+                
+                // Voeg toe maar let op de max
+                res.amount = Math.min(res.max || 1000, Math.max(0, res.amount + gained));
+                
+                // Hou bij hoeveel er echt bij is gekomen voor de popup
+                summary[key] = Math.floor(res.amount - oldAmount);
+            }
+        }
+
+        showOfflineModal(diffInSeconds, summary);
+    }
+    
+    // Reset de lastTick naar nu
+    game.lastTick = Date.now();
+}
+
+function showOfflineModal(seconds, summary) {
+    let timeStr = formatTime(seconds);
+    let resourceList = "";
+
+    for (let res in summary) {
+        if (summary[res] !== 0) {
+            const color = summary[res] > 0 ? 'var(--green)' : 'var(--red)';
+            resourceList += `
+                <div style="display:flex; justify-content:space-between; margin: 5px 0;">
+                    <span>${getResourceIcon(res)} ${res}</span>
+                    <span style="color: ${color}">${summary[res] > 0 ? '+' : ''}${summary[res]}</span>
+                </div>`;
+        }
+    }
+
+    const modal = document.getElementById('modal-container');
+    modal.innerHTML = `
+        <div class="detail-overlay">
+            <div class="detail-content panel" style="text-align:center;">
+                <h2>Welkom terug!</h2>
+                <p>Je bent <strong>${timeStr}</strong> weggeweest.</p>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left;">
+                    ${resourceList || "Geen significante wijzigingen."}
+                </div>
+                <button class="build-btn" onclick="closeDetail()" style="background: var(--accent); color: var(--bg);">Lekker!</button>
+            </div>
+        </div>
+    `;
+    modal.style.display = 'block';
+}
+
+// Helper om tijd mooi te maken
+function formatTime(seconds) {
+    if (seconds < 3600) return Math.floor(seconds / 60) + "m";
+    let h = Math.floor(seconds / 3600);
+    let m = Math.floor((seconds % 3600) / 60);
+    return `${h}u ${m}m`;
 }
 
 // --- UI RENDERING ---
@@ -2230,6 +2309,13 @@ function deteriorateRelation(tribeKey, action) {
 }
 
 // --- GAME LOOP ---
+// --- INITIALISATIE ---
+document.addEventListener('DOMContentLoaded', () => {
+loadGame();
+handleOfflineProgress();
+renderManualButtons();
+updateUI();
+
 setInterval(() => {
     // Resources & Groei
 for (let key in game.resources) {
@@ -2275,11 +2361,8 @@ setInterval(() => {
         }
     }
 }, 60000); // Check elke minuut 60000
+});
 
-// --- INITIALISATIE ---
-loadGame();
-renderManualButtons();
-updateUI();
 
 
 function showTab(tabId) {
