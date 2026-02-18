@@ -255,7 +255,9 @@ let game = {
         upgrades: {
             starter_pack: { name: "Snelle Start", level: 0, max: 5, cost: 10, desc: "Begin elke reset met +500 alle resources per level." },
             military_academy: { name: "Militaire Academie", level: 0, max: 1, cost: 50, desc: "Unlockt de 'Ridder' unit vanaf het begin." },
-            efficient_scouting: { name: "Ervaren Gidsen", level: 0, max: 10, cost: 20, desc: "Verkenningen gaan 5% sneller per level (bovenop de 1% per onbesteed punt)." }
+            efficient_scouting: { name: "Ervaren Gidsen", level: 0, max: 10, cost: 20, desc: "Verkenningen gaan 5% sneller per level (bovenop de 1% per onbesteed punt)." },
+            meditation: { name: "Meditatie", level: 0, max: 9, cost: 30, desc: "Offline progressie is 10% efficiënter per level."},
+            sunDail: { name: "Zonnewijzer", level: 0, max: 11, cost: 40, desc: "Je krijgt een extra uur offline tijd per level." }
         }
     },
 
@@ -1549,11 +1551,25 @@ function loadGame() {
 function handleOfflineProgress() {
     const now = Date.now();
     const diffInSeconds = Math.floor((now - game.lastTick) / 1000);
-
-    // Alleen verwerken als er meer dan 10 seconden voorbij zijn
+        // Alleen verwerken als er meer dan 10 seconden voorbij zijn
     if (diffInSeconds > 10) {
         // Bereken eerst de rates (voor het geval ze nog niet geüpdatet zijn)
         recalcRates();
+
+    // Als de upgrade niet bestaat of level 0 is, is de multiplier 0.5
+    let offlineEfficiency = 0.1; 
+    if (game.prestige.upgrades.meditation) {
+        // Elke level voegt 10% toe, tot max 100%
+        offlineEfficiency += (game.prestige.upgrades.meditation.level * 0.1);
+    }
+    offlineEfficiency = Math.min(1, offlineEfficiency); // Nooit meer dan 100%
+ 
+    // 2. Tijdslimiet: Start op 1 uur (3600s), +1 uur per level
+        let maxOfflineSeconds = 3600 + (game.prestige.upgrades.sunDail.level * 3600);
+        const actualSeconds = Math.min(diffInSeconds, maxOfflineSeconds);
+        const capped = diffInSeconds > maxOfflineSeconds;
+   
+
 
         let summary = {};
         
@@ -1561,7 +1577,7 @@ function handleOfflineProgress() {
         for (let key in game.resources) {
             const res = game.resources[key];
             if (res.perSec) {
-                const gained = res.perSec * diffInSeconds;
+                const gained = res.perSec * actualSeconds * offlineEfficiency;
                 const oldAmount = res.amount;
                 
                 // Voeg toe maar let op de max
@@ -1572,38 +1588,38 @@ function handleOfflineProgress() {
             }
         }
 
-        showOfflineModal(diffInSeconds, summary);
+        showOfflineModal(actualSeconds, summary, capped, diffInSeconds);
     }
     
     // Reset de lastTick naar nu
     game.lastTick = Date.now();
 }
 
-function showOfflineModal(seconds, summary) {
-    let timeStr = formatTime(seconds);
+function showOfflineModal(seconds, summary, capped, totalSeconds) {
     let resourceList = "";
-
     for (let res in summary) {
         if (summary[res] !== 0) {
-            const color = summary[res] > 0 ? 'var(--green)' : 'var(--red)';
-            resourceList += `
-                <div style="display:flex; justify-content:space-between; margin: 5px 0;">
-                    <span>${getResourceIcon(res)} ${res}</span>
-                    <span style="color: ${color}">${summary[res] > 0 ? '+' : ''}${summary[res]}</span>
-                </div>`;
+            resourceList += `<div>${getResourceIcon(res)} ${res}: +${summary[res]}</div>`;
         }
     }
 
     const modal = document.getElementById('modal-container');
     modal.innerHTML = `
         <div class="detail-overlay">
-            <div class="detail-content panel" style="text-align:center;">
+            <div class="detail-content panel">
                 <h2>Welkom terug!</h2>
-                <p>Je bent <strong>${timeStr}</strong> weggeweest.</p>
-                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left;">
-                    ${resourceList || "Geen significante wijzigingen."}
+                <p>Geproduceerd voor: <strong>${formatTime(seconds)}</strong></p>
+                
+                ${capped ? `<p style="color: var(--red); font-size: 0.8em;">
+                    Let op: Je was ${formatTime(totalSeconds)} weg, maar je limiet is ${formatTime(seconds)}. 
+                    Upgrade 'Meditatie' voor meer tijd!
+                </p>` : ''}
+
+                <div class="breakdown-section" style="text-align: left;">
+                    ${resourceList || "Geen opbrengst."}
                 </div>
-                <button class="build-btn" onclick="closeDetail()" style="background: var(--accent); color: var(--bg);">Lekker!</button>
+                
+                <button class="tap-btn" style="width:100%" onclick="closeDetail()">Lekker!</button>
             </div>
         </div>
     `;
