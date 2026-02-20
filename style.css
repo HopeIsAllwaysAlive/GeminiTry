@@ -2,7 +2,8 @@
     --bg: #ebeee3;
     --panel: #d6e2c8;
     --text: #1b1c20;
-    --accent: #b1a756; /* Prestige/Accent kleur #fab387*/
+    --accent: #b1a756;
+    /* Prestige/Accent kleur #fab387*/
     --red: #f38ba8;
     --green: #a6e3a1;
 }
@@ -13,10 +14,11 @@ body {
     font-family: 'Segoe UI', sans-serif;
     margin: 0;
     /* Gebruik svh (Small Viewport Height) voor mobiel */
-    height: 100svh; 
+    height: 100svh;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Voorkom dat de hele body scrolt */
+    overflow: hidden;
+    /* Voorkom dat de hele body scrolt */
 }
 
 /* Een container die wel mag scrollen */
@@ -24,29 +26,38 @@ body {
     flex: 1;
     overflow-y: auto;
     width: 100%;
-    display: flex;          /* Nodig voor centreren */
-    flex-direction: column; /* Content onder elkaar */
-    align-items: center;    /* CENTREERT de content horizontaal */
-    
+    display: flex;
+    /* Nodig voor centreren */
+    flex-direction: column;
+    /* Content onder elkaar */
+    align-items: center;
+    /* CENTREERT de content horizontaal */
+
     /* De truc: zorg dat de container zelf stopt boven de nav */
-    height: calc(100svh - 70px - 60px); /* 100vh minus nav minus resource-bar */
-    padding-bottom: 20px;   /* Extra ademruimte onderaan */
-    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
+    height: calc(100svh - 70px - 60px);
+    /* 100vh minus nav minus resource-bar */
+    padding-bottom: 20px;
+    /* Extra ademruimte onderaan */
+    background: linear-gradient(45deg, #d6e2c8, #313244);
+    border: 1px solid #d6e2c8;
 }
 
 #resource-bar {
     position: sticky;
     top: 0;
     width: 100%;
-    background: #ccdccc; /* Iets donkerder dan het paneel voor contrast */
+    background: #ccdccc;
+    /* Iets donkerder dan het paneel voor contrast */
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 3 kolommen op mobiel */
+    grid-template-columns: repeat(4, 1fr);
+    /* 3 kolommen op mobiel */
     gap: 8px;
     padding: 10px;
     z-index: 1001;
     border-bottom: 2px solid var(--accent);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(45deg, #d6e2c8, #313244);
+    border: 1px solid #d6e2c8;
 }
 
 .res-item {
@@ -54,7 +65,7 @@ body {
     flex-direction: column;
     align-items: center;
     font-size: 0.9em;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     padding: 5px;
     border-radius: 6px;
 }
@@ -70,8 +81,13 @@ body {
 }
 
 /* Kleuren voor de rates */
-.rate-pos { color: var(--green); }
-.rate-neg { color: var(--red); }
+.rate-pos {
+    color: var(--green);
+}
+
+.rate-neg {
+    color: var(--red);
+}
 
 /* Op grotere schermen kunnen we 6 kolommen naast elkaar zetten */
 @media (min-width: 600px) {
@@ -83,23 +99,31 @@ body {
 /* Zorg dat de tabs zelf ook gecentreerd zijn en niet te breed worden */
 .tab-content {
     width: 100%;
-    max-width: 500px; /* Mooie breedte voor mobiel en desktop */
+    max-width: 500px;
+    /* Mooie breedte voor mobiel en desktop */
     margin: 0 auto;
-    display: none;    /* Wordt aangestuurd door JS */
+    display: none;
+    /* Wordt aangestuurd door JS */
 }
 
-.tab-content { display: none; }
-.tab-content.active { display: block;
-        width: 100%;
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    width: 100%;
     max-width: 600px;
     padding: 15px;
     box-sizing: border-box;
- animation: fadeIn 0.3s; }
+    animation: fadeIn 0.3s;
+}
 
- /* Optioneel: Maak de scrollbar zelf wat subtieler (alleen voor Chrome/Safari) */
+/* Optioneel: Maak de scrollbar zelf wat subtieler (alleen voor Chrome/Safari) */
 .scroll-container::-webkit-scrollbar {
     width: 6px;
 }
+
 .scroll-container::-webkit-scrollbar-thumb {
     background: var(--panel);
     border-radius: 10px;
@@ -110,8 +134,9 @@ body {
     border-radius: 12px;
     padding: 15px;
     margin-bottom: 15px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(45deg, #d6e2c8, #313244);
+    border: 1px solid #d6e2c8;
 }
 
 /* Navigatie onderaan voor mobiel */
@@ -120,7 +145,8 @@ nav#main-nav {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 70px; /* Geef de balk een vaste hoogte */
+    height: 70px;
+    /* Geef de balk een vaste hoogte */
     background: var(--panel);
     display: flex;
     justify-content: space-around;
@@ -128,8 +154,9 @@ nav#main-nav {
     border-top: 2px solid #45475a;
     z-index: 2000;
     /* Zorg dat het ook op iPhones met een 'notch' onderaan goed staat */
-    padding-bottom: env(safe-area-inset-bottom); 
-    background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: linear-gradient(45deg, #d6e2c8, #313244);
+    border: 1px solid #d6e2c8;
 }
 
 nav#main-nav button {
@@ -158,13 +185,18 @@ nav#main-nav button .icon {
 /* MEDIA QUERY: Voor smalle schermen (< 400px) */
 @media (max-width: 400px) {
     nav#main-nav {
-        height: 60px; /* Iets minder hoog */
+        height: 60px;
+        /* Iets minder hoog */
     }
+
     nav#main-nav button span {
-        display: none; /* Verberg de tekst */
+        display: none;
+        /* Verberg de tekst */
     }
+
     nav#main-nav button .icon {
-        font-size: 1.8rem; /* Maak het icoon groter */
+        font-size: 1.8rem;
+        /* Maak het icoon groter */
     }
 }
 
@@ -190,25 +222,40 @@ nav button.active {
     color: var(--accent);
 }
 
-nav button i { /* Voor icoontjes */
+nav button i {
+    /* Voor icoontjes */
     font-size: 1.5rem;
     margin-bottom: 4px;
 }
 
 /* Knoppen die lekker klikken op mobiel */
-button.build-btn, button.action-btn-small {
+button.build-btn,
+button.action-btn-small {
     padding: 12px;
     border-radius: 8px;
     border: none;
     font-weight: bold;
     cursor: pointer;
-    width: 100%; /* Full width op mobiel is makkelijker met de duim */
+    width: 100%;
+    /* Full width op mobiel is makkelijker met de duim */
     margin-top: 5px;
 }
+
 @keyframes prestige-glow {
-    0% { box-shadow: 0 0 5px var(--accent); opacity: 0.8; }
-    50% { box-shadow: 0 0 20px var(--accent); opacity: 1; }
-    100% { box-shadow: 0 0 5px var(--accent); opacity: 0.8; }
+    0% {
+        box-shadow: 0 0 5px var(--accent);
+        opacity: 0.8;
+    }
+
+    50% {
+        box-shadow: 0 0 20px var(--accent);
+        opacity: 1;
+    }
+
+    100% {
+        box-shadow: 0 0 5px var(--accent);
+        opacity: 0.8;
+    }
 }
 
 .glow-active {
@@ -216,6 +263,7 @@ button.build-btn, button.action-btn-small {
     color: var(--accent) !important;
     font-weight: bold;
 }
+
 .progress-container {
     width: 100%;
     background-color: #45475a;
@@ -250,7 +298,8 @@ button.build-btn, button.action-btn-small {
     padding: 15px;
     border-radius: 10px;
     font-size: 1.2em;
-    touch-action: manipulation; /* Voorkomt inzoomen op mobiel bij snel tappen */
+    touch-action: manipulation;
+    /* Voorkomt inzoomen op mobiel bij snel tappen */
 }
 
 .tap-btn:active {
@@ -259,9 +308,16 @@ button.build-btn, button.action-btn-small {
     color: var(--bg);
 }
 
-@keyframes floatUp { 
-   0% { transform: translateY(0); opacity: 1; } 
-   100% { transform: translateY(-50px); opacity: 0; } 
+@keyframes floatUp {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
 }
 
 .floating-text {
@@ -274,8 +330,15 @@ button.build-btn, button.action-btn-small {
 }
 
 @keyframes floatUp {
-    0% { transform: translateY(0); opacity: 1; }
-    100% { transform: translateY(-100px); opacity: 0; }
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-100px);
+        opacity: 0;
+    }
 }
 
 .detail-overlay {
@@ -284,14 +347,16 @@ button.build-btn, button.action-btn-small {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     z-index: 2000;
     padding: 20px;
-    overflow-y: auto; /* Maak de overlay scrollbaar */
-    overflow-x: auto; /* Voeg horizontale scroll toe indien nodig */
+    overflow-y: auto;
+    /* Maak de overlay scrollbaar */
+    overflow-x: auto;
+    /* Voeg horizontale scroll toe indien nodig */
 }
 
 .detail-content {
@@ -304,7 +369,7 @@ button.build-btn, button.action-btn-small {
 .breakdown-section {
     margin: 15px 0;
     padding: 10px;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
 }
 
@@ -333,13 +398,17 @@ button.build-btn, button.action-btn-small {
     color: var(--red);
     font-size: 1.5em;
 }
+
 .rate-pos {
-    color: #a6e3a1; /* groen voor positief */
+    color: #a6e3a1;
+    /* groen voor positief */
 }
 
 .rate-neg {
-    color: #f38ba8; /* rood voor negatief */
+    color: #f38ba8;
+    /* rood voor negatief */
 }
+
 .step-btn {
     width: 50px;
     height: 50px;
@@ -392,6 +461,7 @@ button:disabled,
     color: var(--accent);
     font-weight: bold;
 }
+
 .buy-amount-bar {
     display: flex;
     justify-content: space-around;
@@ -401,6 +471,7 @@ button:disabled,
     margin-bottom: 15px;
     border: 1px solid #45475a;
 }
+
 .buy-amount-bar button {
     flex: 1;
     background: none;
