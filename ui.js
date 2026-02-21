@@ -13,7 +13,6 @@ function updateUI() {
             renderBuildings();
             break;
         case 'resources':
-            renderResourceTable();
             renderResources();
             break;
         case 'population':
@@ -87,113 +86,223 @@ function updateNavigationGlow() {
 
 }
 
-function renderResourceTable() {
-    //   console.log("Rendering resource table...");
-    const resBody = document.getElementById('resource-tbody');
-    if (!resBody) return;
-
-    resBody.innerHTML = '';
-    for (let key in game.resources) {
-        const r = game.resources[key];
-        if (!r.discovered) continue;
-        resBody.innerHTML += `<tr>
-            <td>${r.name}</td>
-            <td>${Math.floor(r.amount)}</td>
-            <td>${r.max}</td>
-            <td style="color: ${r.perSec >= 0 ? '#a6e3a1' : '#f38ba8'}">${r.perSec.toFixed(2)}/s</td>
-            <td>${r.perSec !== 0 ? 'Actief' : 'Stabiel'}</td>
-        </tr>`;
-    }
-}
+// Verwijderd: renderResourceTable (oud, word niet meer gebruikt)
 
 function renderResources() {
-    const container = document.getElementById('tab-resources');
-    container.innerHTML = '<h1>Grondstoffen</h1>';
+    const container = document.getElementById('resources-container');
+    if (!container) return;
+
+    container.innerHTML = '';
 
     for (let key in game.resources) {
         const res = game.resources[key];
-        if (key === 'population') continue; // Bevolking doen we apart
-        if (!res.discovered) continue; // ← Alleen ontdekte resources tonen
+        // Sla over als het nog niet ontdekt is of population is (komt op eigen tab)
+        if (key === 'population' || key === 'scouts') continue;
+        if (!res.discovered) continue;
 
         const max = res.max || 1000;
         const perc = Math.min(100, (res.amount / max) * 100);
-        // Haal de details op via de nieuwe functie
-        const productionDetails = getProductionDetails(key);
         const netColor = res.perSec >= 0 ? 'var(--green)' : 'var(--red)';
+        const detailsHtml = getProductionDetails(key);
 
         container.innerHTML += `
             <div class="panel">
-                <div style="display:flex; justify-content:space-between">
-                    <strong>${res.name.charAt(0).toUpperCase() + res.name.slice(1)}</strong>
-                    <span>${Math.floor(res.amount)} / ${max}</span>
+                <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+                    <strong style="font-size: 1.2em; color: var(--accent);">${res.name.charAt(0).toUpperCase() + res.name.slice(1)}</strong>
+                    <span style="font-weight: bold;">${Math.floor(res.amount)} / ${max}</span>
                 </div>
                 
-                <div class="progress-container">
+                <div class="progress-container" style="margin-bottom: 12px; height: 12px;">
                     <div class="progress-bar" style="width: ${perc}%"></div>
-                    <div class="progress-text">${perc.toFixed(0)}%</div>
                 </div>
 
-                
-                <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; font-size: 0.8em;">
-                ${getProductionDetails(key)}
-                <div style="margin-top:5px; padding-top:5px; border-top: 1px solid var(--accent); color: ${netColor}; font-weight: bold; font-size: 1.1em;">
-                        Netto: <span class="${res.perSec >= 0 ? 'rate-pos' : 'rate-neg'}">
-                            ${res.perSec >= 0 ? '+' : ''}${res.perSec.toFixed(1)}/s
-                        </span>
-                     </div>
+                <div style="background: rgba(0,0,0,0.25); border-radius: 8px; font-size: 0.9em; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="padding: 10px;">
+                        ${detailsHtml}
+                    </div>
+                    
+                    <div style="padding: 10px; background: rgba(0,0,0,0.3); border-top: 2px solid ${netColor}; display: flex; justify-content: space-between;">
+                        <span style="font-weight: bold;">Netto Productie:</span>
+                        <strong style="color: ${netColor}; font-size: 1.1em;">
+                            ${res.perSec >= 0 ? '+' : ''}${res.perSec.toFixed(2)}/s
+                        </strong>
+                    </div>
                 </div>
             </div>
         `;
-
     }
 }
 
 function getProductionDetails(key) {
-    let details = "";
-    let baseProduction = 0;
+    let html = `<table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">`;
+    const addRow = (label, value, isPositive, indent = false) => {
+        if (value === 0) return; // Niet tonen als het 0 is
+        const color = isPositive ? 'var(--green)' : 'var(--red)';
+        const sign = isPositive ? '+' : '';
+        const padding = indent ? 'padding-left: 15px; color: #a6adc8;' : 'font-weight: bold;';
 
-    // --- A. BASIS PRODUCTIE (Jobs & Gebouwen) ---
-    for (let jKey in game.jobs) {
-        const job = game.jobs[jKey];
-        if (job.effect && job.effect[key]) {
-            const prod = job.effect[key] * job.count;
-            if (prod !== 0) {
-                baseProduction += prod;
-                details += `<div style="color: #a6adc8;">${job.name}: +${prod.toFixed(1)}</div>`;
+        let displayValue = "";
+        // Is het een percentage multiplier of vaste waarde?
+        if (typeof value === 'string') {
+            displayValue = `<span style="color: ${color};">${value}</span>`;
+        } else {
+            displayValue = `<span style="color: ${color};">${sign}${value.toFixed(2)}/s</span>`;
+        }
+
+        html += `
+            <tr>
+                <td style="${padding} padding-bottom: 4px;">${label}</td>
+                <td style="text-align: right; padding-bottom: 4px;">${displayValue}</td>
+            </tr>
+        `;
+    };
+
+    const prestigeBoost = 1 + (game.prestige.points * 0.01);
+
+    // Specifieke logica per grondstof, één op één met engine.js recalcXYZ functies
+    if (key === 'wood') {
+        const houthakkers = game.jobs.woodcutter.effect.wood * game.jobs.woodcutter.count;
+        addRow("Productie", houthakkers, true);
+        if (houthakkers > 0) {
+            let multText = "";
+            let addMult = 0;
+            if (game.research.axe_tech?.unlocked) { addMult += 1; multText += "Bijl (+100%) "; }
+            if (game.research.wood_tech?.unlocked) { addMult += 0.5; multText += "Hout Tech (+50%) "; }
+            if (addMult > 0) {
+                const bonusVal = houthakkers * addMult;
+                addRow(`↳ Multiplier (${multText.trim()})`, `(x${1 + addMult}) +${bonusVal.toFixed(2)}/s`, true, true);
+            }
+
+            if (game.prestige.points > 0) {
+                const currentTotal = houthakkers * (1 + addMult);
+                const pBonus = currentTotal * (prestigeBoost - 1);
+                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
             }
         }
+
+        // Diplomatie
+        let diploIn = 0;
+        for (let tKey in game.diplomacy.discoveredTribes) {
+            const tribe = game.diplomacy.discoveredTribes[tKey];
+            if (tribe.tradeRouteActive && tribe.resources.wood) diploIn += tribe.resources.wood;
+        }
+        addRow("Handelsroutes", diploIn, true);
+
+        // Consumptie houtbewerker
+        const houtbewerkers = game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost;
+        addRow("Consumptie (Houtbewerkers)", houtbewerkers, false); // Waarde is negatief uit effect, dus isPositive false
+    }
+    else if (key === 'beam') {
+        const bewerkers = game.jobs.woodworker.effect.beam * game.jobs.woodworker.count;
+        addRow("Productie (Houtbewerkers)", bewerkers, true);
+        if (bewerkers > 0 && game.prestige.points > 0) {
+            const pBonus = bewerkers * (prestigeBoost - 1);
+            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        }
+    }
+    else if (key === 'food') {
+        const boeren = game.jobs.farmer.effect.food * game.jobs.farmer.count;
+        addRow("Productie (Boeren)", boeren, true);
+
+        if (boeren > 0) {
+            let isMultActive = false;
+            let multVal = 1;
+            let multText = "";
+            if (game.research.plow_invention?.unlocked) { multVal *= 1.5; multText += "Ploeg (x1.5) "; isMultActive = true; }
+            if (game.buildings.irrigation_system?.count > 0) { multVal *= game.buildings.irrigation_system.count; multText += `Irrigatie (x${game.buildings.irrigation_system.count}) `; isMultActive = true; }
+            if (isMultActive) {
+                const bonusVal = boeren * (multVal - 1);
+                addRow(`↳ Multiplier (${multText.trim()})`, `(x${multVal}) +${bonusVal.toFixed(2)}/s`, true, true);
+            }
+
+            if (game.prestige.points > 0) {
+                const currentTotal = boeren * multVal;
+                const pBonus = currentTotal * (prestigeBoost - 1);
+                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+            }
+        }
+
+        // Andere jobs die food produceren (bv vissers later)
+        let otherJobs = 0;
+        for (let jKey in game.jobs) {
+            if (jKey !== 'farmer' && game.jobs[jKey].effect.food) {
+                const amount = game.jobs[jKey].effect.food * game.jobs[jKey].count;
+                addRow(`Overige Jobs (${game.jobs[jKey].name})`, amount, amount > 0);
+            }
+        }
+
+        // Consumptie
+        const idlePop = getIdlePopulation();
+        addRow("Consumptie (Vrije Bevolking)", (-0.5 * idlePop), false);
+
+        const soldierFood = getSoldierMaintenance().food;
+        addRow("Consumptie (Leger Onderhoud)", -soldierFood, false);
+    }
+    else if (key === 'stone') {
+        const miners = game.jobs.miner.effect.stone * game.jobs.miner.count;
+        addRow("Productie (Mijnwerkers)", miners, true);
+        if (miners > 0 && game.prestige.points > 0) {
+            const pBonus = miners * (prestigeBoost - 1);
+            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        }
+
+        // Consumptie door steenhouwer
+        const stoneworkers = game.jobs.stoneworker.effect.stone * game.jobs.stoneworker.count * prestigeBoost;
+        addRow("Consumptie (Steenhouwers)", stoneworkers, false);
+    }
+    else if (key === 'brick') {
+        const bewerkers = game.jobs.stoneworker.effect.brick * game.jobs.stoneworker.count;
+        addRow("Productie (Steenhouwers)", bewerkers, true);
+        if (bewerkers > 0 && game.prestige.points > 0) {
+            const pBonus = bewerkers * (prestigeBoost - 1);
+            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        }
+    }
+    else if (key === 'researchPoints') {
+        const leraren = game.jobs.teacher.effect.researchPoints * game.jobs.teacher.count;
+        addRow("Productie (Onderzoekers)", leraren, true);
+        if (leraren > 0 && game.prestige.points > 0) {
+            const pBonus = leraren * (prestigeBoost - 1);
+            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        }
+    }
+    else if (key === 'gold') {
+        const bankers = game.jobs.banker.effect.gold * game.jobs.banker.count;
+        addRow("Productie (Bankiers)", bankers, true);
+
+        const tax = (game.resources.population.amount * (1 / 60));
+        addRow("Belastingen (Van Bevolking)", tax, true);
+
+        if ((bankers > 0 || tax > 0) && game.prestige.points > 0) {
+            const pBonus = (bankers + tax) * (prestigeBoost - 1);
+            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        }
+
+        // Tribuut
+        let tribute = 0;
+        for (let tKey in game.diplomacy.discoveredTribes) {
+            const tribe = game.diplomacy.discoveredTribes[tKey];
+            if (tribe.isConquered) tribute += tribe.tributeAmount || 5;
+        }
+        addRow("Tribuut (Overwonnen Stammen)", tribute, true);
+
+        // Trade route costs
+        let tradeCost = 0;
+        for (let tKey in game.diplomacy.discoveredTribes) {
+            if (game.diplomacy.discoveredTribes[tKey].tradeRouteActive) tradeCost += 0.5;
+        }
+        addRow("Onderhoud (Handelsroutes)", -tradeCost, false);
+
+        const soldierGold = getSoldierMaintenance().gold;
+        addRow("Consumptie (Leger Onderhoud)", -soldierGold, false);
     }
 
-    if (baseProduction === 0) return "Geen passieve productie";
+    html += `</table>`;
 
-    // --- B. MULTIPLIERS BEREKENEN ---
-    let multiplier = 1;
-
-    // 1. Prestige Punten (1% per punt)
-    const prestigePointBonus = (game.prestige.points * 0.01);
-    multiplier += prestigePointBonus;
-
-    // 2. Prestige Upgrades (bijv. multiplier op specifieke jobs)
-    // Voorbeeld: 'efficient_farming' geeft 10% per level
-    if (key === 'food' && game.prestige.upgrades.efficient_farming) {
-        multiplier += (game.prestige.upgrades.efficient_farming.level * 0.1);
+    if (html.indexOf("<tr>") === -1) {
+        html = '<div style="color: #a6adc8; padding-bottom: 5px;">Geen actieve wijzigingen in productie.</div>';
     }
-
-    // 3. Normale Research Upgrades (multiplier op gebouwen/jobs)
-    // Voorbeeld: De Ploeg (plow_invention) was al 50%
-    if (key === 'food' && game.research.plow_invention?.researched) {
-        multiplier += 0.5;
-    }
-
-    // --- C. DETAILS SAMENSTELLEN ---
-    if (multiplier > 1) {
-        const bonusPerc = ((multiplier - 1) * 100).toFixed(0);
-        details += `<div style="color: var(--accent); border-top: 1px dashed #444; margin-top: 5px;">
-            Bonussen: +${bonusPerc}%
-        </div>`;
-    }
-
-    return details;
+    return html;
 }
 function renderBuildings() {
     const container = document.getElementById('building-list');
@@ -282,30 +391,34 @@ function renderJobs() {
         const job = game.jobs[key];
         if (!job.unlocked) continue;
 
-        const canHire = getIdlePopulation() > 0 && job.count < job.max;
+        // Bepaal hoeveel werkers we toevoegen of verwijderen met één druk
+        const availableWorkers = getIdlePopulation();
+        const fillableJobs = job.max - job.count;
+        const maxAddable = Math.min(availableWorkers, fillableJobs);
+        let currentBuyAmountAdd = buyAmount === 'max' ? Math.max(1, maxAddable) : buyAmount;
+        let currentBuyAmountRem = buyAmount === 'max' ? job.count : buyAmount;
 
-        // 1. Multiplier berekening (jouw logica behouden)
-        let multiplier = 1;
-        if (key === 'farmer' && game.research.plow_invention.unlocked) multiplier = 1.5;
-        if (key === 'farmer' && game.buildings.irrigation_system.count > 0) {
-            multiplier *= (1 + (game.buildings.irrigation_system.count * 0.5)); // Voorbeeld: 50% per gebouw
-        }
+        const canHire = getIdlePopulation() >= currentBuyAmountAdd && job.count + currentBuyAmountAdd <= job.max;
+        const canFire = job.count >= currentBuyAmountRem;
 
-        // 2. Effect tekst
+        // Effect tekst (basis opbrengst van 1 werker)
         let effectTxtParts = [];
         for (let resType in job.effect) {
-            const finalValue = (job.effect[resType] * multiplier).toFixed(1);
+            const baseValue = job.effect[resType].toFixed(1);
             const resName = game.resources[resType].name;
-            effectTxtParts.push(`${finalValue > 0 ? '+' : ''}${finalValue} ${resName}`);
+            effectTxtParts.push(`${baseValue > 0 ? '+' : ''}${baseValue} ${resName}`);
         }
-        const effectDisplay = effectTxtParts.join(', ') + " /sec";
-        const displayAmount = buyAmount === 'max' ? 'Max' : buyAmount;
+        const effectDisplay = effectTxtParts.join(', ') + " /s per werker";
+
+        const displayAmountAdd = buyAmount === 'max' ? 'Max' : buyAmount;
+        const displayAmountRem = buyAmount === 'max' ? 'Max' : buyAmount;
+
         // 3. De Mobiele "Stepper" Card
         container.innerHTML += `
             <div class="panel" style="margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button class="step-btn" onclick="assignJob('${key}', -1)" style="background: var(--red);"font-size: 0.5em;>
-                        <span style="font-size: 0.5em; display:block;">-${displayAmount}</span>
+                    <button class="step-btn" onclick="assignJob('${key}', -${currentBuyAmountRem})" style="background: var(--red); white-space: nowrap; min-width: 60px;" ${canFire ? '' : 'disabled'}>
+                        <span style="font-size: 0.7em; display:block;">-${displayAmountRem}</span>
                     </button>
                     
                     <div style="text-align: center; flex: 1;">
@@ -316,8 +429,8 @@ function renderJobs() {
                         <div style="font-size: 0.7em; color: #a6adc8;">${effectDisplay}</div>
                     </div>
 
-                    <button class="step-btn" onclick="assignJob('${key}', 1)" style="background: var(--green);"font-size: 0.5em; ${getIdlePopulation() > 0 && job.count < job.max ? '' : 'disabled'}>
-                        <span style="font-size: 0.5em; display:block;">+${displayAmount}</span>
+                    <button class="step-btn" onclick="assignJob('${key}', ${currentBuyAmountAdd})" style="background: var(--green); white-space: nowrap; min-width: 60px;" ${canHire ? '' : 'disabled'}>
+                        <span style="font-size: 0.7em; display:block;">+${displayAmountAdd}</span>
                     </button>
                 </div>
             </div>`;

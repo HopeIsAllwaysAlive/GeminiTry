@@ -49,33 +49,30 @@
 
             <section id="tab-resources" class="tab-content">
                 <h1>Goederen Overzicht</h1>
-                <table id="resource-table">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Huidig</th>
-                            <th>Max</th>
-                            <th>Per Seconde</th>
-                            <th>Details</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resource-tbody">
-                    </tbody>
-                </table>
+                <div id="resources-container" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Wordt gevuld door renderResources() -->
+                </div>
             </section>
 
             <section id="tab-population" class="tab-content">
                 <h1>Bevolking Management</h1>
 
-                <div class="panel">
-                    <p>Vrije bevolking: <span id="pop-idle">0</span> / <span id="pop-total">0</span></p>
-                    <p><small>Bouw hutten voor meer bevolking. Wijs jobs toe voor grondstoffen.</small></p>
+                <!-- Populatie Dashboard -->
+                <div class="panel"
+                    style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--accent);">
+                    <div>
+                        <div style="font-size: 0.9em; color: #a6adc8;">Vrije Bevolking</div>
+                        <div style="font-size: 2em; font-weight: bold; color: var(--green);" id="pop-idle">0</div>
+                    </div>
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); margin: 0 15px;"></div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #a6adc8;">Totale Bevolking</div>
+                        <div style="font-size: 2em; font-weight: bold;" id="pop-total">0</div>
+                    </div>
                 </div>
 
-                <div class="panel">
-                    <h3>Banen Toewijzen</h3>
-                    <div id="jobs-container"></div>
-                </div>
+                <h3>Banen Toewijzen</h3>
+                <div id="jobs-container"></div>
             </section>
 
             <section id="tab-research" class="tab-content">
