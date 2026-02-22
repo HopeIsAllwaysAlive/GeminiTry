@@ -14,7 +14,7 @@ let game = {
         population: { name: "Bevolking", amount: 1, max: 5, perSec: 0, discovered: true },
         gold: { name: "Goud", amount: 0, max: 1000, perSec: 0, discovered: false },
         researchPoints: { name: "Research Punten", amount: 0, max: 500, perSec: 0, discovered: false },
-        scouts: { name: "Verkenners", amount: 0, max: 0, perSec: 0, discovered: false }
+        intel: { name: "Intel", amount: 0, max: 100, perSec: 0, discovered: false }
     },
     jobs: {
         farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
@@ -23,7 +23,7 @@ let game = {
         miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
         stoneworker: { name: "Steenhouwer", count: 0, max: 0, effect: { stone: -1, food: -1, brick: 0.2 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 }, unlocked: false },
-        scout_job: { name: "Verkenner", count: 0, max: 0, effect: { food: -2 }, unlocked: false },
+        scout_job: { name: "Verkenner", count: 0, max: 0, effect: { intel: 1, food: -2 }, unlocked: false },
         soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -0.1, food: -2 }, unlocked: false },
         banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false }
     },
@@ -38,7 +38,7 @@ let game = {
         stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 2000, stone: 3000 }, provides: { job_stoneworker: 1, max_brick: 100 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
         warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false },
         school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.", unlocked: false },
-        scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
+        scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3, max_intel: 50 }, desc: "Traint inwoners om de wereld te verkennen en vergroot opslag voor Intel (+50).", unlocked: false },
         barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 20 soldaten.", unlocked: false },
         bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
     },
@@ -180,29 +180,29 @@ let game = {
         types: {
             easy: {
                 name: "Korte Verkenning",
-                duration: 10,//30
-                cost: { food: 50, scouts: 1 },
-                successRate: 0.9, // 90%
+                duration: 10,
+                cost: { food: 100, intel: 50 },
+                successRate: 0.9,
                 requirements: () => true
             },
             medium: {
                 name: "Handelsroute Zoeken",
-                duration: 10,//120
-                cost: { food: 200, gold: 50, scouts: 2 },
+                duration: 20,
+                cost: { food: 300, gold: 100, intel: 150 },
                 successRate: 0.75,
-                requirements: () => game.research.medium_expeditions.unlocked && game.resources.scouts.amount >= 2
+                requirements: () => game.research.medium_expeditions.unlocked
             },
             hard: {
                 name: "Diplomatieke Missie",
-                duration: 10,//300
-                cost: { food: 500, gold: 200, scouts: 5 },
+                duration: 30,
+                cost: { food: 800, gold: 300, intel: 400 },
                 successRate: 0.6,
-                requirements: () => game.research.hard_expeditions.unlocked && game.resources.scouts.amount >= 5
+                requirements: () => game.research.hard_expeditions.unlocked
             },
             expert: {
                 name: "Verre Expeditie",
-                duration: 10,//900
-                cost: { food: 1500, gold: 1000, scouts: 10 },
+                duration: 40,
+                cost: { food: 2000, gold: 1500, intel: 800 },
                 successRate: 0.4,
                 requirements: () => game.research.expert_expeditions.unlocked && game.buildings.school.count >= 3
             }
@@ -278,7 +278,7 @@ function getInitialState() {
             food: { amount: 10, max: 150, perSec: 0, manualGain: 1, unlocked: true },
             population: { amount: 1, max: 5, unlocked: true },
             researchPoints: { amount: 0, max: 500, perSec: 0 },
-            scouts: { amount: 0, max: 0, perSec: 0, unlocked: false }
+            intel: { amount: 0, max: 100, perSec: 0, name: "Intel", icon: "👁️", discovered: false, unlocked: false }
         },
         buildings: {
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
@@ -291,7 +291,7 @@ function getInitialState() {
             quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2, max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
             school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.", unlocked: false },
             irrigation_system: { name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
-            scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3 }, desc: "Traint inwoners om de wereld te verkennen.", unlocked: false },
+            scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3, max_intel: 50 }, desc: "Traint inwoners om de wereld te verkennen en vergroot opslag voor Intel (+50).", unlocked: false },
             //barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 5 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 5 soldaten.", unlocked: false }
             bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
         },

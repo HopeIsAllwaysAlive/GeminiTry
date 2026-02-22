@@ -266,6 +266,14 @@ function getProductionDetails(key) {
             addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
         }
     }
+    else if (key === 'intel') {
+        const verkenners = game.jobs.scout_job.effect.intel * game.jobs.scout_job.count;
+        addRow("Productie (Verkenners)", verkenners, true);
+        if (verkenners > 0 && game.prestige.points > 0) {
+            const pBonus = verkenners * (prestigeBoost - 1);
+            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        }
+    }
     else if (key === 'gold') {
         const bankers = game.jobs.banker.effect.gold * game.jobs.banker.count;
         addRow("Productie (Bankiers)", bankers, true);
@@ -359,11 +367,19 @@ function renderBuildings() {
             affordable = canAfford(displayCost);
         }
 
-        let costTxt = [];
-        for (let r in displayCost) costTxt.push(`${displayCost[r]} ${game.resources[r].name}`);
+        let costTxtHtml = '';
+        for (let r in displayCost) {
+            const reqAmount = displayCost[r];
+            const hasAmount = game.resources[r].amount;
+            const resName = game.resources[r].name;
+            const isShort = hasAmount < reqAmount;
+
+            costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${resName}</span>, `;
+        }
+        if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
 
         let label = buyAmount === 'max' ? `MAX (${actualAmount})` : buyAmount;
-        let costDisplay = costTxt.join(', ');
+        let costDisplay = costTxtHtml;
 
         container.innerHTML += `
             <div class="panel">
@@ -417,7 +433,7 @@ function renderJobs() {
         container.innerHTML += `
             <div class="panel" style="margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button class="step-btn" onclick="assignJob('${key}', -${currentBuyAmountRem})" style="background: var(--red); white-space: nowrap; min-width: 60px;" ${canFire ? '' : 'disabled'}>
+                    <button class="step-btn" onclick="assignJob('${key}', -1)" style="background: var(--red); white-space: nowrap; min-width: 60px;" ${canFire ? '' : 'disabled'}>
                         <span style="font-size: 0.7em; display:block;">-${displayAmountRem}</span>
                     </button>
                     
@@ -429,7 +445,7 @@ function renderJobs() {
                         <div style="font-size: 0.7em; color: #a6adc8;">${effectDisplay}</div>
                     </div>
 
-                    <button class="step-btn" onclick="assignJob('${key}', ${currentBuyAmountAdd})" style="background: var(--green); white-space: nowrap; min-width: 60px;" ${canHire ? '' : 'disabled'}>
+                    <button class="step-btn" onclick="assignJob('${key}', 1)" style="background: var(--green); white-space: nowrap; min-width: 60px;" ${canHire ? '' : 'disabled'}>
                         <span style="font-size: 0.7em; display:block;">+${displayAmountAdd}</span>
                     </button>
                 </div>
@@ -439,33 +455,66 @@ function renderJobs() {
 
 function renderResearch() {
     const container = document.getElementById('tab-research');
-    container.innerHTML = '<h1>Research</h1>';
+
+    let availableHTML = '<h3>Beschikbaar Onderzoek</h3><div style="display: flex; flex-direction: column; gap: 10px;">';
+    let completedHTML = '<h3 style="margin-top: 30px;">Voltooid Onderzoek</h3><div style="display: flex; flex-direction: column; gap: 10px;">';
+
+    let hasAvailable = false;
+    let hasCompleted = false;
+
     for (let key in game.research) {
         const r = game.research[key];
-        if (r.unlocked || !r.requirement()) continue;
 
-        let costTxt = [];
-        for (let c in r.cost) costTxt.push(`${r.cost[c]} ${game.resources[c].name}`);
+        if (r.researched) {
+            hasCompleted = true;
+            completedHTML += `
+                <div class="panel" style="border-left: 4px solid var(--green); opacity: 0.8;">
+                    <strong>${r.name}</strong> ✅<br>
+                    <small style="color: #a6adc8;">${r.desc}</small>
+                </div>`;
+            continue;
+        }
 
-        container.innerHTML += `
+        // Als nog niet ontgrendeld en requirements niet gehaald: verbergen
+        if (!r.unlocked && !r.requirement()) continue;
+
+        hasAvailable = true;
+        let costTxtHtml = '';
+        for (let c in r.cost) {
+            const reqAmount = r.cost[c];
+            const hasAmount = game.resources[c].amount;
+            const resName = game.resources[c].name;
+            const isShort = hasAmount < reqAmount;
+
+            costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${resName}</span>, `;
+        }
+        // Verwijder laatste komma
+        if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
+
+        const canBuy = canAfford(r.cost);
+
+        availableHTML += `
             <div class="panel">
-                <strong>${r.name}</strong><br><small>${r.desc}</small><br>
-                <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyResearch('${key}')" ${canAfford(r.cost) ? '' : 'disabled'}>
-                    Onderzoek (${costTxt.join(', ')})
+                <strong>${r.name}</strong><br>
+                <small style="margin-bottom: 10px; display: block;">${r.desc}</small>
+                <button class="tap-btn" style="width: 100%; height: auto; padding: 10px;" onclick="buyResearch('${key}')" ${canBuy ? '' : 'disabled'}>
+                    Onderzoek (${costTxtHtml})
                 </button>
             </div>`;
-
-    };
-    container.innerHTML += '<h1>Research gedaan</h1>';
-    for (let key in game.research) {
-        const r = game.research[key];
-        if (r.researched == true) {
-            container.innerHTML += `
-                <div class="panel">
-                    <strong>${r.name}</strong><br><small>${r.desc}</small>
-                </div>`;
-        }
     }
+
+    availableHTML += '</div>';
+    completedHTML += '</div>';
+
+    if (!hasAvailable) availableHTML = '<h3>Beschikbaar Onderzoek</h3><div class="panel"><small>Geen nieuwe onderzoeken beschikbaar op dit moment.</small></div>';
+    if (!hasCompleted) completedHTML = ''; // Verberg compleet als je niks hebt
+
+    container.innerHTML = `
+        <h1>Onderzoekscentrum</h1>
+        <p><small>Investeer grondstoffen in nieuwe technologieën om je stad beter, sneller en efficiënter te maken.</small></p>
+        ${availableHTML}
+        ${completedHTML}
+    `;
 }
 
 function renderManualButtons() {
@@ -515,40 +564,69 @@ function showFloatingText(e, text) {
 function renderExplore() {
     const container = document.getElementById('tab-explore');
     container.innerHTML = '<h1>Verkennen</h1>';
-    //   container.innerHTML += `< p > Scouts count: ${ game.jobs.scout_job.count } resources: ${ game.resources.scouts.amount }</p > `;
+
+    // 1. Is er een Actief Event?
+    if (game.expeditions.activeEvent) {
+        const ev = game.expeditions.activeEvent;
+        let choicesHtml = '';
+        ev.choices.forEach((choice, index) => {
+            choicesHtml += `<button class="tap-btn" style="width: 100%; margin-top: 5px; height: 40px;" onclick="game.expeditions.activeEvent.choices[${index}].action()">${choice.text}</button>`;
+        });
+
+        container.innerHTML += `
+            <div class="panel" style="border: 2px solid var(--accent); background: rgba(0,0,0,0.5);">
+                <h3 style="color: var(--peach);">${ev.title}</h3>
+                <p>${ev.text}</p>
+                <div style="margin-top: 15px;">
+                    ${choicesHtml}
+                </div>
+            </div>
+        `;
+        return; // Verberg de rest tot het event is opgelost
+    }
+
+    // 2. Is er een expeditie onderweg?
     if (game.expeditions.active) {
-        // Toon voortgangsbalk van huidige missie
         const type = game.expeditions.types[game.expeditions.currentType];
         const progress = ((type.duration - game.expeditions.timer) / type.duration) * 100;
 
         container.innerHTML += `
-        < div class="panel" >
+            <div class="panel">
                 <h3>${type.name} in uitvoering...</h3>
-                <p>Tijd resterend: ${game.expeditions.timer}s</p>
+                <p>Tijd resterend: ${Math.ceil(game.expeditions.timer)}s</p>
                 <div style="width: 100%; background: #45475a; height: 15px; border-radius: 5px;">
-                    <div style="width: ${progress}%; background: #a6e3a1; height: 100%; border-radius: 5px; transition: width 1s linear;"></div>
+                    <div style="width: ${progress}%; background: var(--green); height: 100%; border-radius: 5px; transition: width 1s linear;"></div>
                 </div>
-            </div >
+            </div>
         `;
     } else {
-        // Toon lijst met beschikbare missies
+        // 3. Toon lijst met beschikbare missies
+        container.innerHTML += '<p><small>Zend je verkenners op pad om grondstoffen, nieuwe volken of geheimen te ontdekken. Kost Intel en Voedsel.</small></p>';
         for (let key in game.expeditions.types) {
             const e = game.expeditions.types[key];
             if (!e.requirements()) continue;
 
-            let costTxt = [];
-            for (let c in e.cost) costTxt.push(`${e.cost[c]} ${game.resources[c].name}`);
+            let costTxtHtml = '';
+            for (let c in e.cost) {
+                const reqAmount = e.cost[c];
+                const hasAmount = game.resources[c].amount;
+                const resName = game.resources[c].name;
+                const isShort = hasAmount < reqAmount;
+                costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${resName}</span>, `;
+            }
+            if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
+
+            const canBuy = canAfford(e.cost);
 
             container.innerHTML += `
                 <div class="panel" style="margin-bottom: 10px;">
-                    <strong>${e.name}</strong> (${key})<br>
-                <small>Duur: ${e.duration}s | Kans: ${e.successRate * 100}%</small><br>
-                    <small>Kosten: ${costTxt.join(', ')}</small><br>
-                        <button class="build-btn" onclick="startExpedition('${key}')" ${canAfford(e.cost) && game.jobs.scout_job.count >= (e.cost.scouts || 0) ? '' : 'disabled'}>
-                            Start Missie
-                        </button>
-                    </div>
-                    `;
+                    <strong>${e.name}</strong><br>
+                    <small style="color: #a6adc8;">Duur: ${e.duration}s</small><br><br>
+                    <button class="tap-btn" style="width: 100%; height: auto; padding: 10px;" onclick="startExpedition('${key}')" ${canBuy ? '' : 'disabled'}>
+                        Start Missie (${costTxtHtml})
+                    </button>
+                </div>
+            `;
         }
     }
 }
