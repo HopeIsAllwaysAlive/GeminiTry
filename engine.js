@@ -545,6 +545,8 @@ function checkUnlocks() {
     if (game.research.toolmaking.unlocked) {
         game.buildings.quarry.unlocked = true;
         game.jobs.miner.unlocked = true;
+        game.buildings.barracks.unlocked = true;
+        game.jobs.soldier.unlocked = true;
     }
     /*  if (game.research.agriculture.unlocked) {
           game.buildings.farm_plot.unlocked = true;
@@ -750,6 +752,17 @@ function assignJob(jobKey, direction) {
     } else { // Verwijderen
         if (buyAmount === 'max') amountToChange = job.count;
         else amountToChange = Math.min(buyAmount, job.count);
+
+        // EXTRA CONTROLE: Als de baan Soldaat is, mogen we niet onder het aantal getrainde eenheden zakken
+        if (jobKey === 'soldier') {
+            const totalTrained = Object.values(game.military.units).reduce((sum, u) => sum + u.total, 0);
+            const maxRemovable = job.count - totalTrained;
+            amountToChange = Math.min(amountToChange, maxRemovable);
+            if (amountToChange <= 0 && maxRemovable <= 0) {
+                alert("Je kunt deze Basis Soldaten niet ontslaan, omdat ze in dienst zijn als getrainde eenheid (Zwaardvechter, etc). Ontsla eerst je eenheden in het Leger tabblad.");
+                return;
+            }
+        }
 
         job.count -= amountToChange;
     }
@@ -974,9 +987,9 @@ function triggerCounterAttack(_tribeKey) {
     if (tribeAttack > game.military.defensePower) {
         const loss = 200;
         game.resources.gold.amount = Math.max(0, game.resources.gold.amount - loss);
-        alert(`Je verdediging werd doorbroken! De tribe heeft ${loss} goud geplunderd.`);
+        alert(`❌ VERDEDIGING DOORBROKEN!\n\nDe vijand viel aan met Kracht ${tribeAttack}, maar jouw verdediging was slechts Kracht ${Math.floor(game.military.defensePower)}.\n\nZe hebben ${loss} goud geplunderd.`);
     } else {
-        alert("Je leger heeft de tegenaanval succesvol afgeslagen!");
+        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJe verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) heeft succesvol de tegenaanval (Kracht ${tribeAttack}) afgeslagen.`);
     }
 }
 function attackTribe(tribeKey) {
@@ -1010,6 +1023,10 @@ function attackTribe(tribeKey) {
                 const lost = Math.ceil(u.assignedOff * 0.2);
                 u.assignedOff -= lost;
                 u.total -= lost;
+
+                // Belangrijk: Doden verminderen ook je actuele populatie en soldaat-banen
+                game.jobs.soldier.count = Math.max(0, game.jobs.soldier.count - lost);
+                game.resources.population.amount = Math.max(0, game.resources.population.amount - lost);
             }
         }
     }
@@ -1025,12 +1042,11 @@ function triggerEnemyAttack(tribeKey) {
     alert(`⚠️ ALARM! ${tribe.name} valt je stad aan met een kracht van ${enemyPower}!`);
 
     if (game.military.defensePower >= enemyPower) {
-        alert(`Je defensieve leger heeft de aanval succesvol afgeslagen!`);
-        // Optioneel: verlies een paar verdedigingsunits
+        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJouw verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de invasie van ${tribe.name} (Kracht ${enemyPower}).`);
     } else {
         const goldLost = Math.floor(game.resources.gold.amount * 0.2);
         game.resources.gold.amount -= goldLost;
-        alert(`Je verdediging werd doorbroken! ${tribe.name} heeft ${goldLost} goud geplunderd.`);
+        alert(`❌ VERDEDIGING DOORBROKEN!\n\nJe verdediging (Kracht ${Math.floor(game.military.defensePower)}) was niet bestand tegen de aanval van ${tribe.name} (Kracht ${enemyPower}).\n\nZe hebben ${goldLost} goud geplunderd.`);
     }
     updateUI();
 }
@@ -1038,29 +1054,68 @@ function triggerEnemyAttack(tribeKey) {
 // Functie om een unit te trainen
 function trainUnit(unitKey) {
     const unit = game.military.units[unitKey];
-    //check is er iemand om te trainen
-    const totalWorking = Object.values(game.jobs).reduce((a, b) => a + b.count, 0);
-    const totalMilitary = Object.values(game.military.units).reduce((a, b) => a + b.total, 0);
-    const idlePop = game.resources.population.amount - totalWorking;// - totalMilitary;
 
-    if (idlePop < 1) {
-        alert("Er is niemand beschikbaar om te trainen! Zorg voor meer werkloze inwoners.");
+    // Bereken hoeveel VRIJE basis soldaten er zijn (Basis Soldaten - Getrainde Eenheden)
+    const totalTrained = Object.values(game.military.units).reduce((sum, u) => sum + u.total, 0);
+    const baseSoldiers = game.jobs.soldier.count;
+    const availableSoldiers = baseSoldiers - totalTrained;
+
+    if (availableSoldiers < 1) {
+        alert("Geen ongetrainde Basis Soldaten beschikbaar! Wijs meer inwoners toe aan de Kazerne.");
         return;
     }
-    //   console.log(`Beschikbare inwoners voor training: ${idlePop}, totalWorking: ${totalWorking}, totalMilitary: ${totalMilitary}`);
 
-    // Check of we de kosten kunnen betalen
-    if (canAfford(unit.cost)) {
-        payCost(unit.cost);
-        unit.total++;
-        game.resources.population.amount -= 1; // Verlaag de bevolking met 1 voor elke getrainde soldaat
-        // Direct de kracht herberekenen en de UI verversen
+    let maxAffordable = 0;
+    // Bepaal de hoeveelheid die we willen trainen
+    let requestedAmount = 1;
+    if (buyAmount === 10) requestedAmount = 10;
+    else if (buyAmount === 100) requestedAmount = 100;
+    else if (buyAmount === 'max') requestedAmount = availableSoldiers;
+
+    // Beperk tot beschikbare soldaten
+    requestedAmount = Math.min(requestedAmount, availableSoldiers);
+
+    // Bereken hoeveel we maximaal kunnen betalen uitgaande van beschikbare middelen
+    let maxCanAffordUnits = requestedAmount;
+    for (let c in unit.cost) {
+        const canAffordC = Math.floor(game.resources[c].amount / unit.cost[c]);
+        maxCanAffordUnits = Math.min(maxCanAffordUnits, canAffordC);
+    }
+    maxAffordable = maxCanAffordUnits;
+
+    if (maxAffordable > 0) {
+        const totalCost = {};
+        for (let c in unit.cost) totalCost[c] = unit.cost[c] * maxAffordable;
+        payCost(totalCost);
+        unit.total += maxAffordable;
+
         recalcMilitary();
         recalcRates();
         updateUI();
-        console.log(`${unit.name} getraind. Totaal: ${unit.total}`);
     } else {
-        console.log("Niet genoeg resources om deze unit te trainen.");
+        alert("Niet genoeg grondstoffen om deze eenheid te trainen.");
+    }
+}
+
+function untrainUnit(unitKey) {
+    const u = game.military.units[unitKey];
+    const unassigned = u.total - u.assignedOff - u.assignedDef;
+
+    let moveAmount = 1;
+    if (buyAmount === 10) moveAmount = 10;
+    else if (buyAmount === 100) moveAmount = 100;
+    else if (buyAmount === 'max') moveAmount = unassigned;
+
+    moveAmount = Math.min(moveAmount, unassigned);
+
+    if (moveAmount > 0) {
+        u.total -= moveAmount;
+        // Refunds geen resources, alleen de basis soldaat komt terug in de pool (gebeurt vanzelf doordat u.total zakt)
+        recalcMilitary();
+        recalcRates();
+        updateUI();
+    } else {
+        alert("Geen vrije eenheden beschikbaar om te ontslaan! (Weghalen uit Aanval/Verdediging eerst).");
     }
 }
 
@@ -1068,30 +1123,37 @@ function assignUnit(unitKey, target) {
     const u = game.military.units[unitKey];
     const unassigned = u.total - u.assignedOff - u.assignedDef;
 
+    let moveAmount = 1;
+    if (buyAmount === 10) moveAmount = 10;
+    else if (buyAmount === 100) moveAmount = 100;
+    else if (buyAmount === 'max') moveAmount = u.total; // Wordt later gecapt
+
     if (target === 'off') {
-        if (unassigned > 0) {
-            // Er zijn vrije units, wijs toe aan off
-            u.assignedOff++;
-            //console.log(`Unit ${unitKey} toegewezen aan Offensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned - 1}`);
-        } else if (u.assignedDef > 0) {
-            // Geen vrije units, maar wel def units: verplaats van def naar off
-            u.assignedDef--;
-            u.assignedOff++;
-            //console.log(`Unit ${unitKey} verplaatst van Defensie naar Offensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned}`);
+        const availableToAdd = unassigned + u.assignedDef; // Alle vrije units + units in def
+        moveAmount = Math.min(moveAmount, availableToAdd);
+
+        if (moveAmount > 0) {
+            let fromUnassigned = Math.min(moveAmount, unassigned);
+            let fromDef = moveAmount - fromUnassigned;
+            u.assignedOff += moveAmount;
+            u.assignedDef -= fromDef;
         }
-        // Anders: geen vrije units en geen def units -> doe niets
     } else if (target === 'def') {
-        if (unassigned > 0) {
-            // Er zijn vrije units, wijs toe aan def
-            u.assignedDef++;
-            //console.log(`Unit ${unitKey} toegewezen aan Defensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned - 1}`);
-        } else if (u.assignedOff > 0) {
-            // Geen vrije units, maar wel off units: verplaats van off naar def
-            u.assignedOff--;
-            u.assignedDef++;
-            //console.log(`Unit ${unitKey} verplaatst van Offensie naar Defensie. Assigned Off: ${u.assignedOff}, Assigned Def: ${u.assignedDef}, Unassigned: ${unassigned}`);
+        const availableToAdd = unassigned + u.assignedOff;
+        moveAmount = Math.min(moveAmount, availableToAdd);
+
+        if (moveAmount > 0) {
+            let fromUnassigned = Math.min(moveAmount, unassigned);
+            let fromOff = moveAmount - fromUnassigned;
+            u.assignedDef += moveAmount;
+            u.assignedOff -= fromOff;
         }
-        // Anders: geen vrije units en geen off units -> doe niets
+    } else if (target === 'unassign_off') {
+        let fromOff = Math.min(moveAmount, u.assignedOff);
+        u.assignedOff -= fromOff;
+    } else if (target === 'unassign_def') {
+        let fromDef = Math.min(moveAmount, u.assignedDef);
+        u.assignedDef -= fromDef;
     }
 
     recalcMilitary();

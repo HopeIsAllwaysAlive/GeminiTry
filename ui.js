@@ -338,9 +338,8 @@ function getProductionDetails(key) {
     }
     return html;
 }
-function renderBuildings() {
-    const container = document.getElementById('building-list');
-    container.innerHTML = `
+function getBuyAmountBarHtml() {
+    return `
         <div class="buy-amount-bar">
             <button class="${buyAmount === 1 ? 'active' : ''}" onclick="setBuyAmount(1)">1</button>
             <button class="${buyAmount === 10 ? 'active' : ''}" onclick="setBuyAmount(10)">10</button>
@@ -348,6 +347,11 @@ function renderBuildings() {
             <button class="${buyAmount === 'max' ? 'active' : ''}" onclick="setBuyAmount('max')">MAX</button>
         </div>
     `;
+}
+
+function renderBuildings() {
+    const container = document.getElementById('building-list');
+    container.innerHTML = getBuyAmountBarHtml();
     for (let key in game.buildings) {
         const b = game.buildings[key];
         if (!b.unlocked) continue;
@@ -420,14 +424,7 @@ function renderBuildings() {
 
 function renderJobs() {
     const container = document.getElementById('jobs-container'); // Verander naar een DIV in je HTML
-    container.innerHTML = `
-        <div class="buy-amount-bar">
-            <button class="${buyAmount === 1 ? 'active' : ''}" onclick="setBuyAmount(1)">1</button>
-            <button class="${buyAmount === 10 ? 'active' : ''}" onclick="setBuyAmount(10)">10</button>
-            <button class="${buyAmount === 100 ? 'active' : ''}" onclick="setBuyAmount(100)">100</button>
-            <button class="${buyAmount === 'max' ? 'active' : ''}" onclick="setBuyAmount('max')">MAX</button>
-        </div>
-    `;
+    container.innerHTML = getBuyAmountBarHtml();
 
     for (let key in game.jobs) {
         const job = game.jobs[key];
@@ -437,11 +434,19 @@ function renderJobs() {
         const availableWorkers = getIdlePopulation();
         const fillableJobs = job.max - job.count;
         const maxAddable = Math.min(availableWorkers, fillableJobs);
+        let maxRemovable = job.count;
+
+        // Zorg dat je visual niet meer soldaten laat ontslaan dan kan
+        if (key === 'soldier') {
+            const totalTrained = Object.values(game.military.units).reduce((sum, u) => sum + u.total, 0);
+            maxRemovable = Math.max(0, job.count - totalTrained);
+        }
+
         let currentBuyAmountAdd = buyAmount === 'max' ? Math.max(1, maxAddable) : buyAmount;
-        let currentBuyAmountRem = buyAmount === 'max' ? job.count : buyAmount;
+        let currentBuyAmountRem = buyAmount === 'max' ? Math.max(1, maxRemovable) : buyAmount;
 
         const canHire = getIdlePopulation() >= currentBuyAmountAdd && job.count + currentBuyAmountAdd <= job.max;
-        const canFire = job.count >= currentBuyAmountRem;
+        const canFire = maxRemovable >= currentBuyAmountRem && maxRemovable > 0;
 
         // Effect tekst (basis opbrengst van 1 werker)
         let effectTxtParts = [];
@@ -774,44 +779,109 @@ function renderMilitary() {
     recalcMilitary();
 
     // Deel 1: Header en Kracht Overzicht
-    container.innerHTML = `<h1>Militair Hoofdkwartier</h1>`;
-    container.innerHTML += `
-                    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                        <div class="panel" style="flex:1; border-left: 5px solid #f38ba8;">
-                            <h3>Aanvalskracht: ${Math.floor(game.military.attackPower)}</h3>
-                        </div>
-                        <div class="panel" style="flex:1; border-left: 5px solid #a6e3a1;">
-                            <h3>Verdedigingskracht: ${Math.floor(game.military.defensePower)}</h3>
-                        </div>
-                    </div>
-                    `;
+    const totalTrained = Object.values(game.military.units).reduce((sum, u) => sum + u.total, 0);
+    const availableSoldiers = (game.jobs.soldier.count || 0) - totalTrained;
 
+    container.innerHTML = `<h1>Militair Hoofdkwartier</h1>`;
+
+    container.innerHTML += `
+        <div style="display: flex; gap: 20px; margin-bottom: 20px; margin-top: 15px;">
+            <div class="panel" style="flex:1; border-left: 5px solid #f38ba8;">
+                <h3>Aanvalskracht: ${Math.floor(game.military.attackPower)}</h3>
+            </div>
+            <div class="panel" style="flex:1; border-left: 5px solid #a6e3a1;">
+                <h3>Verdedigingskracht: ${Math.floor(game.military.defensePower)}</h3>
+            </div>
+            <div class="panel" style="flex:1; border-left: 5px solid var(--accent);">
+                <h3>Basis Soldaten: ${availableSoldiers}</h3>
+            </div>
+        </div>
+    `;
+
+    // Voeg multiplier bar toe onder het dashboard
+    container.innerHTML += getBuyAmountBarHtml();
 
     for (let key in game.military.units) {
         const u = game.military.units[key];
         if (u.unlocked === false) continue; // Sla niet-ontgrendelde units over
         const unassigned = u.total - u.assignedOff - u.assignedDef;
         const assigned = u.assignedOff + u.assignedDef;
-        const unitKey = key; // Voor de functie calls
 
+        // Bereken hoeveel we maximaal kunnen betalen uitgaande van beschikbare middelen
+        let maxAffordableUnits = availableSoldiers;
+        for (let c in u.cost) {
+            maxAffordableUnits = Math.min(maxAffordableUnits, Math.floor(game.resources[c].amount / u.cost[c]));
+        }
+        maxAffordableUnits = Math.max(0, maxAffordableUnits);
 
-        const canTrainUnit = getIdlePopulation() >= 1 && canAfford(u.cost);
+        // Bepaal hoeveel we willen trainen obv buyAmount
+        let requestedAmount = 1;
+        if (buyAmount === 10) requestedAmount = 10;
+        else if (buyAmount === 100) requestedAmount = 100;
+        else if (buyAmount === 'max') requestedAmount = Math.max(1, maxAffordableUnits);
+
+        // Zorg dat het berekenen visueel logisch blijft
+        // Als je 10x selecteert, toon je 10x kosten (zodat speler weet wat het kost as is)
+        // Maar als 'max' geselecteerd is, cap je het puur op wat er betaalbaar is qua soldaten én grondstoffen
+        let visualTrainAmount = requestedAmount;
+        if (buyAmount === 'max') {
+            visualTrainAmount = Math.max(1, maxAffordableUnits);
+        }
+
+        // Bereken kosten string
+        let costHtmlText = "";
+        let affordable = true;
+        for (let c in u.cost) {
+            const reqAmount = u.cost[c] * visualTrainAmount;
+            const hasAmount = game.resources[c].amount;
+            const isShort = hasAmount < reqAmount;
+            if (isShort) affordable = false;
+            costHtmlText += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${game.resources[c].name}</span>, `;
+        }
+        if (costHtmlText.length > 0) costHtmlText = costHtmlText.slice(0, -2);
+
+        // Zonder basis soldaten kun je sowieso niet trainen
+        if (availableSoldiers < visualTrainAmount) affordable = false;
+
+        let assignText = '+1';
+        if (buyAmount === 10) assignText = '+10';
+        else if (buyAmount === 100) assignText = '+100';
+        else if (buyAmount === 'max') assignText = 'Max';
+
+        let untrainAmount = 1;
+        if (buyAmount === 10) untrainAmount = 10;
+        else if (buyAmount === 100) untrainAmount = 100;
+        else if (buyAmount === 'max') untrainAmount = unassigned;
+        untrainAmount = Math.min(untrainAmount, unassigned);
+        const canUntrain = untrainAmount > 0;
 
         container.innerHTML += `
-                    <div class="panel">
-                        <div style="display:flex; justify-content:space-between">
-                            <strong>${u.name}</strong>
-                            <span>Toegewezen: ${assigned}/${u.total} eenheden</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                            <button class="action-btn-small" onclick="assignUnit('${unitKey}', 'off')">⚔️ Aanval: ${u.assignedOff}</button>
-                            <button class="action-btn-small" onclick="assignUnit('${unitKey}', 'def')">🛡️ Verdediging: ${u.assignedDef}</button>
-                        </div>
-                        <button class="build-btn" style="background: var(--accent)" onclick="trainUnit('${key}')" ${canTrainUnit ? '' : 'disabled'}>
-                            Train (1 pop, ${u.cost.gold} gold, ${u.cost.food} food)
-                        </button>
+            <div class="panel" style="margin-bottom: 10px;">
+                <div style="display:flex; justify-content:space-between">
+                    <strong>${u.name} <small style="color: #a6adc8; font-weight: normal;">(Onderhoud: ${Object.entries(u.maintenance).map(([k, v]) => `${v} ${game.resources[k].name}/s`).join(', ')})</small></strong>
+                    <span>Totaal: ${u.total} (Vrij: <span style="color: var(--peach)">${unassigned}</span>)</span>
+                </div>
+                <small style="color: #a6adc8;">${u.desc} Kracht: ⚔️ ${u.off || u.offMultiplier} / 🛡️ ${u.def || u.defMultiplier}</small>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <div style="display: flex; gap: 5px;">
+                        <button class="action-btn-small" style="flex: 1;" onclick="assignUnit('${key}', 'off')">⚔️ Aanval: ${u.assignedOff} <small>(${assignText})</small></button>
+                        <button class="action-btn-small" style="flex: 0 0 40px; background: var(--surface1);" onclick="assignUnit('${key}', 'unassign_off')" title="Haal eenheden terug">-</button>
                     </div>
-                    `;
+                    <div style="display: flex; gap: 5px;">
+                        <button class="action-btn-small" style="flex: 1;" onclick="assignUnit('${key}', 'def')">🛡️ Verdediging: ${u.assignedDef} <small>(${assignText})</small></button>
+                        <button class="action-btn-small" style="flex: 0 0 40px; background: var(--surface1);" onclick="assignUnit('${key}', 'unassign_def')" title="Haal eenheden terug">-</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="build-btn" style="flex: 2; background: var(--accent);" onclick="trainUnit('${key}')" ${affordable ? '' : 'disabled'}>
+                        Train ${visualTrainAmount}x (Kost: <span style="color: ${availableSoldiers < visualTrainAmount ? 'var(--red)' : 'var(--green)'}">${visualTrainAmount} Basis Soldaten</span>, ${costHtmlText})
+                    </button>
+                    <button class="build-btn" style="flex: 1; background: var(--surface1);" onclick="untrainUnit('${key}')" ${canUntrain ? '' : 'disabled'}>
+                        Ontsla ${untrainAmount}x  <br/><small>(Terug naar Basis)</small>
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     // Deel 3: Doelwitten (Tribes met relatie < 30)
