@@ -64,27 +64,25 @@ function recalcLimits() {
 
 function recalcWood() {
     game.resources.wood.perSec = 0;
+
     const job = game.jobs.woodcutter;
     let multiplier = 1;
+
+    // Specifieke upgrades / tech
+    if (game.research.axe_tech.unlocked) multiplier += 1; // +100%
+    if (game.research.wood_tech.unlocked) multiplier += 0.5; // +50%
+
+    // Basis prestige multiplier
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    if (game.research.axe_tech.unlocked) multiplier += 1;
-    if (game.research.wood_tech.unlocked) multiplier += 0.5;
-    game.resources.wood.perSec += (job.effect.wood * job.count * multiplier * prestigeBoost);
-    for (let key in game.diplomacy.discoveredTribes) {
-        const tribe = game.diplomacy.discoveredTribes[key];
-        if (tribe.tradeRouteActive) {
-            // Kosten: Elke handelsroute kost bijv. 0.5 goud per seconde
-            //game.resources.gold.perSec -= 0.5;
 
-            // Opbrengst: Voeg de resources van de stam toe aan jouw inkomsten
-            const gain = tribe.resources[resType];
-            if (resType === 'wood') {
-                game.resources[resType].perSec += gain;
-            }
+    // Bereken basis opbrengst
+    let baseWood = (job.effect.wood * job.count * multiplier * prestigeBoost);
 
-        }
-    }
-    game.resources.wood.perSec += (game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost); // Houtbewerker consumeert hout, afhankelijk van het aantal houthakkers
+    game.resources.wood.perSec += baseWood;
+
+    // Consumptie door houtbewerker
+    const woodworkers = game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost;
+    game.resources.wood.perSec += woodworkers;
 }
 
 function recalcBeam() {
@@ -105,7 +103,11 @@ function recalcFood() {
     // Specifieke upgrades voor boeren
     if (game.research.plow_invention.unlocked) multiplier *= 1.5;
     if (game.buildings.irrigation_system.count > 0) multiplier *= game.buildings.irrigation_system.count;
-    food.perSec += (job.effect.food * job.count * multiplier * prestigeBoost);
+
+    let baseFood = (job.effect.food * job.count * multiplier * prestigeBoost);
+
+    food.perSec += baseFood;
+
     food.perSec += (-0.5 * idlePop); // Kleine voedselconsumptie per idle pop
     for (let key in game.jobs) {
         const jobs = game.jobs[key];
@@ -124,8 +126,10 @@ function recalcStone() {
     const job = game.jobs.miner;
     let multiplier = 1;
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    game.resources.stone.perSec += (job.effect.stone * job.count * multiplier * prestigeBoost);
-    game.resources.stone.perSec += (game.jobs.stoneworker.effect.stone * game.jobs.stoneworker.count * prestigeBoost); // Steenhouwer consumeert steen, afhankelijk van het aantal mijnwerkers
+
+    let baseStone = (job.effect.stone * job.count * multiplier * prestigeBoost);
+
+    game.resources.stone.perSec += baseStone;
 }
 function recalcBrick() {
     game.resources.brick.perSec = 0;
@@ -148,18 +152,15 @@ function recalcGold() {
     const job = game.jobs.banker;
     let multiplier = 1;
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    game.resources.gold.perSec += (job.effect.gold * job.count * multiplier * prestigeBoost);
+
+    let baseGold = (job.effect.gold * job.count * multiplier * prestigeBoost);
+
     // Passieve belasting
     const taxIncome = (game.resources.population.amount * (1 / 60));
-    game.resources.gold.perSec += taxIncome * prestigeBoost; // Belastingopbrengst, beïnvloed door prestige
-    // --- Handelsroutes opbrengsten ---
-    for (let key in game.diplomacy.discoveredTribes) {
-        const tribe = game.diplomacy.discoveredTribes[key];
-        if (tribe.tradeRouteActive) {
-            // Kosten: Elke handelsroute kost bijv. 0.5 goud per seconde
-            game.resources.gold.perSec -= 0.5;
-        }
-    }
+    baseGold += taxIncome * prestigeBoost; // Belastingopbrengst, beïnvloed door prestige
+
+    game.resources.gold.perSec += baseGold;
+
     // Tribuut van overwonnen tribes
     for (let key in game.diplomacy.discoveredTribes) {
         const tribe = game.diplomacy.discoveredTribes[key];
@@ -194,6 +195,43 @@ function recalcRates() {
     recalcIntel();
     const prestigeMultiplier = 1 + (game.prestige.points * 0.01);
     game.resources.population.perSec = 0.25 * prestigeMultiplier; // Bevolking groeit langzaam, beïnvloed door prestige
+
+    // Bereken diplomatieke multiplier
+    let tradeBonusMult = 1;
+    if (game.research.merchant_guild && game.research.merchant_guild.unlocked) tradeBonusMult += 0.20;
+    if (game.prestige.upgrades.diplomatic_charm && game.prestige.upgrades.diplomatic_charm.level > 0) {
+        tradeBonusMult += (game.prestige.upgrades.diplomatic_charm.level * 0.10);
+    }
+
+    // Bereken alle diplomatieke effecten op resources
+    for (let key in game.diplomacy.discoveredTribes) {
+        const tribe = game.diplomacy.discoveredTribes[key];
+
+        // Handelsroute Actief
+        if (tribe.tradeRouteActive) {
+            if (tribe.tradeCost) {
+                for (let cRes in tribe.tradeCost) {
+                    if (game.resources[cRes]) game.resources[cRes].perSec -= tribe.tradeCost[cRes];
+                }
+            }
+            if (tribe.tradeYield) { // let op: we gebruiken nu tradeYield i.p.v resources
+                for (let yRes in tribe.tradeYield) {
+                    if (game.resources[yRes]) {
+                        game.resources[yRes].perSec += (tribe.tradeYield[yRes] * tradeBonusMult * prestigeMultiplier);
+                    }
+                }
+            }
+        }
+
+        // Alliantie Actief (Gebruikt tradeYield / focus om te bepalen wat ze geven)
+        if (tribe.isAllied && tribe.tradeYield) {
+            for (let yRes in tribe.tradeYield) {
+                if (game.resources[yRes]) {
+                    game.resources[yRes].perSec += (2 * prestigeMultiplier); // platte +2 op hun focus
+                }
+            }
+        }
+    }
 }
 
 function renderResourceDetail(key) {
@@ -865,6 +903,55 @@ function toggleTradeRoute(tribeKey) {
     recalcRates();
     updateUI();
 }
+
+function demandTribute(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+
+    // Verlaag relatie flink
+    tribe.relation -= 30;
+    if (tribe.relation < 0) tribe.relation = 0;
+
+    // Breek handel af als ze je nu haten
+    if (tribe.relation < 60 && tribe.tradeRouteActive) {
+        tribe.tradeRouteActive = false;
+        alert(`${tribe.name} weigert nog langer met je te handelen!`);
+    }
+
+    // Geef buit op basis van hun specialiteit
+    let lootMsg = `Je hebt succesvol ${tribe.name} afgeperst voor tribuut! Buit:\n`;
+    for (let resType in tribe.resources) {
+        const amount = Math.floor(500 * tribe.resources[resType]);
+        addResource(resType, amount);
+        lootMsg += `- ${amount} ${game.resources[resType].name}\n`;
+    }
+
+    updateUI();
+    recalcRates();
+    alert(lootMsg);
+}
+
+function formAlliance(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+
+    if (tribe.relation < 90) {
+        alert("Je relatie met dit volk is niet goed genoeg voor een alliantie (Minstens 90 nodig).");
+        return;
+    }
+
+    const cost = { gold: 2000, food: 2000 };
+    if (!canAfford(cost)) {
+        alert("Je hebt niet genoeg middelen (2000 Goud, 2000 Voedsel) om dit verdrag te tekenen.");
+        return;
+    }
+
+    payCost(cost);
+    tribe.isAllied = true;
+
+    recalcRates();
+    updateUI();
+    alert(`Alliantie gevormd met ${tribe.name}! Je ontvangt nu een permanente stroom van hun specialiteiten.`);
+}
+
 /*
 function attackTribe(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];

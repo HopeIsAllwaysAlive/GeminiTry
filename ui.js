@@ -159,6 +159,31 @@ function getProductionDetails(key) {
 
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
 
+    function getTribeBonuses(resKey) {
+        let tradeCost = 0;
+        let tradeYield = 0;
+        let allianceBonus = 0;
+
+        let tradeBonusMult = 1;
+        if (game.research.merchant_guild && game.research.merchant_guild.unlocked) tradeBonusMult += 0.20;
+        if (game.prestige.upgrades.diplomatic_charm && game.prestige.upgrades.diplomatic_charm.level > 0) {
+            tradeBonusMult += (game.prestige.upgrades.diplomatic_charm.level * 0.10);
+        }
+
+        for (let tKey in game.diplomacy.discoveredTribes) {
+            const tr = game.diplomacy.discoveredTribes[tKey];
+            if (tr.tradeRouteActive) {
+                if (tr.tradeCost && tr.tradeCost[resKey]) tradeCost += tr.tradeCost[resKey];
+                if (tr.tradeYield && tr.tradeYield[resKey]) tradeYield += (tr.tradeYield[resKey] * tradeBonusMult * prestigeBoost);
+            }
+            if (tr.isAllied && tr.tradeYield && tr.tradeYield[resKey]) {
+                allianceBonus += 2 * prestigeBoost;
+            }
+        }
+        return { tradeCost, tradeYield, allianceBonus };
+    }
+    const tribeEffects = getTribeBonuses(key);
+
     // Specifieke logica per grondstof, één op één met engine.js recalcXYZ functies
     if (key === 'wood') {
         const houthakkers = game.jobs.woodcutter.effect.wood * game.jobs.woodcutter.count;
@@ -179,14 +204,6 @@ function getProductionDetails(key) {
                 addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
             }
         }
-
-        // Diplomatie
-        let diploIn = 0;
-        for (let tKey in game.diplomacy.discoveredTribes) {
-            const tribe = game.diplomacy.discoveredTribes[tKey];
-            if (tribe.tradeRouteActive && tribe.resources.wood) diploIn += tribe.resources.wood;
-        }
-        addRow("Handelsroutes", diploIn, true);
 
         // Consumptie houtbewerker
         const houtbewerkers = game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost;
@@ -241,9 +258,11 @@ function getProductionDetails(key) {
     else if (key === 'stone') {
         const miners = game.jobs.miner.effect.stone * game.jobs.miner.count;
         addRow("Productie (Mijnwerkers)", miners, true);
-        if (miners > 0 && game.prestige.points > 0) {
-            const pBonus = miners * (prestigeBoost - 1);
-            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        if (miners > 0) {
+            if (game.prestige.points > 0) {
+                const pBonus = miners * (prestigeBoost - 1);
+                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+            }
         }
 
         // Consumptie door steenhouwer
@@ -281,9 +300,12 @@ function getProductionDetails(key) {
         const tax = (game.resources.population.amount * (1 / 60));
         addRow("Belastingen (Van Bevolking)", tax, true);
 
-        if ((bankers > 0 || tax > 0) && game.prestige.points > 0) {
-            const pBonus = (bankers + tax) * (prestigeBoost - 1);
-            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+        const baseTotal = bankers + tax;
+        if (baseTotal > 0) {
+            if (game.prestige.points > 0) {
+                const pBonus = baseTotal * (prestigeBoost - 1);
+                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
+            }
         }
 
         // Tribuut
@@ -294,18 +316,22 @@ function getProductionDetails(key) {
         }
         addRow("Tribuut (Overwonnen Stammen)", tribute, true);
 
-        // Trade route costs
-        let tradeCost = 0;
-        for (let tKey in game.diplomacy.discoveredTribes) {
-            if (game.diplomacy.discoveredTribes[tKey].tradeRouteActive) tradeCost += 0.5;
-        }
-        addRow("Onderhoud (Handelsroutes)", -tradeCost, false);
-
         const soldierGold = getSoldierMaintenance().gold;
         addRow("Consumptie (Leger Onderhoud)", -soldierGold, false);
     }
 
-    html += `</table>`;
+    // Generieke diplomatie effecten (Aan het eind van elke resource tabel)
+    if (tribeEffects.tradeYield > 0) {
+        addRow("Handelsroute Opbrengst", tribeEffects.tradeYield, true);
+    }
+    if (tribeEffects.allianceBonus > 0) {
+        addRow("Alliantie Bonus (Passief)", tribeEffects.allianceBonus, true);
+    }
+    if (tribeEffects.tradeCost > 0) {
+        addRow("Handelsroute Kosten", -tribeEffects.tradeCost, false);
+    }
+
+    html += "</table>";
 
     if (html.indexOf("<tr>") === -1) {
         html = '<div style="color: #a6adc8; padding-bottom: 5px;">Geen actieve wijzigingen in productie.</div>';
@@ -638,51 +664,105 @@ function renderDiplomacy() {
 
     // Check of er al iets ontdekt is
     if (!game.diplomacy.unlocked || Object.keys(game.diplomacy.discoveredTribes).length === 0) {
-        container.innerHTML += '<p>Je hebt nog geen andere volken ontdekt. Stuur expedities uit.</p>';
+        container.innerHTML += '<p>Je hebt nog geen andere volken ontdekt. Stuur expedities uit in de Verkenning tab.</p>';
         return;
     }
 
     // De loop begint hier
     for (let key in game.diplomacy.discoveredTribes) {
-        const tribe = game.diplomacy.discoveredTribes[key]; // HIER wordt 'tribe' gedefinieerd
+        const tribe = game.diplomacy.discoveredTribes[key];
 
-        let relationText = tribe.relation > 80 ? "Bondgenoot" : tribe.relation > 40 ? "Neutraal" : "Vijandig";
+        // 1. Bepaal status kleuren en tekst
+        let statusColor = "var(--text)";
+        let relationText = "Neutraal";
+        if (tribe.relation >= 90) { statusColor = "var(--peach)"; relationText = "Bondgenoot"; }
+        else if (tribe.relation >= 60) { statusColor = "var(--green)"; relationText = "Vriendelijk"; }
+        else if (tribe.relation <= 30) { statusColor = "var(--red)"; relationText = "Vijandig"; }
+
+        // Bepaal alliantie weergave
+        const allianceText = tribe.isAllied ? "<span style='color: var(--peach); font-weight: bold;'>[Alliantie Actief]</span>" : "";
+
+        // 2. Bepaal trade specs
         const canTrade = tribe.relation >= 60;
-        const btnTradeText = tribe.tradeRouteActive ? "Handel Stoppen" : "Handelsroute Openen";
+
+        let costDetails = [];
+        if (tribe.tradeCost) {
+            for (let cRes in tribe.tradeCost) {
+                costDetails.push(`${tribe.tradeCost[cRes]} ${game.resources[cRes].name}/s`);
+            }
+        }
+        const costStr = costDetails.length > 0 ? `(-${costDetails.join(', ')})` : '';
+        const btnTradeText = tribe.tradeRouteActive ? "Handel Stoppen" : `Handel Starten ${costStr}`;
+
+        let tradeBonusMult = 1;
+        if (game.research.merchant_guild && game.research.merchant_guild.unlocked) tradeBonusMult += 0.20;
+        if (game.prestige.upgrades.diplomatic_charm && game.prestige.upgrades.diplomatic_charm.level > 0) {
+            tradeBonusMult += (game.prestige.upgrades.diplomatic_charm.level * 0.10);
+        }
+        let prestigeBoost = 1 + (game.prestige.points * 0.01);
+
+        let tradeDetails = "Handel Focus: ";
+        let tradeBonuses = [];
+        let allianceBonuses = [];
+        if (tribe.tradeYield) {
+            for (let res in tribe.tradeYield) {
+                let actualYield = tribe.tradeYield[res] * tradeBonusMult * prestigeBoost;
+                tradeBonuses.push(`+${actualYield.toFixed(2)} ${game.resources[res].name}/s`);
+                allianceBonuses.push(`+${(2 * prestigeBoost).toFixed(2)} ${game.resources[res].name}/s`);
+            }
+        }
+        tradeDetails += tradeBonuses.length > 0 ? tradeBonuses.join(' & ') : "Geen";
+
+        // 3. Knoppen Logica
+        const giftAffordable = game.resources.gold.amount >= 100;
+
+        const allianceCost = { gold: 2000, food: 2000 };
+        const canAffordAlliance = canAfford(allianceCost);
+        const allianceDisabled = tribe.isAllied || tribe.relation < 90 || !canAffordAlliance;
+        let allianceBtnText = tribe.isAllied ? "Alliantie Gevormd" : "Vorm Alliantie (2k Goud, 2k Voedsel)";
 
         // We bouwen de HTML op BINNEN de loop, zodat 'tribe' bekend is
         container.innerHTML += `
-                    <div class="panel">
-                        <h3>${tribe.name}</h3>
-                        <p><em>${tribe.desc}</em></p>
-                        <p>Relatie: <strong>${tribe.relation}/100 (${relationText})</strong></p>
+            <div class="panel" style="border-left: 4px solid ${statusColor}; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">${tribe.name} ${allianceText}</h3>
+                    <span style="color: ${statusColor}; font-weight: bold;">Relatie: ${tribe.relation}/100</span>
+                </div>
+                <p><em>${tribe.desc}</em></p>
 
-                        <div style="width: 100%; background: #45475a; height: 8px; border-radius: 4px; margin-bottom: 10px;">
-                            <div style="width: ${tribe.relation}%; background: ${tribe.relation > 40 ? '#a6e3a1' : '#f38ba8'}; height: 100%; border-radius: 4px;"></div>
-                        </div>
+                <!-- Relatie Balk -->
+                <div style="width: 100%; background: #45475a; height: 10px; border-radius: 5px; margin-bottom: 12px; overflow: hidden;">
+                    <div style="width: ${tribe.relation}%; background: ${statusColor}; height: 100%; transition: width 0.3s ease;"></div>
+                </div>
 
-                        <button class="action-btn-small" onclick="sendGift('${key}')" ${game.resources.gold.amount >= 100 ? '' : 'disabled'}>
-                            Stuur Geschenk (100 Goud, +5 Relatie)
-                        </button>
-                        <button class="action-btn-small" style="background: #fab387; color: #11111b;" onclick="deteriorateRelation('${key}', 'insult')">
-                            Beledig Stam (-10 Relatie)
-                        </button>
-                        <button class="action-btn-small" style="background: #f38ba8; color: #11111b;" onclick="deteriorateRelation('${key}', 'provoke')">
-                            Provoceer Leger (-25 Relatie)
-                        </button>
+                <!-- Acties (Grid) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                    <button class="tap-btn" style="height: auto; padding: 8px; font-size: 0.85em;" onclick="sendGift('${key}')" ${giftAffordable ? '' : 'disabled'}>
+                        Geschenk (100 Goud)<br><span style="color: var(--green);">+5 Relatie</span>
+                    </button>
+                    <button class="tap-btn" style="height: auto; padding: 8px; font-size: 0.85em;" onclick="demandTribute('${key}')">
+                        Eis Tribuut<br><span style="color: var(--red);">-30 Relatie</span>, Directe Buit
+                    </button>
+                    <button class="tap-btn" style="height: auto; padding: 8px; font-size: 0.85em; grid-column: span 2;" onclick="formAlliance('${key}')" ${allianceDisabled ? 'disabled' : ''}>
+                        ${allianceBtnText}<br><span style="color: var(--peach);">Passief: ${allianceBonuses.join(' & ')}</span>
+                    </button>
+                </div>
 
-                        <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 5px;">
-                            <p><small>Handel focus: ${Object.keys(tribe.resources).join(' & ')}</small></p>
-                            <button class="action-btn-small"
-                                onclick="toggleTradeRoute('${key}')"
-                                ${canTrade || tribe.tradeRouteActive ? '' : 'disabled'}>
-                                ${btnTradeText}
-                            </button>
-                            ${!canTrade && !tribe.tradeRouteActive ? '<br><small style="color:#f38ba8">Eis: Relatie 60+</small>' : ''}
-                        </div>
+                <!-- Handel Sectie -->
+                <div style="margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 5px; border: 1px solid #45475a;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.9em;"><strong>Handelsroute</strong></span>
+                        <span style="font-size: 0.8em; color: ${tribe.tradeRouteActive ? 'var(--green)' : '#a6adc8'};">${tribe.tradeRouteActive ? 'Actief' : 'Inactief'}</span>
                     </div>
-                    `;
-    } // De loop eindigt pas HIER
+                    <p style="font-size: 0.85em; color: #bac2de; margin-top: 0;">Effect: ${tradeDetails}</p>
+                    <button class="tap-btn" style="width: 100%; height: auto; padding: 8px; background: ${tribe.tradeRouteActive ? 'var(--red)' : ''}" onclick="toggleTradeRoute('${key}')" ${canTrade || tribe.tradeRouteActive ? '' : 'disabled'}>
+                        ${btnTradeText}
+                    </button>
+                    ${!canTrade && !tribe.tradeRouteActive ? '<p style="color: var(--red); font-size: 0.8em; text-align: center; margin-bottom: 0;">Relatie van minimaal 60 vereist voor handel.</p>' : ''}
+                </div>
+            </div>
+        `;
+    }
 }
 function renderMilitary() {
 

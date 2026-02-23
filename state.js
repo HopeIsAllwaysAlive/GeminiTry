@@ -169,6 +169,13 @@ let game = {
             cost: { researchPoints: 300 },
             unlocked: false,
             requirement: () => game.buildings.hut.count >= 47
+        },
+        merchant_guild: {
+            name: "Handelsgilde",
+            desc: "Verhoogt de opbrengst van alle actieve handelsroutes met 20%.",
+            cost: { researchPoints: 800, gold: 1500 },
+            unlocked: false,
+            requirement: () => game.buildings.bank.count >= 5 && game.diplomacy.unlocked
         }
     },
 
@@ -220,7 +227,8 @@ let game = {
             relation: 50, // 0 = Oorlog, 50 = Neutraal, 100 = Bondgenoot
             tradeUnlocked: true,
             defenseValue: 200,
-            resources: { wood: 0.8, food: 1.2 } // Waar ze goed in zijn
+            tradeYield: { wood: 2, food: 1 },
+            tradeCost: { gold: 2 }
         },
         mountain_clan: {
             name: "De Bergstam",
@@ -228,7 +236,8 @@ let game = {
             relation: 30, // Beginnen iets wantrouwiger
             tradeUnlocked: false,
             defenseValue: 200,
-            resources: { stone: 1.5, gold: 0.5 }
+            tradeYield: { stone: 3, gold: 1 },
+            tradeCost: { food: 4 }
         },
         river_folk: {
             name: "De Rivierbewoners",
@@ -236,7 +245,8 @@ let game = {
             relation: 70,
             tradeUnlocked: true,
             defenseValue: 150,
-            resources: { food: 1.5, gold: 1.0 }
+            tradeYield: { food: 3, gold: 2 },
+            tradeCost: { wood: 4 }
         }
     },
 
@@ -258,7 +268,8 @@ let game = {
             military_academy: { name: "Militaire Academie", level: 0, max: 1, cost: 50, desc: "Unlockt de 'Ridder' unit vanaf het begin." },
             efficient_scouting: { name: "Ervaren Gidsen", level: 0, max: 10, cost: 20, desc: "Verkenningen gaan 5% sneller per level (bovenop de 1% per onbesteed punt)." },
             meditation: { name: "Meditatie", level: 0, max: 9, cost: 30, desc: "Offline progressie is 10% efficiënter per level." },
-            sunDail: { name: "Zonnewijzer", level: 0, max: 11, cost: 40, desc: "Je krijgt een extra uur offline tijd per level." }
+            sunDail: { name: "Zonnewijzer", level: 0, max: 11, cost: 40, desc: "Je krijgt een extra uur offline tijd per level." },
+            diplomatic_charm: { name: "Diplomatieke Charme", level: 0, max: 10, cost: 50, desc: "Verhoogt alle handelsroute opbrengsten met +10% per level." }
         }
     },
     settings: {
@@ -414,6 +425,13 @@ function loadGame() {
             for (let tKey in loadedData.diplomacy.discoveredTribes) {
                 // We zetten de data over naar ons actuele game object
                 game.diplomacy.discoveredTribes[tKey] = loadedData.diplomacy.discoveredTribes[tKey];
+
+                // Fix voor save compatibility: Voeg missende properties vanuit templates toe
+                if (game.tribeTemplates[tKey]) {
+                    if (!game.diplomacy.discoveredTribes[tKey].tradeCost) game.diplomacy.discoveredTribes[tKey].tradeCost = game.tribeTemplates[tKey].tradeCost;
+                    if (!game.diplomacy.discoveredTribes[tKey].tradeYield) game.diplomacy.discoveredTribes[tKey].tradeYield = game.tribeTemplates[tKey].tradeYield;
+                    // Support legacy "resources" key just in case it's missing in some paths, but prefer tradeYield
+                }
             }
         }
     }
