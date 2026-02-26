@@ -882,15 +882,18 @@ function renderMilitary() {
     container.innerHTML = `<h1>Militair Hoofdkwartier</h1>`;
 
     container.innerHTML += `
-        <div style="display: flex; gap: 20px; margin-bottom: 20px; margin-top: 15px;">
-            <div class="panel" style="flex:1; border-left: 5px solid #f38ba8;">
-                <h3>Aanvalskracht: ${Math.floor(game.military.attackPower)}</h3>
+        <div style="display: flex; gap: 8px; margin-bottom: 20px; margin-top: 15px;">
+            <div class="panel" style="flex:1; border-left: 4px solid #f38ba8; padding: 10px; text-align: center;">
+                <h4 style="margin: 0; font-size: 0.9em; opacity: 0.8;">Aanval</h4>
+                <div style="font-size: 1.2em; font-weight: bold; margin-top: 5px; color: var(--peach);">${Math.floor(game.military.attackPower)}</div>
             </div>
-            <div class="panel" style="flex:1; border-left: 5px solid #a6e3a1;">
-                <h3>Verdedigingskracht: ${Math.floor(game.military.defensePower)}</h3>
+            <div class="panel" style="flex:1; border-left: 4px solid #a6e3a1; padding: 10px; text-align: center;">
+                <h4 style="margin: 0; font-size: 0.9em; opacity: 0.8;">Verdediging</h4>
+                <div style="font-size: 1.2em; font-weight: bold; margin-top: 5px; color: var(--green);">${Math.floor(game.military.defensePower)}</div>
             </div>
-            <div class="panel" style="flex:1; border-left: 5px solid var(--accent);">
-                <h3>Basis Soldaten: ${availableSoldiers}</h3>
+            <div class="panel" style="flex:1; border-left: 4px solid var(--accent); padding: 10px; text-align: center;">
+                <h4 style="margin: 0; font-size: 0.9em; opacity: 0.8;">Soldaten</h4>
+                <div style="font-size: 1.2em; font-weight: bold; margin-top: 5px;">${availableSoldiers}</div>
             </div>
         </div>
     `;
@@ -1215,7 +1218,7 @@ function renderSettings() {
         if (!game.settings.hiddenResources) game.settings.hiddenResources = [];
 
         const iconMap = {
-            wood: '🌲', stone: '🧱', food: '🍞', gold: '💰',
+            wood: '🌲', stone: '🪨', food: '🍞', gold: '💰',
             researchPoints: '🧪', intel: '👁️', beam: '🪵', brick: '🧱'
         };
 
@@ -1393,19 +1396,21 @@ function handleSwipe() {
     // Als de afstand te klein is, doe niets
     if (Math.abs(swipeDistance) < minSwipeDistance) return;
 
+    if (swipeDistance < 0) {
+        changeTabDirection(1); // Naar rechts (volgende)
+    } else if (swipeDistance > 0) {
+        changeTabDirection(-1); // Naar links (vorige)
+    }
+}
+
+function changeTabDirection(direction) {
     const currentIndex = swipeOrder.indexOf(window.currentTab);
     if (currentIndex === -1) return;
 
-    let targetIndex = currentIndex;
-
-    // Swipe Links <--- (Ga naar Volgende tab, we schuiven het beeld naar links)
-    if (swipeDistance < 0) {
-        targetIndex = Math.min(currentIndex + 1, swipeOrder.length - 1);
-    }
-    // Swipe Rechts ---> (Ga naar Vorige tab)
-    else if (swipeDistance > 0) {
-        targetIndex = Math.max(currentIndex - 1, 0);
-    }
+    let targetIndex = currentIndex + direction;
+    // Bounding preventie
+    if (targetIndex < 0) targetIndex = 0;
+    if (targetIndex >= swipeOrder.length) targetIndex = swipeOrder.length - 1;
 
     if (targetIndex !== currentIndex) {
         const nextTabId = swipeOrder[targetIndex];
@@ -1428,11 +1433,12 @@ function handleSwipe() {
     }
 }
 
-// Global Touch listeners
+// Global Touch & Mouse listeners
 function initSwipeListeners() {
     const swipeArea = document.getElementById('tab-content');
     if (!swipeArea) return;
 
+    // --- Touch (Mobiel) ---
     swipeArea.addEventListener('touchstart', e => {
         touchStartX = e.changedTouches[0].screenX;
     }, { passive: true });
@@ -1441,6 +1447,30 @@ function initSwipeListeners() {
         touchEndX = e.changedTouches[0].screenX;
         handleSwipe();
     }, { passive: true });
+
+    // --- Mouse Drag (Desktop/Laptop) ---
+    let isMouseDown = false;
+    swipeArea.addEventListener('mousedown', e => {
+        isMouseDown = true;
+        touchStartX = e.screenX;
+    });
+
+    // Voorkom dat de tekst wordt geselecteerd tijdens drag
+    swipeArea.addEventListener('mousemove', e => {
+        if (isMouseDown) e.preventDefault();
+    });
+
+    swipeArea.addEventListener('mouseup', e => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        touchEndX = e.screenX;
+        handleSwipe();
+    });
+
+    // Annuleer swipe als muis buiten het vlak gaat
+    swipeArea.addEventListener('mouseleave', e => {
+        isMouseDown = false;
+    });
 }
 
 // Setup via event listener

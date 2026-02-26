@@ -673,3 +673,44 @@ input:checked+.slider {
 input:checked+.slider:before {
     transform: translateX(26px);
 }
+
+/* --- Desktop Navigatie Knoppen --- */
+.nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--text);
+    border: none;
+    font-size: 2em;
+    padding: 20px 10px;
+    cursor: pointer;
+    z-index: 2000;
+    border-radius: 8px;
+    transition: background 0.2s, opacity 0.2s;
+    opacity: 0.3;
+}
+
+.nav-arrow:hover {
+    background: rgba(0, 0, 0, 0.8);
+    opacity: 1;
+}
+
+.left-arrow {
+    left: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.right-arrow {
+    right: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Verberg navigatie pijlen op mobiele schermen */
+@media (max-width: 768px) {
+    .nav-arrow {
+        display: none;
+    }
+}
