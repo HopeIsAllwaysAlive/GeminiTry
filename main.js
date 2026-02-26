@@ -79,19 +79,9 @@ window.showTab = function (tabId) {
         }
     }
 
-    // 3. De navigatieknoppen ook een 'active' uiterlijk geven
-    const nav = document.getElementById('main-nav');
-    if (nav) {
-        const buttons = nav.querySelectorAll('button');
-        for (let btn of buttons) {
-            btn.classList.remove('active');
-        }
-    }
-
-    // Activeer de juiste knop op basis van ID
-    const activeBtn = document.getElementById('nav-btn-' + tabId);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
+    // 3. De navigatieknoppen in de swipeable subnav 'active' uiterlijk geven
+    if (typeof highlightSubNavButton !== 'undefined') {
+        highlightSubNavButton(tabId);
     }
 
     // 4. Meteen tekenen zodat de speler geen lege pagina ziet

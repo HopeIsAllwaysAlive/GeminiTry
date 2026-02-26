@@ -42,34 +42,82 @@ function updateUI() {
 }
 
 function updateResourceBar() {
-    // Resources updaten
-    document.getElementById('res-wood').innerText = Math.floor(game.resources.wood.amount);
-    document.getElementById('res-stone').innerText = Math.floor(game.resources.stone.amount);
-    document.getElementById('res-gold').innerText = Math.floor(game.resources.gold.amount);
-    document.getElementById('res-food').innerText = Math.floor(game.resources.food.amount);
-    document.getElementById('res-research').innerText = Math.floor(game.resources.researchPoints.amount);
-    //   document.getElementById('res-scouts').innerText = Math.floor(game.resources.scouts.amount);
+    const container = document.getElementById('resource-bar');
+    if (!container) return;
 
-    // Bevolking en Leger
-    document.getElementById('res-pop').innerText = `${Math.floor(game.resources.population.amount)}/${game.resources.population.max}`;
-    document.getElementById('res-power').innerText = Math.floor(game.military.attackPower) + " / " + Math.floor(game.military.defensePower);
+    let html = '';
 
-    // Rates (per seconde) updaten met kleuren
-    updateRateDisplay('rate-wood', game.resources.wood.perSec);
-    updateRateDisplay('rate-stone', game.resources.stone.perSec);
-    updateRateDisplay('rate-gold', game.resources.gold.perSec);
-    updateRateDisplay('rate-food', game.resources.food.perSec);
-    updateRateDisplay('rate-research', game.resources.researchPoints.perSec);
+    // Helper functie om een top-bar item te genereren
+    const createItem = (key, icon, amount, max, rate, isCustom = false, customText = "") => {
+        let displayAmount = amount;
+
+        // Voor population en military power tellen de regels iets anders
+        if (key === 'population') {
+            displayAmount = `${Math.floor(amount)}/${max}`;
+            rate = null; // Geen rate voor population in top bar
+        }
+
+        let rateHtml = '';
+        if (rate !== null && rate !== undefined) {
+            const prefix = rate >= 0 ? "+" : "";
+            const rateClass = rate >= 0 ? "rate-pos" : "rate-neg";
+            rateHtml = `<small class="${rateClass}">${prefix}${parseFloat(rate).toFixed(1)}/s</small>`;
+        }
+
+        // Fill bar breedte berekenen (0-100%)
+        let fillPercent = 0;
+        if (max && max > 0 && !isCustom) {
+            fillPercent = Math.min(100, Math.max(0, (amount / max) * 100));
+        }
+
+        // Custom inhoud (zoals voor military attack/defense)
+        let mainContent = isCustom ? customText : `<span>${displayAmount}</span>`;
+
+        return `
+            <div class="res-item" onclick="openResourceDetail('${key}')">
+                <div class="res-fill-bar" style="width: ${fillPercent}%"></div>
+                <div class="res-content">
+                    <span class="res-icon" title="${key}">${icon}</span>
+                    ${mainContent}
+                </div>
+                ${rateHtml}
+            </div>
+        `;
+    };
+
+    // 1. Populatie (Altijd tonen)
+    html += createItem('population', '👥', game.resources.population.amount, game.resources.population.max, null);
+
+    // Icoon map
+    const iconMap = {
+        wood: '🌲', stone: '🧱', food: '🍞', gold: '💰',
+        researchPoints: '🧪', intel: '👁️', beam: '🪵', brick: '🧱'
+    };
+
+    // 2. Dynamische Resources (Alleen unfokte + zichtbare in settings, default true voor nu)
+    for (let key in game.resources) {
+        if (key === 'population' || key === 'scouts') continue;
+        const res = game.resources[key];
+
+        // Respecteer de instellingen van Tab 9 (Settings)
+        const isHidden = game.settings && game.settings.hiddenResources && game.settings.hiddenResources.includes(key);
+
+        if (!isHidden && (res.unlocked || res.amount > 0)) {
+            let icon = iconMap[key] || "📦";
+            if (res.icon) icon = res.icon;
+
+            html += createItem(key, icon, Math.floor(res.amount), res.max, res.perSec);
+        }
+    }
+
+    // 3. Leger Kracht (Altijd tonen)
+    html += createItem('military', '⚔️', null, null, null, true, `<span>${Math.floor(game.military.attackPower)} / 🛡️${Math.floor(game.military.defensePower)}</span>`);
+
+    container.innerHTML = html;
 }
 
-function updateRateDisplay(id, rate) {
-    const el = document.getElementById(id);
-    // Als het element niet bestaat, stop de functie dan hier (geen crash!)
-    if (!el) return
-    const prefix = rate >= 0 ? "+" : "";
-    el.innerText = prefix + rate.toFixed(1);
-    el.className = rate >= 0 ? "rate-pos" : "rate-neg";
-}
+// updateRateDisplay is niet meer nodig (wordt nu afgehandeld in updateResourceBar)
+
 
 function updateNavigationGlow() {
     const prestigeBtn = document.getElementById('nav-btn-prestige');
@@ -1108,6 +1156,17 @@ function renderSettings() {
                 </div>
             </div>
 
+            <!-- Topbar Weergave (Nieuw in Fase 3) -->
+            <div class="panel">
+                <h3 style="margin-top: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                    👁️ Top Bar Weergave
+                </h3>
+                <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">Kies welke grondstoffen je zichtbaar wilt hebben in de horizontale lijst bovenaan het scherm.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;" id="settings-resource-toggles">
+                    <!-- Wordt dynamisch ingevuld -->
+                </div>
+            </div>
+
             <!-- Data Beheer -->
             <div class="panel" style="border-left: 3px solid var(--blue);">
                 <h3 style="margin-top: 0; color: var(--blue);">💾 Data Beheer (Save & Load)</h3>
@@ -1142,10 +1201,41 @@ function renderSettings() {
 
         </div>
     `;
+
+    // Vul de resource toggles dynamisch
+    const togglesContainer = document.getElementById('settings-resource-toggles');
+    if (togglesContainer) {
+        if (!game.settings) game.settings = {};
+        if (!game.settings.hiddenResources) game.settings.hiddenResources = [];
+
+        const iconMap = {
+            wood: '🌲', stone: '🧱', food: '🍞', gold: '💰',
+            researchPoints: '🧪', intel: '👁️', beam: '🪵', brick: '🧱'
+        };
+
+        for (let key in game.resources) {
+            if (key === 'population' || key === 'scouts') continue;
+            const res = game.resources[key];
+
+            if (res.unlocked || res.amount > 0) {
+                const isHidden = game.settings.hiddenResources.includes(key);
+                let icon = iconMap[key] || "📦";
+                if (res.icon) icon = res.icon;
+                const resName = res.name || key.charAt(0).toUpperCase() + key.slice(1);
+
+                togglesContainer.innerHTML += `
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
+                        <input type="checkbox" ${!isHidden ? 'checked' : ''} onchange="toggleResourceVisibility('${key}', this.checked)">
+                        ${icon} ${resName}
+                    </label>
+                `;
+            }
+        }
+    }
 }
 
 function toggleManualActions(isChecked) {
-    if (!game.settings) game.settings = { showManualActions: true };
+    if (!game.settings) game.settings = { showManualActions: true, hiddenResources: [] };
     game.settings.showManualActions = isChecked;
 
     // Direct apply to the manual actions panel in tab 'Stad'
@@ -1153,6 +1243,22 @@ function toggleManualActions(isChecked) {
     if (manualPanel) {
         manualPanel.style.display = isChecked ? 'block' : 'none';
     }
+}
+
+function toggleResourceVisibility(resKey, isVisible) {
+    if (!game.settings) game.settings = { showManualActions: true, hiddenResources: [] };
+    if (!game.settings.hiddenResources) game.settings.hiddenResources = [];
+
+    if (isVisible) {
+        // Verwijder uit verborgen lijst
+        game.settings.hiddenResources = game.settings.hiddenResources.filter(item => item !== resKey);
+    } else {
+        // Voeg toe aan verborgen lijst als ie er nog niet in staat
+        if (!game.settings.hiddenResources.includes(resKey)) {
+            game.settings.hiddenResources.push(resKey);
+        }
+    }
+    updateUI(); // Herteken direct de topbar
 }
 function sendGift(tribeKey) {
     if (game.resources.gold.amount >= 100) {
@@ -1181,3 +1287,142 @@ function deteriorateRelation(tribeKey, action) {
     updateUI();
 }
 
+// --- FASE 3: SWIPEBARE NAVIGATIE LOGICA ---
+
+// Definitie van de 4 hoofd-categoriën en hun sub-tabs
+const tabCategories = {
+    management: [
+        { id: 'jobs', icon: '🏠', label: 'Stad' },
+        { id: 'resources', icon: '📊', label: 'Voorraad' },
+        { id: 'population', icon: '👥', label: 'Bevolking' }
+    ],
+    world: [
+        { id: 'explore', icon: '🧭', label: 'Verkennen' },
+        { id: 'diplomacy', icon: '🤝', label: 'Diplomatie' },
+        { id: 'military', icon: '⚔️', label: 'Leger' }
+    ],
+    progress: [
+        { id: 'research', icon: '🧪', label: 'Onderzoek' },
+        { id: 'prestige', icon: '✨', label: 'Prestige' }
+    ],
+    menu: [
+        { id: 'settings', icon: '⚙️', label: 'Settings' }
+    ]
+};
+
+// Een array van alle mogelijke tab ID's op volgorde om swipen naadloos te maken
+const swipeOrder = [
+    'jobs', 'resources', 'population',
+    'explore', 'diplomacy', 'military',
+    'research', 'prestige',
+    'settings'
+];
+
+window.currentCategory = 'management';
+
+// Functie om de hoofd-navigatie acties af te handelen
+window.selectCategory = function (catKey) {
+    window.currentCategory = catKey;
+    const subNavContainer = document.getElementById('sub-nav-container');
+    const tabs = tabCategories[catKey];
+
+    // Reset actieve state van hoofd-knoppen
+    document.querySelectorAll('.bottom-bar button').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-cat-' + catKey).classList.add('active');
+
+    // Bouw sub-nav html op
+    let subHtml = '';
+    tabs.forEach(tab => {
+        subHtml += `<button class="sub-nav-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')">${tab.icon} ${tab.label}</button>`;
+    });
+
+    subNavContainer.innerHTML = subHtml;
+    subNavContainer.classList.remove('hidden');
+
+    // Kijk of de huidige actieve tab in deze categorie zit. 
+    // Zo niet, open dan standaard de eerste tab van de geselecteerde categorie!
+    const isActiveInCat = tabs.some(t => t.id === window.currentTab);
+    if (!isActiveInCat && tabs.length > 0) {
+        showTab(tabs[0].id);
+    } else {
+        // Zorg dat de visuele knop in de subnav wél groen/actief kleurt als we al in de tab zitten
+        highlightSubNavButton(window.currentTab);
+    }
+}
+
+// Helper functie om de actieve stijl op sub-nav tabs te zetten
+window.highlightSubNavButton = function (tabId) {
+    document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('sub-nav-' + tabId);
+    if (btn) {
+        btn.classList.add('active');
+        // Scroll de active tab in beeld als ie buiten beeld is
+        btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+}
+
+// Swipe Herkenning Logica (Touch events)
+let touchStartX = 0;
+let touchEndX = 0;
+
+function handleSwipe() {
+    const minSwipeDistance = 50; // minimale pixels voor een swipe
+    const swipeDistance = touchEndX - touchStartX;
+
+    // Als de afstand te klein is, doe niets
+    if (Math.abs(swipeDistance) < minSwipeDistance) return;
+
+    const currentIndex = swipeOrder.indexOf(window.currentTab);
+    if (currentIndex === -1) return;
+
+    let targetIndex = currentIndex;
+
+    // Swipe Links <--- (Ga naar Volgende tab, we schuiven het beeld naar links)
+    if (swipeDistance < 0) {
+        targetIndex = Math.min(currentIndex + 1, swipeOrder.length - 1);
+    }
+    // Swipe Rechts ---> (Ga naar Vorige tab)
+    else if (swipeDistance > 0) {
+        targetIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    if (targetIndex !== currentIndex) {
+        const nextTabId = swipeOrder[targetIndex];
+
+        // Bepaal in welke categorie de volgende tab zit en activeer deze indien nodig
+        let targetCategory = '';
+        for (let cat in tabCategories) {
+            if (tabCategories[cat].some(t => t.id === nextTabId)) {
+                targetCategory = cat;
+                break;
+            }
+        }
+
+        if (targetCategory && targetCategory !== window.currentCategory) {
+            selectCategory(targetCategory);
+            showTab(nextTabId); // Geforceerd, overschrijft de categorie-default
+        } else {
+            showTab(nextTabId);
+        }
+    }
+}
+
+// Global Touch listeners
+function initSwipeListeners() {
+    const swipeArea = document.getElementById('tab-content');
+    if (!swipeArea) return;
+
+    swipeArea.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    swipeArea.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+}
+
+// Setup via event listener
+document.addEventListener("DOMContentLoaded", () => {
+    initSwipeListeners();
+});
