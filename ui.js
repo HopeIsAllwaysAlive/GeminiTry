@@ -85,12 +85,15 @@ function updateResourceBar() {
         `;
     };
 
-    // 1. Populatie (Altijd tonen)
-    html += createItem('population', '👥', game.resources.population.amount, game.resources.population.max, null);
+    // 1. Populatie (Toggable)
+    const popHidden = game.settings && game.settings.hiddenResources && game.settings.hiddenResources.includes('population');
+    if (!popHidden) {
+        html += createItem('population', '👥', game.resources.population.amount, game.resources.population.max, null);
+    }
 
     // Icoon map
     const iconMap = {
-        wood: '🌲', stone: '🧱', food: '🍞', gold: '💰',
+        wood: '🌲', stone: '🪨', food: '🍞', gold: '💰',
         researchPoints: '🧪', intel: '👁️', beam: '🪵', brick: '🧱'
     };
 
@@ -110,8 +113,11 @@ function updateResourceBar() {
         }
     }
 
-    // 3. Leger Kracht (Altijd tonen)
-    html += createItem('military', '⚔️', null, null, null, true, `<span>${Math.floor(game.military.attackPower)} / 🛡️${Math.floor(game.military.defensePower)}</span>`);
+    // 3. Leger Kracht (Toggable)
+    const milHidden = game.settings && game.settings.hiddenResources && game.settings.hiddenResources.includes('military');
+    if (!milHidden) {
+        html += createItem('military', '⚔️', null, null, null, true, `<span>${Math.floor(game.military.attackPower)} / 🛡️${Math.floor(game.military.defensePower)}</span>`);
+    }
 
     container.innerHTML = html;
 }
@@ -1231,6 +1237,21 @@ function renderSettings() {
                 `;
             }
         }
+
+        // Handmatig Bevolking en Leger toevoegen aan de lijst
+        const popHidden = game.settings.hiddenResources.includes('population');
+        const milHidden = game.settings.hiddenResources.includes('military');
+
+        togglesContainer.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
+                <input type="checkbox" ${!popHidden ? 'checked' : ''} onchange="toggleResourceVisibility('population', this.checked)">
+                👥 Bevolking
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
+                <input type="checkbox" ${!milHidden ? 'checked' : ''} onchange="toggleResourceVisibility('military', this.checked)">
+                ⚔️ Leger
+            </label>
+        ` + togglesContainer.innerHTML;
     }
 }
 
@@ -1425,4 +1446,14 @@ function initSwipeListeners() {
 // Setup via event listener
 document.addEventListener("DOMContentLoaded", () => {
     initSwipeListeners();
+    // Desktop "Muiswiel" scroll ondersteuning toevoegen voor sub-nav
+    const subNav = document.getElementById('sub-nav-container');
+    if (subNav) {
+        subNav.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                subNav.scrollLeft += e.deltaY;
+                e.preventDefault(); // Voorkom dat de hele pagina scrolt
+            }
+        });
+    }
 });
