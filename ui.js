@@ -360,42 +360,85 @@ function renderBuildings() {
         let actualAmount = 0;
         let affordable = false;
 
-        if (buyAmount === 'max') {
-            for (let i = 0; i < Infinity; i++) {
-                b.count += 1;
-                const cost = getCost(b);
-                b.count -= 1;
+        let limit = buyAmount === 'max' ? Infinity : buyAmount;
 
-                let combinedCost = {};
-                for (let res in cost) {
-                    combinedCost[res] = (displayCost[res] || 0) + cost[res];
-                }
+        // Simuleer aankopen om compounding cost en affordable amount te bepalen
+        for (let i = 0; i < limit; i++) {
+            b.count += 1;
+            const cost = getCost(b);
+            b.count -= 1;
 
-                if (canAfford(combinedCost)) {
-                    displayCost = combinedCost;
-                    actualAmount++;
-                } else {
-                    if (actualAmount === 0) {
-                        // Still show the cost of 1 if they can afford 0
-                        displayCost = cost;
+            let combinedCost = {};
+            for (let res in cost) {
+                combinedCost[res] = (displayCost[res] || 0) + cost[res];
+            }
+
+            if (canAfford(combinedCost)) {
+                displayCost = combinedCost;
+                actualAmount++;
+            } else {
+                if (actualAmount === 0) {
+                    // Als we er nul kunnen betalen, toon dan in ieder geval de kosten voor de eerste
+                    // Maar als buyAmount specifiek was (bijv 10) moeten we de kosten voor 10 simuleren,
+                    // ongeacht of we het kunnen betalen of niet, om de speler te tonen hoeveel het kost.
+                    if (buyAmount !== 'max') {
+                        for (let j = 0; j < limit; j++) {
+                            b.count += 1;
+                            const c = getCost(b);
+                            b.count -= 1;
+                            for (let res in c) {
+                                displayCost[res] = (displayCost[res] || 0) + c[res];
+                            }
+                            b.count += 1; // tijdelijk ophogen voor volgende loop-iteratie berekening
+                        }
+                        b.count -= limit; // Reset naar origineel
+                    } else {
+                        displayCost = cost; // Bij MAX tonen we gewoon de kostprijs van 1 als we er 0 kunnen kopen
                     }
+                }
+                break;
+            }
+
+            // Verhoog tijdelijk count voor de volgende ronde (aleen relevant voor de if block)
+            // Maar wacht, `getCost(item)` kijkt naar `item.count`. Dus we moeten wel `b.count` echt meenemen
+            // en achteraf resetten!
+        }
+
+        // --- SIMULATIE CORRECTIE --- 
+        // Laten we de simulatie opnieuw schrijven, cleaner:
+        displayCost = {};
+        actualAmount = 0;
+        affordable = false;
+
+        let originalCount = b.count;
+        let runningCost = {};
+
+        for (let i = 0; i < limit; i++) {
+            const costOfNext = getCost(b);
+            let combinedCost = {};
+            for (let res in costOfNext) combinedCost[res] = (runningCost[res] || 0) + costOfNext[res];
+
+            if (canAfford(combinedCost)) {
+                runningCost = combinedCost;
+                actualAmount++;
+                b.count++; // Tijdelijk toevoegen voor de compounding van de VÓLGENDE iteratie
+            } else {
+                if (buyAmount !== 'max') {
+                    // Bij specifieke hoeveelheden willen we tóch de totale kosten berekenen (ook al is het rood)
+                    runningCost = combinedCost;
+                    b.count++;
+                } else {
+                    // Bij MAX stoppen we gewoon, pak de fallback als we er nul konden kopen
+                    if (actualAmount === 0) runningCost = costOfNext;
                     break;
                 }
             }
-            affordable = actualAmount > 0;
-        } else {
-            for (let i = 0; i < buyAmount; i++) {
-                b.count += 1;
-                const cost = getCost(b);
-                b.count -= 1;
-
-                for (let res in cost) {
-                    displayCost[res] = (displayCost[res] || 0) + cost[res];
-                }
-            }
-            actualAmount = buyAmount;
-            affordable = canAfford(displayCost);
         }
+
+        // Reset de daadwerkelijke state
+        b.count = originalCount;
+        displayCost = runningCost;
+        affordable = buyAmount === 'max' ? (actualAmount > 0) : canAfford(displayCost);
 
         let costTxtHtml = '';
         for (let r in displayCost) {
@@ -958,49 +1001,77 @@ function renderPrestige() {
     const boost = game.prestige.points * 1; // 1% per punt
     const breakdown = getPrestigeBreakdown();
 
-    container.innerHTML = `
-                    <h1>Prestige</h1>
-                    <div class="panel" style="background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;">
-                        <h3>Huidige Prestige Punten: <span style="color:#d6e2c8">${game.prestige.points}</span></h3>
-                        <p>Onbestede punten geven een <strong>+${boost}%</strong> bonus op resource productie en verkenning snelheid.</p>
-                        ${renderPrestigeDashboard()}
-                        <hr>
-
-                    </div>
-
-                    <div class="panel" style="background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;">
-                        <h4>Verwachte opbrengst: ${breakdown.total} punten</h4>
-                        ${breakdown.details}
-                        <p></p>
-                        <button class="tap-btn" style="width: 100%; height: 50px; background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;" onclick="performPrestige()" ${game.resources.population.amount >= 100 ? '' : 'disabled'}>
-                            Prestige
-                        </button>
-                    </div>
-
-                    <h2>Prestige Upgrades</h2>
-                    <div id="prestige-upgrades-list"></div>
-                    `;
-
-    // Teken de upgrades (vergelijkbaar met gebouwen maar met prestige punten)
-    const list = document.getElementById('prestige-upgrades-list');
+    // De opbouw van de upgrades als nette flex/grid kaarten
+    let upgradesHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">';
     for (let key in game.prestige.upgrades) {
         const upg = game.prestige.upgrades[key];
-        list.innerHTML += `
-                    <div class="panel">
-                        <strong>${upg.name} (Lvl ${upg.level}/${upg.max})</strong><br>
-                            <small>${upg.desc}</small><br>
-                                <button class="action-btn-small" style="width: 100%; height: 50px; background: linear-gradient(45deg, #d6e2c8, #313244); border: 1px solid #d6e2c8;" onclick="buyPrestigeUpgrade('${key}')" ${game.prestige.points >= upg.cost && upg.level < upg.max ? '' : 'disabled'}>
-                                    Koop (${upg.cost} Punten)
-                                </button>
-                            </div>
-                            `;
+        const maxedOut = upg.level >= upg.max;
+        const canAfford = game.prestige.points >= upg.cost && !maxedOut;
+
+        upgradesHtml += `
+            <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; border-color: ${maxedOut ? 'var(--green)' : 'var(--surface2)'};">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <strong style="color: ${maxedOut ? 'var(--green)' : 'inherit'};">${upg.name}</strong>
+                        <span class="badge" style="background: var(--surface1); color: var(--text); padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">Lvl ${upg.level}/${upg.max}</span>
+                    </div>
+                    <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">${upg.desc}</p>
+                </div>
+                <button class="build-btn" style="background: ${maxedOut ? 'var(--surface1)' : 'var(--peach)'}; width: 100%; border: none;" onclick="buyPrestigeUpgrade('${key}')" ${canAfford ? '' : 'disabled'}>
+                    ${maxedOut ? 'MAX LEVEL' : `Koop (-${upg.cost} Pnt)`}
+                </button>
+            </div>
+        `;
     }
-    //remove glow-active class van prestige button als we op het prestige tabblad zijn
-    //   const prestigeBtn = document.getElementById('nav-btn-prestige');
-    //  prestigeBtn.classList.remove('glow-active');
-    //remove glow-active class van prestige button als we op het prestige tabblad zijn
-    //   const prestigeBtn = document.getElementById('nav-btn-prestige');
-    //  prestigeBtn.classList.remove('glow-active');
+    upgradesHtml += '</div>';
+
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
+            <h1>Evolutie & Prestige</h1>
+            <div style="text-align: right;">
+                <h3 style="margin: 0; color: var(--peach);">Huidige Prestige Punten: ${game.prestige.points}</h3>
+                <small style="color: var(--subtext);">Onbestede punten geven een <strong>+${boost}%</strong> bonus op alle productie en verkenningen.</small>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <!-- Reset info en dashboard -->
+            <div class="panel" style="background: rgba(243, 139, 168, 0.05); border-left: 5px solid var(--red);">
+                <h3 style="color: var(--red); margin-top: 0;">⚠️ Wat gebeurt er bij een Evolutie?</h3>
+                <ul style="font-size: 0.85em; color: var(--subtext); margin: 0; padding-left: 20px;">
+                    <li><strong>Vernietigd:</strong> Je grondstoffen, bevolking, gebouwen, onderzoeken en leger.</li>
+                    <li><strong>Behouden:</strong> Je ontdekte/veroverde stammen (Diplomatie), <strong>Prestige Punten</strong> en <strong>Verworven Upgrades</strong>.</li>
+                    <li><strong>Beloning:</strong> Je claimt de verdiende Prestige Punten hieronder.</li>
+                </ul>
+            </div>
+
+            <div class="panel" style="background: linear-gradient(135deg, rgba(203, 166, 247, 0.1), transparent); border-color: var(--mauve);">
+                <h3 style="margin-top: 0; color: var(--mauve);">Verwachte Opbrengst: <span style="font-size: 1.5em; vertical-align: middle;">${breakdown.total}</span> Punten</h3>
+                <div style="background: var(--surface0); border-radius: 8px; padding: 10px; margin-bottom: 15px;">
+                    ${breakdown.details}
+                </div>
+                
+                <button class="build-btn" style="width: 100%; height: 60px; font-size: 1.2em; background: var(--mauve); border: none; box-shadow: 0 4px 15px rgba(203, 166, 247, 0.4);" 
+                        onclick="if(confirm('Weet je zeker dat je wilt resetten? Je begint helemaal opnieuw, maar behoudt je Prestige Punten!')) performPrestige()" 
+                        ${game.resources.population.amount >= 100 ? '' : 'disabled'}
+                        title="${game.resources.population.amount >= 100 ? 'Start een nieuw tijdperk' : 'Je hebt minimaal 100 Totale Bevolking nodig om te evolueren.'}">
+                    🌟 Evolueer Nu
+                </button>
+                ${game.resources.population.amount < 100 ? '<div style="text-align: center; margin-top: 10px; font-size: 0.8em; color: var(--red);">Je hebt 100 Totale Bevolking nodig om te resetten.</div>' : ''}
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--surface2); width: 100%; margin: 10px 0;">
+
+            <!-- Upgrades -->
+            <div>
+                <h3 style="margin-top: 0; margin-bottom: 5px;">Permanente Upgrades</h3>
+                <small style="color: var(--subtext);">Besteed hier je prestige punten. Let op: punten die je uitgeeft geven hun passieve (+1%) productiebonus op!</small>
+                ${upgradesHtml}
+            </div>
+
+        </div>
+    `;
 }
 
 function renderSettings() {
@@ -1013,28 +1084,63 @@ function renderSettings() {
     }
 
     container.innerHTML = `
-    <h1>Instellingen</h1>
-
-    <div class="panel" style="margin-top: 30px; border-top: 2px solid #a6e3a1;">
-        <h3>Zichtbaarheid</h3>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span>Toon Handmatige Acties (Stad)</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="toggle-manual" ${manualIsOn ? 'checked' : ''} onchange="toggleManualActions(this.checked)">
-                <span class="slider"></span>
-            </label>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
+            <h1>Instellingen</h1>
+            <small style="color: var(--subtext);">Spelbeheer & Opties</small>
         </div>
-    </div>
 
-    <div class="panel" style="margin-top: 30px; border-top: 2px solid #f38ba8;">
-        <h3>Systeembeheer</h3>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="tap-btn" onclick="saveGame()">💾 Save</button>
-            <button class="tap-btn" onclick="exportGame()">💾 Export Save</button>
-            <button class="tap-btn" onclick="importGame()">📂 Import Save</button>
-            <button class="tap-btn" style="background: #f38ba8; color: #11111b;" onclick="hardReset()">🧨 Harde Reset</button>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <!-- Weergave Opties -->
+            <div class="panel">
+                <h3 style="margin-top: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                    👁️ Zichtbaarheid & Weergave
+                </h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 8px;">
+                    <div>
+                        <strong>Handmatige Acties (Stad)</strong><br>
+                        <small style="opacity: 0.7;">Verberg de knoppen om handmatig Hout/Voedsel/Steen te verzamelen.</small>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-manual" ${manualIsOn ? 'checked' : ''} onchange="toggleManualActions(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Data Beheer -->
+            <div class="panel" style="border-left: 3px solid var(--blue);">
+                <h3 style="margin-top: 0; color: var(--blue);">💾 Data Beheer (Save & Load)</h3>
+                <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">De game slaat automatisch op. Je kunt hier een backup maken of je voortgang naar een ander apparaat verplaatsen.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                    <button class="build-btn" style="background: var(--surface2); color: var(--text); border: none;" onclick="saveGame(); alert('✅ Spel handmatig opgeslagen!');">
+                        💾 Nu Opslaan
+                    </button>
+                    <button class="build-btn" style="background: var(--surface2); color: var(--text); border: none;" onclick="exportGame()">
+                        � Exporteer Save
+                    </button>
+                    <button class="build-btn" style="background: var(--surface2); color: var(--text); border: none;" onclick="importGame()">
+                        � Importeer Save
+                    </button>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px dashed var(--surface2); width: 100%; margin: 10px 0;">
+
+            <!-- Gevaarzone -->
+            <div class="panel" style="background: rgba(243, 139, 168, 0.05); border: 2px solid var(--red);">
+                <h3 style="margin-top: 0; color: var(--red);">🧨 Gevaarzone</h3>
+                <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">
+                    <strong>Waarschuwing:</strong> Een harde reset wist de volledige save-file, INCLUSIEF je Prestige Punten en stammen. Je begint letterlijk vanaf het moment dat je de site voor het eerst bezocht. Dit kan niet ongedaan worden gemaakt.
+                </p>
+                
+                <button class="build-btn" style="background: var(--red); border: none; width: 100%;" onclick="hardReset()">
+                    ⚠️ VOLLEDIGE RESET UITVOEREN
+                </button>
+            </div>
+
         </div>
-    </div>
     `;
 }
 

@@ -511,7 +511,7 @@ function handleFamine() {
         game.resources.food.amount = 0;
 
         // Hoeveel mensen gaan er weg?
-        let deathRate = 0.1;
+        let deathRate = 1;
         game.resources.population.amount -= deathRate;
 
         // --- DE FIX: Banen opschonen ---
@@ -653,38 +653,44 @@ function getPrestigeBreakdown() {
     return {
         total: goldPoints + buildingPoints + tribePoints + researchPoints,
         details: `
-<table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
-    <thead>
-        <tr style="border-bottom: 1px solid var(--accent); opacity: 0.6;">
-            <th style="text-align: left; padding: 4px 6px;">Categorie</th>
-            <th style="text-align: center; padding: 4px 6px;">Punten</th>
-            <th style="text-align: left; padding: 4px 6px;">Voortgang</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 5px 6px;">💰 Goud</td>
-            <td style="text-align: center; color: var(--green);">+${goldPoints}</td>
-            <td style="opacity: 0.7;">Nog ${Math.floor(Math.max(0, 10000 - (game.resources.gold.amount % 10000)))} voor volgend</td>
-        </tr>
-        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 5px 6px;">🏠 Gebouwen</td>
-            <td style="text-align: center; color: var(--green);">+${buildingPoints}</td>
-            <td style="opacity: 0.7;">Nog ${Math.max(0, 10 - (totalBuildings % 10))} gebouwen</td>
-        </tr>
-        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 5px 6px;">⚔️ Veroveringen</td>
-            <td style="text-align: center; color: var(--green);">+${tribePoints}</td>
-            <td style="opacity: 0.7;">${conqueredCount} stammen veroverd</td>
-        </tr>
-        <tr>
-            <td style="padding: 5px 6px;">🧪 Research</td>
-            <td style="text-align: center; color: var(--green);">+${researchPoints}</td>
-            <td style="opacity: 0.7;">Nog ${Math.max(0, 10 - (researchCount % 10))} onderzoeken</td>
-        </tr>
-    </tbody>
-</table>
-`
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9em;">
+                
+                <!-- Goud -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>💰 Goud <strong style="color: var(--green);">+${goldPoints}</strong></span>
+                        <small style="opacity: 0.7;">Nog ${10000 - (Math.floor(game.resources.gold.amount) % 10000)} voor volgend punt</small>
+                    </div>
+                    <div style="width: 100%; background: var(--surface1); border-radius: 4px; height: 8px; overflow: hidden;">
+                        <div style="width: ${(game.resources.gold.amount % 10000) / 100}%; background: var(--yellow); height: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Gebouwen -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>🏠 Gebouwen <strong style="color: var(--green);">+${buildingPoints}</strong></span>
+                        <small style="opacity: 0.7;">Nog ${10 - (totalBuildings % 10)} voor volgend punt</small>
+                    </div>
+                    <div style="width: 100%; background: var(--surface1); border-radius: 4px; height: 8px; overflow: hidden;">
+                        <div style="width: ${(totalBuildings % 10) / 10 * 100}%; background: var(--blue); height: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Veroveringen -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+                    <span>⚔️ Stammen Veroverd (${conqueredCount})</span>
+                    <strong style="color: var(--green);">+${tribePoints}</strong>
+                </div>
+
+                <!-- Onderzoek -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+                    <span>🧪 Onderzoeken Voltooid (${researchCount})</span>
+                    <strong style="color: var(--green);">+${researchPoints}</strong>
+                </div>
+
+            </div>
+        `
     };
 }
 
@@ -696,29 +702,32 @@ function buyBuilding(key) {
     let totalCost = {};
     let limit = buyAmount === 'max' ? Infinity : buyAmount;
 
+    let originalCount = b.count;
+
     // Simuleer aankopen en bereken totale kosten
     for (let i = 0; i < limit; i++) {
-        b.count += 1; // Tijdelijk verhogen zodat getCost de juiste prijs berekent
-        const cost = getCost(b);
-        b.count -= 1; // Terugzetten
+        const costOfNext = getCost(b);
 
-        // Check of we deze aankoop kunnen betalen bovenop wat al gereserveerd is
         let combinedCost = {};
-        for (let res in cost) {
-            combinedCost[res] = (totalCost[res] || 0) + cost[res];
+        for (let res in costOfNext) {
+            combinedCost[res] = (totalCost[res] || 0) + costOfNext[res];
         }
 
         if (canAfford(combinedCost)) {
             totalCost = combinedCost;
             amountToBuy++;
+            b.count++; // Tijdelijk verhogen voor de volgende kost-berekening!
         } else {
             break;
         }
     }
 
+    // Reset de tijdelijke verhoging
+    b.count = originalCount;
+
     if (amountToBuy > 0) {
         payCost(totalCost);
-        b.count += amountToBuy;
+        b.count += amountToBuy; // Nu tellen we ze definitief op
         recalcLimits();
         recalcRates();
         updateUI();
@@ -880,11 +889,11 @@ function giveReward(type, multiplier = 1) {
         let newPeople = Math.random() < 0.3 ? 1 : 0; // 30% kans op 1 persoon
         addResource('gold', gold);
         if (newPeople) game.resources.population.amount += newPeople;
-        msg += `Je vond een handelsroute! +${gold} goud ${newPeople ? 'en een nieuwe inwoner sloot zich aan.' : ''}`;
+        msg += `Je vond een handelsroute! + ${gold} goud ${newPeople ? 'en een nieuwe inwoner sloot zich aan.' : ''} `;
     }
     else if (type === 'hard') {
         discoverTribe();
-        // msg afgehandeld in discoverTribe function
+        return; // De melding wordt al afgehandeld in discoverTribe, dus stop hier
     }
     else if (type === 'expert') {
         if (!game.research.banking.unlocked && Math.random() < 0.5) {
@@ -893,7 +902,7 @@ function giveReward(type, multiplier = 1) {
         } else {
             let gold = 2000 * multiplier;
             addResource('gold', gold);
-            msg += `Je vond een verlaten schatkamer! +${gold} goud.`;
+            msg += `Je vond een verlaten schatkamer! + ${gold} goud.`;
         }
     }
     alert(msg);
@@ -920,6 +929,12 @@ function toggleTradeRoute(tribeKey) {
 function demandTribute(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
 
+    // Breek eventuele allianties direct af bij vijandige acties
+    if (tribe.isAllied) {
+        tribe.isAllied = false;
+        alert(`💢 Alliantie verbroken! Je hebt ${tribe.name} verraden door tribuut te eisen.`);
+    }
+
     // Verlaag relatie flink
     tribe.relation -= 30;
     if (tribe.relation < 0) tribe.relation = 0;
@@ -930,12 +945,12 @@ function demandTribute(tribeKey) {
         alert(`${tribe.name} weigert nog langer met je te handelen!`);
     }
 
-    // Geef buit op basis van hun specialiteit
-    let lootMsg = `Je hebt succesvol ${tribe.name} afgeperst voor tribuut! Buit:\n`;
-    for (let resType in tribe.resources) {
-        const amount = Math.floor(500 * tribe.resources[resType]);
+    // Geef buit op basis van hun specialiteit (dit staat in tradeYield)
+    let lootMsg = `Je hebt succesvol ${tribe.name} afgeperst voor tribuut! Buit: \n`;
+    for (let resType in tribe.tradeYield) {
+        const amount = Math.floor(500 * tribe.tradeYield[resType]);
         addResource(resType, amount);
-        lootMsg += `- ${amount} ${game.resources[resType].name}\n`;
+        lootMsg += `- ${amount} ${game.resources[resType].name} \n`;
     }
 
     updateUI();
@@ -962,7 +977,7 @@ function formAlliance(tribeKey) {
 
     recalcRates();
     updateUI();
-    alert(`Alliantie gevormd met ${tribe.name}! Je ontvangt nu een permanente stroom van hun specialiteiten.`);
+    alert(`Alliantie gevormd met ${tribe.name} !Je ontvangt nu een permanente stroom van hun specialiteiten.`);
 }
 
 /*
@@ -972,7 +987,7 @@ function attackTribe(tribeKey) {
     const tribeDefense = tribe.defenseValue || 500; 
 
     if (game.military.attackPower > tribeDefense) {
-        alert(`Overwinning! Je hebt ${tribe.name} verslagen. Ze betalen je nu 5 goud per seconde tribuut.`);
+        alert(`Overwinning! Je hebt ${ tribe.name } verslagen.Ze betalen je nu 5 goud per seconde tribuut.`);
         tribe.isConquered = true;
         tribe.relation = 0; // Ze haten je, maar ze betalen
     } else {
@@ -989,13 +1004,52 @@ function triggerCounterAttack(_tribeKey) {
         game.resources.gold.amount = Math.max(0, game.resources.gold.amount - loss);
         alert(`❌ VERDEDIGING DOORBROKEN!\n\nDe vijand viel aan met Kracht ${tribeAttack}, maar jouw verdediging was slechts Kracht ${Math.floor(game.military.defensePower)}.\n\nZe hebben ${loss} goud geplunderd.`);
     } else {
-        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJe verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) heeft succesvol de tegenaanval (Kracht ${tribeAttack}) afgeslagen.`);
+        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJe verdedigingsleger(Kracht ${Math.floor(game.military.defensePower)}) heeft succesvol de tegenaanval(Kracht ${tribeAttack}) afgeslagen.`);
     }
 }
 function attackTribe(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
+
+    // Breek eventuele allianties direct af bij vijandige acties
+    if (tribe.isAllied) {
+        tribe.isAllied = false;
+        alert(`💢 Alliantie verbroken! Je bent de oorlog verklaard aan je voormalige bondgenoot ${tribe.name}.`);
+    }
+
     // Tribes hebben een random defense tussen 100 en 1000 voor nu
     const tribeDefense = tribe.defenseValue || 300;
+
+    // Bereken verliezen: de vijand deelt "tribeDefense" aan schade uit aan jouw aanvalsleger
+    let damageToTake = tribeDefense;
+    let unitsLostStr = "";
+
+    // Sorteer eenheden zodat we eerst de zwakste (goedkoopste) eenheden verliezen, 
+    // of itereren gewoon over de object keys. Voor nu simpele iteratie:
+    for (let key in game.military.units) {
+        if (damageToTake <= 0) break;
+
+        const u = game.military.units[key];
+        if (u.assignedOff > 0) {
+            // Hoeveel kracht heeft 1 unit van dit type?
+            const unitPower = u.off || 1;
+
+            // Hoeveel units van dit type sterven er maximaal door deze damage?
+            // (Bijv. 300 damage / 10 power per zwaardvechter = 30 doden)
+            const maxKills = Math.ceil(damageToTake / unitPower);
+            const actualKills = Math.min(u.assignedOff, maxKills);
+
+            if (actualKills > 0) {
+                u.assignedOff -= actualKills;
+                u.total -= actualKills;
+
+                game.jobs.soldier.count = Math.max(0, game.jobs.soldier.count - actualKills);
+                game.resources.population.amount = Math.max(0, game.resources.population.amount - actualKills);
+
+                damageToTake -= (actualKills * unitPower);
+                unitsLostStr += `- ${actualKills} ${u.name}\n`;
+            }
+        }
+    }
 
     if (game.military.attackPower > tribeDefense) {
         const loot = {
@@ -1004,32 +1058,29 @@ function attackTribe(tribeKey) {
             gold: Math.floor(Math.random() * 500) + 200
         };
 
-        // Grondstoffen toevoegen
         game.resources.wood.amount += loot.wood;
         game.resources.stone.amount += loot.stone;
         game.resources.gold.amount += loot.gold;
 
-        alert(`⚔️ OVERWINNING! \n\nJe hebt ${tribe.name} verslagen!\n\nBuit:\n- ${loot.wood} Hout\n- ${loot.stone} Steen\n- ${loot.gold} Goud\n\nZe betalen vanaf nu ook elk uur tribuut.`); tribe.isConquered = true;
-        tribe.tributeAmount = 10; // 10 goud per seconde
+        let winMsg = `⚔️ OVERWINNING!\n\nJe hebt de verdediging van ${tribe.name} doorbroken!\n\nBuit:\n- ${loot.wood} Hout\n- ${loot.stone} Steen\n- ${loot.gold} Goud\n\nZe betalen vanaf nu ook elk uur tribuut.`;
+        if (unitsLostStr !== "") {
+            winMsg += `\n\n💀 Verliezen tijdens de strijd:\n${unitsLostStr}`;
+        }
+
+        alert(winMsg);
+
         tribe.isConquered = true;
+        tribe.tributeAmount = 10; // 10 goud per seconde
         tribe.rebellionLevel = 0; // Begint op 0%
     } else {
-        alert(`❌ NEDERLAAG!\n\nJe aanvalsleger (Kracht: ${Math.floor(game.military.attackPower)}) was niet sterk genoeg om door de verdediging van ${tribe.name} (Kracht: ${tribeDefense}) heen te breken.\n\nJe trekt je troepen terug.`);
-
-        // Straf: Verlies 20% van je offensieve eenheden
-        for (let key in game.military.units) {
-            const u = game.military.units[key];
-            if (u.assignedOff > 0) {
-                const lost = Math.ceil(u.assignedOff * 0.2);
-                u.assignedOff -= lost;
-                u.total -= lost;
-
-                // Belangrijk: Doden verminderen ook je actuele populatie en soldaat-banen
-                game.jobs.soldier.count = Math.max(0, game.jobs.soldier.count - lost);
-                game.resources.population.amount = Math.max(0, game.resources.population.amount - lost);
-            }
+        let loseMsg = `❌ NEDERLAAG!\n\nJe aanvalsleger (Kracht: ${Math.floor(game.military.attackPower)}) was niet sterk genoeg om door de verdediging van ${tribe.name} (Kracht: ${tribeDefense}) heen te breken.\n\nJe trekt je troepen terug.`;
+        if (unitsLostStr !== "") {
+            loseMsg += `\n\n💀 Zware verliezen geleden:\n${unitsLostStr}`;
         }
+
+        alert(loseMsg);
     }
+    recalcMilitary();
     recalcRates();
     updateUI();
 }
@@ -1039,14 +1090,14 @@ function triggerEnemyAttack(tribeKey) {
     // De aanvalskracht van de tribe (bijv. tussen 100 en 500)
     const enemyPower = Math.floor(Math.random() * 400) + 100;
 
-    alert(`⚠️ ALARM! ${tribe.name} valt je stad aan met een kracht van ${enemyPower}!`);
+    alert(`⚠️ ALARM! ${tribe.name} valt je stad aan met een kracht van ${enemyPower} !`);
 
     if (game.military.defensePower >= enemyPower) {
-        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJouw verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de invasie van ${tribe.name} (Kracht ${enemyPower}).`);
+        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJouw verdedigingsleger(Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de invasie van ${tribe.name} (Kracht ${enemyPower}).`);
     } else {
         const goldLost = Math.floor(game.resources.gold.amount * 0.2);
         game.resources.gold.amount -= goldLost;
-        alert(`❌ VERDEDIGING DOORBROKEN!\n\nJe verdediging (Kracht ${Math.floor(game.military.defensePower)}) was niet bestand tegen de aanval van ${tribe.name} (Kracht ${enemyPower}).\n\nZe hebben ${goldLost} goud geplunderd.`);
+        alert(`❌ VERDEDIGING DOORBROKEN!\n\nJe verdediging(Kracht ${Math.floor(game.military.defensePower)}) was niet bestand tegen de aanval van ${tribe.name} (Kracht ${enemyPower}).\n\nZe hebben ${goldLost} goud geplunderd.`);
     }
     updateUI();
 }

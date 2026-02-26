@@ -130,57 +130,64 @@ function triggerRandomEvent() {
 }
 // EXPORT: Maakt een code van je savegame
 async function exportGame() {
-    const saveString = btoa(JSON.stringify(game));
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        try {
-            await navigator.clipboard.writeText(saveString);
-            alert("Savecode gekopieerd naar klembord!");
-            return;
-        } catch (e) {
-            // fallback below
-        }
-    }
-
-    // Fallback for older browsers / insecure contexts
-    const ta = document.createElement('textarea');
-    ta.value = saveString;
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
     try {
-        document.execCommand('copy'); // deprecated but useful as fallback
-        alert("Savecode gekopieerd naar klembord (fallback)!");
+        const saveString = btoa(JSON.stringify(game));
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(saveString);
+            alert("💾 Savecode succesvol gekopieerd naar je klembord!");
+        } else {
+            // Fallback for older browsers / insecure contexts
+            const ta = document.createElement('textarea');
+            ta.value = saveString;
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert("💾 Savecode succesvol gekopieerd naar je klembord (fallback)!");
+        }
     } catch (e) {
-        prompt("Kopieer deze code handmatig:", saveString);
+        console.error("Export mislukt:", e);
+        const saveString = btoa(JSON.stringify(game));
+        prompt("We konden niet automatisch kopiëren. Kopieer deze code handmatig:", saveString);
     }
-    document.body.removeChild(ta);
 }
 
 // IMPORT: Laadt een code in
 function importGame() {
-    const code = prompt("Plak je savecode hier:");
+    const code = prompt("📥 Plak je savecode hier:");
     if (!code) return;
     try {
         const decoded = JSON.parse(atob(code));
-        if (confirm("Weet je het zeker? Dit overschrijft je huidige voortgang!")) {
-            game = decoded;
-            saveGame();
-            window.location.reload();
+        if (decoded && decoded.resources) {
+            if (confirm("⚠️ Weet je dit heel zeker? Het laden van een save overschrijft je HUDIGE voortgang direct!")) {
+                game = decoded;
+                saveGame();
+                alert("✅ Savegame succesvol ingeladen! De game wordt nu herstart.");
+                window.location.reload();
+            }
+        } else {
+            alert("❌ Dit lijkt geen geldige savecode voor deze game te zijn.");
         }
     } catch (e) {
-        alert("Ongeldige savecode!");
+        alert("❌ Ongeldige savecode! Check of je de hele code hebt gekopieerd.");
     }
 }
 
 // HARDE RESET: Alles weg, inclusief Prestige
 function hardReset() {
-    const confirm1 = confirm("⚠️ GEVAAR: Dit wist ALLES, ook je Prestige punten en upgrades. Weet je het zeker?");
-    if (confirm1) {
-        const confirm2 = confirm("Laatste kans: Weet je het écht heel zeker? Dit kan niet ongedaan worden gemaakt.");
-        if (confirm2) {
+    const firstCheck = confirm("⚠️ GEVAAR: Dit wist je VOLLEDIGE voortgang, INCLUSIEF al je Prestige punten en upgrades.\n\nKlik alleen op OK als je letterlijk vanaf NUL wilt beginnen.");
+
+    if (firstCheck) {
+        const checkWord = prompt("Om te bevestigen dat dit geen ongeluk is, typ het woord RESET in hoofdletters:");
+
+        if (checkWord === "RESET") {
             localStorage.removeItem('myGameSave');
+            alert("🧨 Je hele beschaving is vernietigd. De begin der tijden start nu opnieuw.");
             window.location.reload();
+        } else {
+            alert("Harde reset geannuleerd. Je beschaving is veilig.");
         }
     }
 }

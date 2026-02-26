@@ -3,9 +3,18 @@
     --panel: #d6e2c8;
     --text: #1b1c20;
     --accent: #b1a756;
-    /* Prestige/Accent kleur #fab387*/
     --red: #f38ba8;
     --green: #a6e3a1;
+
+    /* Extra kleuren voor Prestige UI & Progress Bars ! */
+    --surface0: #d0dcbf;
+    --surface1: rgba(0, 0, 0, 0.1);
+    --surface2: rgba(0, 0, 0, 0.2);
+    --subtext: #5c5f77;
+    --yellow: #df8e1d;
+    --blue: #1e66f5;
+    --peach: #fe640b;
+    --mauve: #8839ef;
 }
 
 body {
