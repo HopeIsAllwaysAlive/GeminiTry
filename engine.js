@@ -997,15 +997,56 @@ function attackTribe(tribeKey) {
     updateUI();
 }*/
 
-function triggerCounterAttack(_tribeKey) {
-    const tribeAttack = 400; // Kracht van de vijand
-    if (tribeAttack > game.military.defensePower) {
-        const loss = 200;
-        game.resources.gold.amount = Math.max(0, game.resources.gold.amount - loss);
-        alert(`❌ VERDEDIGING DOORBROKEN!\n\nDe vijand viel aan met Kracht ${tribeAttack}, maar jouw verdediging was slechts Kracht ${Math.floor(game.military.defensePower)}.\n\nZe hebben ${loss} goud geplunderd.`);
-    } else {
-        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJe verdedigingsleger(Kracht ${Math.floor(game.military.defensePower)}) heeft succesvol de tegenaanval(Kracht ${tribeAttack}) afgeslagen.`);
+function triggerCounterAttack(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+
+    // De tegenaanval is gebaseerd op hun defense, of een vaste waarde
+    const tribeAttack = tribe.defenseValue ? Math.floor(tribe.defenseValue * 1.5) : 400;
+
+    let damageToTake = tribeAttack;
+    let unitsLostStr = "";
+
+    // Sorteer eenheden op defensieve efficiëntie of loop er doorheen.
+    for (let key in game.military.units) {
+        if (damageToTake <= 0) break;
+
+        const u = game.military.units[key];
+        if (u.assignedDef > 0) {
+            const unitPower = u.def || 1;
+            const maxKills = Math.ceil(damageToTake / unitPower);
+            const actualKills = Math.min(u.assignedDef, maxKills);
+
+            if (actualKills > 0) {
+                u.assignedDef -= actualKills;
+                u.total -= actualKills;
+
+                game.jobs.soldier.count = Math.max(0, game.jobs.soldier.count - actualKills);
+                game.resources.population.amount = Math.max(0, game.resources.population.amount - actualKills);
+
+                damageToTake -= (actualKills * unitPower);
+                unitsLostStr += `- ${actualKills} ${u.name}\n`;
+            }
+        }
     }
+
+    if (tribeAttack > game.military.defensePower) {
+        const loss = Math.floor(game.resources.gold.amount * 0.1); // Verlies 10% goud bij een tegenaanval
+        game.resources.gold.amount = Math.max(0, game.resources.gold.amount - loss);
+
+        let msg = `❌ TEGENAANVAL DOORBROKEN!\n\nDe vijand viel direct terug aan met Kracht ${tribeAttack}, maar jouw verdediging was slechts Kracht ${Math.floor(game.military.defensePower)}.\n\nZe hebben als straf ${loss} goud geplunderd.`;
+        if (unitsLostStr !== "") {
+            msg += `\n\n💀 Verliezen tijdens de verdediging:\n${unitsLostStr}`;
+        }
+        alert(msg);
+    } else {
+        let msg = `🛡️ TEGENAANVAL AFGESLAGEN!\n\nJe verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield gelukkig stand tegen de furieuze tegenaanval (Kracht ${tribeAttack}).`;
+        if (unitsLostStr !== "") {
+            msg += `\n\n💀 Verliezen tijdens de strijd:\n${unitsLostStr}`;
+        }
+        alert(msg);
+    }
+    recalcMilitary();
+    updateUI();
 }
 function attackTribe(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
@@ -1075,10 +1116,13 @@ function attackTribe(tribeKey) {
     } else {
         let loseMsg = `❌ NEDERLAAG!\n\nJe aanvalsleger (Kracht: ${Math.floor(game.military.attackPower)}) was niet sterk genoeg om door de verdediging van ${tribe.name} (Kracht: ${tribeDefense}) heen te breken.\n\nJe trekt je troepen terug.`;
         if (unitsLostStr !== "") {
-            loseMsg += `\n\n💀 Zware verliezen geleden:\n${unitsLostStr}`;
+            loseMsg += `\n\n💀 Zware verliezen geleden tijdens aanval:\n${unitsLostStr}`;
         }
 
         alert(loseMsg);
+
+        // Nu slaan ze meteen terug op je stad!
+        triggerCounterAttack(tribeKey);
     }
     recalcMilitary();
     recalcRates();
@@ -1090,15 +1134,50 @@ function triggerEnemyAttack(tribeKey) {
     // De aanvalskracht van de tribe (bijv. tussen 100 en 500)
     const enemyPower = Math.floor(Math.random() * 400) + 100;
 
-    alert(`⚠️ ALARM! ${tribe.name} valt je stad aan met een kracht van ${enemyPower} !`);
+    let damageToTake = enemyPower;
+    let unitsLostStr = "";
+
+    // Sorteer eenheden op defensieve efficiëntie of loop er doorheen.
+    for (let key in game.military.units) {
+        if (damageToTake <= 0) break;
+
+        const u = game.military.units[key];
+        if (u.assignedDef > 0) {
+            const unitPower = u.def || 1;
+            const maxKills = Math.ceil(damageToTake / unitPower);
+            const actualKills = Math.min(u.assignedDef, maxKills);
+
+            if (actualKills > 0) {
+                u.assignedDef -= actualKills;
+                u.total -= actualKills;
+
+                game.jobs.soldier.count = Math.max(0, game.jobs.soldier.count - actualKills);
+                game.resources.population.amount = Math.max(0, game.resources.population.amount - actualKills);
+
+                damageToTake -= (actualKills * unitPower);
+                unitsLostStr += `- ${actualKills} ${u.name}\n`;
+            }
+        }
+    }
 
     if (game.military.defensePower >= enemyPower) {
-        alert(`🛡️ AANVAL AFGESLAGEN!\n\nJouw verdedigingsleger(Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de invasie van ${tribe.name} (Kracht ${enemyPower}).`);
+        let msg = `🛡️ AANVAL AFGESLAGEN!\n\nJouw verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de invasie van ${tribe.name} (Kracht ${enemyPower}).`;
+        if (unitsLostStr !== "") {
+            msg += `\n\n💀 Verliezen tijdens de strijd:\n${unitsLostStr}`;
+        }
+        alert(msg);
     } else {
         const goldLost = Math.floor(game.resources.gold.amount * 0.2);
         game.resources.gold.amount -= goldLost;
-        alert(`❌ VERDEDIGING DOORBROKEN!\n\nJe verdediging(Kracht ${Math.floor(game.military.defensePower)}) was niet bestand tegen de aanval van ${tribe.name} (Kracht ${enemyPower}).\n\nZe hebben ${goldLost} goud geplunderd.`);
+
+        // Extra straf is dat het verdedigingsleger verslagen is en goud is gestolen
+        let msg = `❌ VERDEDIGING DOORBROKEN!\n\nJe verdediging (Kracht ${Math.floor(game.military.defensePower)}) was niet bestand tegen de aanval van ${tribe.name} (Kracht ${enemyPower}).\n\nZe hebben ${goldLost} goud geplunderd.`;
+        if (unitsLostStr !== "") {
+            msg += `\n\n💀 Zware verliezen geleden:\n${unitsLostStr}`;
+        }
+        alert(msg);
     }
+    recalcMilitary();
     updateUI();
 }
 
