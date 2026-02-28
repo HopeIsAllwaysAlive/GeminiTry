@@ -274,106 +274,81 @@ body {
     border: 1px solid #d6e2c8;
 }
 
-/* Navigatie onderaan voor mobiel */
-nav#main-nav {
+/* Unified Horizontale Navigatie */
+.unified-bottom-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
     height: 70px;
-    /* Geef de balk een vaste hoogte */
-    background: var(--panel);
+    background: linear-gradient(45deg, #181825, #11111b);
+    border-top: 2px solid #313244;
     display: flex;
-    justify-content: space-around;
     align-items: center;
-    border-top: 2px solid #45475a;
+    overflow-x: auto;
+    white-space: nowrap;
     z-index: 2000;
-    /* Zorg dat het ook op iPhones met een 'notch' onderaan goed staat */
+    padding: 0 10px;
     padding-bottom: env(safe-area-inset-bottom);
-    background: linear-gradient(45deg, #d6e2c8, #313244);
-    border: 1px solid #d6e2c8;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+    /* Verberg scrollbar */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }
 
-nav#main-nav button {
-    flex: 1;
-    height: 100%;
+.unified-bottom-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.nav-main-icon {
+    flex-shrink: 0;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
+    font-size: 1.5em;
+    margin: 0 5px;
+    cursor: pointer;
     transition: all 0.2s ease;
-    border-radius: 8px;
-    margin: 2px;
 }
 
-/* De tekst onder het icoontje */
-nav#main-nav button span {
-    font-size: 1em;
-    margin-top: 4px;
+.nav-main-icon.active {
+    background: rgba(203, 166, 247, 0.2);
+    border-color: var(--mauve);
+    box-shadow: 0 0 10px rgba(203, 166, 247, 0.4);
 }
 
-/* De icoontjes zelf (we gebruiken emoji of font-awesome) */
-nav#main-nav button .icon {
-    font-size: 1.5rem;
-}
-
-/* MEDIA QUERY: Voor smalle schermen (< 400px) */
-@media (max-width: 400px) {
-    nav#main-nav {
-        height: 60px;
-        /* Iets minder hoog */
-    }
-
-    nav#main-nav button span {
-        display: none;
-        /* Verberg de tekst */
-    }
-
-    nav#main-nav button .icon {
-        font-size: 1.8rem;
-        /* Maak het icoon groter */
-    }
-}
-
-/* Actieve tab krijgt een subtiele achtergrond */
-nav#main-nav button.active {
-    background: rgba(250, 179, 135, 0);
-    border-bottom: 3px solid var(--accent);
-}
-
-nav button {
-    background: none;
-    border: none;
+.nav-sub-btn {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 15px;
+    margin: 0 5px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #45475a;
     color: var(--text);
-    font-size: 0.7em;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    opacity: 0.6;
-}
-
-nav button.active {
-    opacity: 1;
-    color: var(--accent);
-}
-
-nav button i {
-    /* Voor icoontjes */
-    font-size: 1.5rem;
-    margin-bottom: 4px;
-}
-
-/* Knoppen die lekker klikken op mobiel */
-button.build-btn,
-button.action-btn-small {
-    padding: 12px;
-    border-radius: 8px;
-    border: none;
     font-weight: bold;
     cursor: pointer;
-    width: 100%;
-    /* Full width op mobiel is makkelijker met de duim */
-    margin-top: 5px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.nav-sub-btn.active {
+    background: var(--green);
+    color: var(--bg);
+    border-color: var(--green);
+}
+
+.nav-sub-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 @keyframes prestige-glow {

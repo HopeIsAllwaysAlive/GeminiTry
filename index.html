@@ -97,17 +97,9 @@
     <button class="nav-arrow right-arrow" onclick="changeTabDirection(1)" title="Volgende Tab"
         aria-label="Volgende">❯</button>
 
-    <!-- Sub-navigatie (swipebaar) -->
-    <div id="sub-nav-container" class="swipeable-sub-nav hidden">
-        <!-- Wordt dynamisch gevuld o.b.v. geselecteerde hoofd-tab -->
-    </div>
-
-    <!-- Hoofd-navigatie (4 knoppen) -->
-    <nav id="main-nav" class="bottom-bar">
-        <button onclick="selectCategory('management')" id="nav-cat-management">🏗️<span>Stad</span></button>
-        <button onclick="selectCategory('world')" id="nav-cat-world">🌍<span>Buitenwereld</span></button>
-        <button onclick="selectCategory('progress')" id="nav-cat-progress">✨<span>Vooruitgang</span></button>
-        <button onclick="selectCategory('menu')" id="nav-cat-menu">⚙️<span>Menu</span></button>
+    <!-- Unified Horizontale Navigatie -->
+    <nav id="unified-nav-container" class="unified-bottom-bar">
+        <!-- Wordt dynamisch opgebouwd in ui.js -->
     </nav>
     <script src="state.js"></script>
     <script src="engine.js"></script>

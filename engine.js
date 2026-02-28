@@ -535,6 +535,14 @@ function handleFamine() {
     }
 }
 function checkUnlocks() {
+    // Tijdperk 1: Ontgrendel steenhouwerij als er genoeg hout is, 
+    // want de research tab is verborgen in dit tijdperk!
+    if ((!game.era || game.era === 1) && game.resources.wood.amount >= 30) {
+        game.buildings.quarry.unlocked = true;
+        game.jobs.miner.unlocked = true;
+        game.resources.stone.discovered = true;
+    }
+
     // Check Research Unlocks
     if (game.buildings.lumber_camp.count > 0) {
         game.jobs.woodcutter.unlocked = true;
@@ -1359,22 +1367,37 @@ function triggerRebellion(tribeKey) {
 }
 
 function performPrestige() {
-    const earnedPoints = calculatePrestigePoints();
+    const currentEra = game.era || 1;
+    let newEra = currentEra;
+    let earnedPoints = 0;
 
-    // 1. Punten bijschrijven
+    // 1. Bereken de punten en het nieuwe tijdperk
+    if (currentEra === 1) {
+        if (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1 && game.resources.population.amount >= 50) {
+            newEra = 2;
+            earnedPoints = 10; // Beloning voor overgang naar Tijdperk 2
+        } else {
+            return; // Niet voldaan aan de eisen
+        }
+    } else {
+        earnedPoints = calculatePrestigePoints();
+    }
+
+    // 2. Punten bijschrijven
     game.prestige.points += earnedPoints;
     game.prestige.totalEarned += earnedPoints;
 
-    // 2. Prestige Upgrades & Punten veiligstellen
+    // 3. Prestige Upgrades & Punten veiligstellen
     const permanentPrestige = JSON.parse(JSON.stringify(game.prestige));
 
-    // 3. De Game resetten naar de basis
+    // 4. De Game resetten naar de basis
     game = getInitialState();
 
-    // 4. Prestige data terugzetten
+    // 5. Prestige data en Tijdperk terugzetten
     game.prestige = permanentPrestige;
+    game.era = newEra;
 
-    // 5. "Starter Pack" bonus uitdelen
+    // 6. "Starter Pack" bonus uitdelen
     const starterLevel = game.prestige.upgrades.starter_pack.level;
     if (starterLevel > 0) {
         const bonus = starterLevel * 500;
@@ -1383,12 +1406,15 @@ function performPrestige() {
         game.resources.food.amount += bonus; game.resources.food.max += bonus;
     }
 
-    // 6. Opslaan en herladen
+    // 7. Opslaan en herladen
     saveGame();
-    alert(`Je bent herboren! Je start nu met ${game.prestige.points} prestige punten en je bonussen zijn actief.`);
-    window.location.reload(); // Dit dwingt de browser alles vers in te laden
-    //updateUI();
+    if (newEra > currentEra) {
+        alert(`Gefeliciteerd! Je stam is geëvolueerd naar Tijdperk ${newEra}! Je ontvangt ${earnedPoints} prestige punten.`);
+    } else {
+        alert(`Je bent herboren in Tijdperk ${newEra}! Je start nu met ${game.prestige.points} prestige punten en je bonussen zijn actief.`);
+    }
 
+    window.location.reload(); // Dit dwingt de browser alles vers in te laden
 }
 function buyPrestigeUpgrade(key) {
     const upg = game.prestige.upgrades[key];

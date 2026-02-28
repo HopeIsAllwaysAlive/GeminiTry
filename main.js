@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     handleOfflineProgress();
     renderManualButtons();
     updateUI();
+    selectCategory('management');
+    showTab('jobs');
 
     setInterval(() => {
         // Resources & Groei

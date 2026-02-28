@@ -102,6 +102,9 @@ function updateResourceBar() {
         if (key === 'population' || key === 'scouts') continue;
         const res = game.resources[key];
 
+        // Tijdperk 1 restricties: verberg geavanceerde grondstoffen volledig
+        if ((!game.era || game.era === 1) && ['gold', 'intel', 'researchPoints', 'beam', 'brick'].includes(key)) continue;
+
         // Respecteer de instellingen van Tab 9 (Settings)
         const isHidden = game.settings && game.settings.hiddenResources && game.settings.hiddenResources.includes(key);
 
@@ -410,6 +413,9 @@ function renderBuildings() {
         const b = game.buildings[key];
         if (!b.unlocked) continue;
 
+        // Tijdperk 1 restricties: verberg geavanceerde gebouwen EN het vuursteen monument (die staat in Tab 8)
+        if ((!game.era || game.era === 1) && ['house', 'wood_workshop', 'stone_workshop', 'school', 'bank', 'irrigation_system', 'warehouse', 'barracks', 'scout_post', 'flint_monument'].includes(key)) continue;
+
         let displayCost = {};
         let actualAmount = 0;
         let affordable = false;
@@ -526,6 +532,9 @@ function renderJobs() {
     for (let key in game.jobs) {
         const job = game.jobs[key];
         if (!job.unlocked) continue;
+
+        // Tijdperk 1 restricties: verberg geavanceerde banen
+        if ((!game.era || game.era === 1) && ['woodworker', 'stoneworker', 'teacher', 'banker'].includes(key)) continue;
 
         // Bepaal hoeveel werkers we toevoegen of verwijderen met één druk
         const availableWorkers = getIdlePopulation();
@@ -1082,6 +1091,63 @@ function renderPrestige() {
     }
     upgradesHtml += '</div>';
 
+    let canEvolve = true;
+    let btnTitle = "";
+    let btnText = "🌟 Evolueer Nu";
+    let warningHtml = "";
+
+    if (!game.era || game.era === 1) {
+        canEvolve = (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1) && game.resources.population.amount >= 50;
+        btnTitle = canEvolve ? "Evolueer naar Tijdperk 2" : "Bouw het Vuursteen Monument en bereik 50 Bevolking.";
+        btnText = "🌟 Evolueer naar Tijdperk 2";
+        warningHtml = canEvolve ? "" : `<div style="text-align: center; margin-top: 10px; font-size: 0.8em; color: var(--red);">Vereist voor Tijdperk 2: Voltooi het Vuursteen Monument & Bereik 50 Bevolking.</div>`;
+    } else {
+        canEvolve = game.resources.population.amount >= 100;
+        btnTitle = canEvolve ? "Start een nieuw tijdperk" : "Minstens 100 Bevolking vereist.";
+        warningHtml = canEvolve ? "" : `<div style="text-align: center; margin-top: 10px; font-size: 0.8em; color: var(--red);">Je hebt 100 Totale Bevolking nodig om te evolueren.</div>`;
+    }
+
+    let monumentHtml = "";
+    if (!game.era || game.era === 1) {
+        const b = game.buildings.flint_monument;
+        if (b) {
+            if (b.count >= 1) {
+                monumentHtml = `
+                    <h3 style="margin-top: 0; margin-bottom: 5px;">Voltooide Tijdperken</h3>
+                    <div class="panel" style="border-left: 5px solid var(--green); margin-bottom: 20px; background: rgba(166, 227, 161, 0.05);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; color: var(--green);">🗿 Tijdperk 1: Steentijd</h3>
+                            <span class="badge" style="background: var(--green); color: var(--bg); padding: 5px 10px; border-radius: 20px; font-weight: bold;">✅ Voltooid</span>
+                        </div>
+                        <p style="font-size: 0.9em; color: var(--subtext);">Je hebt het Vuursteen Monument voltooid. Bereik nu 50 Bevolking om te Evolueren!</p>
+                    </div>
+                `;
+            } else {
+                let displayCost = getCost(b);
+                let affordable = canAfford(displayCost);
+
+                let costTxtHtml = '';
+                for (let r in displayCost) {
+                    const reqAmount = displayCost[r];
+                    const hasAmount = game.resources[r].amount;
+                    const isShort = hasAmount < reqAmount;
+                    costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${game.resources[r].name}</span>, `;
+                }
+                if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
+
+                monumentHtml = `
+                    <div class="panel" style="border-left: 5px solid var(--peach); margin-bottom: 20px;">
+                        <h3 style="margin-top: 0; color: var(--peach);">🗿 ${b.name}</h3>
+                        <p style="font-size: 0.9em; color: var(--subtext);">${b.desc}</p>
+                        <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyBuilding('flint_monument')" ${affordable ? '' : 'disabled'}>
+                            Bouw (${costTxtHtml})
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    }
+
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
             <h1>Evolutie & Prestige</h1>
@@ -1093,6 +1159,8 @@ function renderPrestige() {
 
         <div style="display: flex; flex-direction: column; gap: 20px;">
             
+            ${monumentHtml}
+
             <!-- Reset info en dashboard -->
             <div class="panel" style="background: rgba(243, 139, 168, 0.05); border-left: 5px solid var(--red);">
                 <h3 style="color: var(--red); margin-top: 0;">⚠️ Wat gebeurt er bij een Evolutie?</h3>
@@ -1110,12 +1178,12 @@ function renderPrestige() {
                 </div>
                 
                 <button class="build-btn" style="width: 100%; height: 60px; font-size: 1.2em; background: var(--mauve); border: none; box-shadow: 0 4px 15px rgba(203, 166, 247, 0.4);" 
-                        onclick="if(confirm('Weet je zeker dat je wilt resetten? Je begint helemaal opnieuw, maar behoudt je Prestige Punten!')) performPrestige()" 
-                        ${game.resources.population.amount >= 100 ? '' : 'disabled'}
-                        title="${game.resources.population.amount >= 100 ? 'Start een nieuw tijdperk' : 'Je hebt minimaal 100 Totale Bevolking nodig om te evolueren.'}">
-                    🌟 Evolueer Nu
+                        onclick="if(confirm('Weet je zeker dat je wilt evolueren naar een nieuw tijdperk? Je begint helemaal opnieuw!')) performPrestige()" 
+                        ${canEvolve ? '' : 'disabled'}
+                        title="${btnTitle}">
+                    ${btnText}
                 </button>
-                ${game.resources.population.amount < 100 ? '<div style="text-align: center; margin-top: 10px; font-size: 0.8em; color: var(--red);">Je hebt 100 Totale Bevolking nodig om te resetten.</div>' : ''}
+                ${warningHtml}
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--surface2); width: 100%; margin: 10px 0;">
@@ -1224,6 +1292,10 @@ function renderSettings() {
 
         for (let key in game.resources) {
             if (key === 'population' || key === 'scouts') continue;
+
+            // Tijdperk 1 restricties voor toggles
+            if ((!game.era || game.era === 1) && ['gold', 'intel', 'researchPoints', 'beam', 'brick'].includes(key)) continue;
+
             const res = game.resources[key];
 
             if (res.unlocked || res.amount > 0) {
@@ -1327,7 +1399,7 @@ const tabCategories = {
     ],
     progress: [
         { id: 'research', icon: '🧪', label: 'Onderzoek' },
-        { id: 'prestige', icon: '✨', label: 'Prestige' }
+        { id: 'prestige', icon: '✨', label: 'Tijdperken' }
     ],
     menu: [
         { id: 'settings', icon: '⚙️', label: 'Settings' }
@@ -1344,44 +1416,57 @@ const swipeOrder = [
 
 window.currentCategory = 'management';
 
-// Functie om de hoofd-navigatie acties af te handelen
+const mainCategoryIcons = {
+    management: '🏗️',
+    world: '🌍',
+    progress: '✨',
+    menu: '⚙️'
+};
+const categoryOrder = ['management', 'world', 'progress', 'menu'];
+
 window.selectCategory = function (catKey) {
     window.currentCategory = catKey;
-    const subNavContainer = document.getElementById('sub-nav-container');
+    const container = document.getElementById('unified-nav-container');
+    if (!container) return;
+
+    let html = '';
+
+    for (let c of categoryOrder) {
+        const isActiveCat = (c === catKey);
+        html += `<button class="nav-main-icon ${isActiveCat ? 'active' : ''}" onclick="selectCategory('${c}')" title="${c}">${mainCategoryIcons[c]}</button>`;
+
+        if (isActiveCat) {
+            const tabs = tabCategories[c];
+            tabs.forEach(tab => {
+                // Tijdperk 1 restricties: verberg Onderzoek, Diplomatie, Verkennen en Leger
+                if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)) return;
+                html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
+            });
+        }
+    }
+
+    container.innerHTML = html;
+
     const tabs = tabCategories[catKey];
-
-    // Reset actieve state van hoofd-knoppen
-    document.querySelectorAll('.bottom-bar button').forEach(b => b.classList.remove('active'));
-    document.getElementById('nav-cat-' + catKey).classList.add('active');
-
-    // Bouw sub-nav html op
-    let subHtml = '';
-    tabs.forEach(tab => {
-        subHtml += `<button class="sub-nav-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')">${tab.icon} ${tab.label}</button>`;
-    });
-
-    subNavContainer.innerHTML = subHtml;
-    subNavContainer.classList.remove('hidden');
-
-    // Kijk of de huidige actieve tab in deze categorie zit. 
-    // Zo niet, open dan standaard de eerste tab van de geselecteerde categorie!
     const isActiveInCat = tabs.some(t => t.id === window.currentTab);
+
     if (!isActiveInCat && tabs.length > 0) {
-        showTab(tabs[0].id);
+        const validTabs = tabs.filter(tab => !((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)));
+        if (validTabs.length > 0) {
+            showTab(validTabs[0].id);
+        }
     } else {
-        // Zorg dat de visuele knop in de subnav wél groen/actief kleurt als we al in de tab zitten
         highlightSubNavButton(window.currentTab);
     }
 }
 
 // Helper functie om de actieve stijl op sub-nav tabs te zetten
 window.highlightSubNavButton = function (tabId) {
-    document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById('sub-nav-' + tabId);
-    if (btn) {
-        btn.classList.add('active');
-        // Scroll de active tab in beeld als ie buiten beeld is
-        btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    document.querySelectorAll('.nav-sub-btn').forEach(btn => btn.classList.remove('active'));
+    let activeBtn = document.getElementById('sub-nav-' + tabId);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
 }
 
@@ -1407,12 +1492,25 @@ function changeTabDirection(direction) {
     const currentIndex = swipeOrder.indexOf(window.currentTab);
     if (currentIndex === -1) return;
 
-    let targetIndex = currentIndex + direction;
-    // Bounding preventie
-    if (targetIndex < 0) targetIndex = 0;
-    if (targetIndex >= swipeOrder.length) targetIndex = swipeOrder.length - 1;
+    let targetIndex = currentIndex;
+    let foundValid = false;
 
-    if (targetIndex !== currentIndex) {
+    while (!foundValid) {
+        targetIndex += direction;
+
+        if (targetIndex < 0 || targetIndex >= swipeOrder.length) break;
+
+        const nextTabId = swipeOrder[targetIndex];
+
+        // Check Tijdperk 1 restricties
+        if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(nextTabId)) {
+            continue; // Sla over en probeer de volgende
+        }
+
+        foundValid = true;
+    }
+
+    if (foundValid && targetIndex !== currentIndex) {
         const nextTabId = swipeOrder[targetIndex];
 
         // Bepaal in welke categorie de volgende tab zit en activeer deze indien nodig

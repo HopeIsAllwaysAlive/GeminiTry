@@ -4,6 +4,7 @@ let buyAmount = 1;
 // --- DE DATA (HET BREIN VAN DE GAME) ---
 let game = {
 
+    era: 1, // Nieuw in Fase 4 (Gelaagd prestige systeem)
 
     resources: {
         food: { name: "Voedsel", amount: 10, max: 100, perSec: 0, manualGain: 1, discovered: true },
@@ -28,6 +29,7 @@ let game = {
         banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false }
     },
     buildings: {
+        flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
         house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
         farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
@@ -280,6 +282,7 @@ let game = {
 
 function getInitialState() {
     return {
+        era: 1,
         resources: {
             wood: { amount: 0, max: 100, perSec: 0, manualGain: 1, unlocked: true },
             beam: { amount: 0, max: 50, perSec: 0, unlocked: false },
@@ -292,6 +295,7 @@ function getInitialState() {
             intel: { amount: 0, max: 100, perSec: 0, name: "Intel", icon: "👁️", discovered: false, unlocked: false }
         },
         buildings: {
+            flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
             house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
             farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
