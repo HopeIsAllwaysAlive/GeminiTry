@@ -20,9 +20,9 @@ let game = {
     jobs: {
         farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
         woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -0.5 }, unlocked: false },
-        woodworker: { name: "Houtbewerker", count: 0, max: 0, effect: { wood: -1, food: -1, beam: 0.2 }, unlocked: false },
+        woodworker: { name: "Timmerman", count: 0, max: 0, effect: { wood: -3, food: -1, beam: 0.5 }, unlocked: false },
         miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
-        stoneworker: { name: "Steenhouwer", count: 0, max: 0, effect: { stone: -1, food: -1, brick: 0.2 }, unlocked: false },
+        stoneworker: { name: "Metselaar", count: 0, max: 0, effect: { stone: -3, food: -1, brick: 0.5 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 }, unlocked: false },
         scout_job: { name: "Verkenner", count: 0, max: 0, effect: { intel: 1, food: -2 }, unlocked: false },
         soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -0.1, food: -2 }, unlocked: false },
@@ -35,10 +35,11 @@ let game = {
         farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
         irrigation_system: { name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
         lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2, max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
-        wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_woodworker: 1, max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
+        wood_workshop: { name: "Houtzagerij", count: 0, cost: { wood: 800, stone: 200 }, provides: { job_woodworker: 1, max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
         quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2, max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
-        stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 2000, stone: 3000 }, provides: { job_stoneworker: 1, max_brick: 100 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
-        warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false },
+        stone_workshop: { name: "Steenoven", count: 0, cost: { wood: 200, stone: 800 }, provides: { job_stoneworker: 1, max_brick: 100 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
+        warehouse: { name: "Pakhuis", count: 0, cost: { wood: 50, stone: 50 }, provides: { max_wood: 100, max_food: 100, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor basis grondstoffen.", unlocked: false },
+        storage_house: { name: "Opslaghuis", count: 0, cost: { beam: 50, brick: 50 }, provides: { max_wood: 500, max_stone: 500, max_beam: 200, max_brick: 200 }, desc: "Een massief opslaghuis voor geavanceerde grondstoffen.", unlocked: false },
         school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.", unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3, max_intel: 50 }, desc: "Traint inwoners om de wereld te verkennen en vergroot opslag voor Intel (+50).", unlocked: false },
         barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 20 soldaten.", unlocked: false },
@@ -52,6 +53,13 @@ let game = {
             cost: { wood: 30, food: 20 },
             unlocked: false,
             requirement: () => game.resources.wood.amount >= 20
+        },
+        military_training: {
+            name: "Militaire Training",
+            desc: "Ontgrendelt de Kazerne en Soldaten.",
+            cost: { wood: 100, stone: 100, food: 100 },
+            unlocked: false,
+            requirement: () => game.buildings.quarry.count >= 1
         },
         /*       agriculture: { 
                    name: "Landbouw", 
@@ -69,10 +77,17 @@ let game = {
         },
         warehouse: {
             name: "Pakhuis",
-            desc: "Meer spullen.",
+            desc: "Maakt het mogelijk om een Pakhuis te bouwen voor extra basisopslag.",
             cost: { researchPoints: 50 },
             unlocked: false,
             requirement: () => game.research.education.unlocked
+        },
+        storage_house: {
+            name: "Opslaghuis",
+            desc: "Maakt een enorm Opslaghuis mogelijk voor geavanceerde grondstoffen.",
+            cost: { researchPoints: 200, gold: 50 },
+            unlocked: false,
+            requirement: () => game.resources.wood.max >= 500 && game.resources.stone.max >= 500
         },
         irrigation_tech: {
             name: "Irrigatie Techniek",
@@ -152,25 +167,25 @@ let game = {
             requirement: () => game.jobs.woodcutter.count >= 25
         },
         wood_workshop: {
-            name: "Houtbewerkerij",
+            name: "Houtzagerij",
             desc: "Verbetert houtproductie en opslag.",
-            cost: { researchPoints: 600, gold: 500 },
+            cost: { researchPoints: 50, gold: 50 },
             unlocked: false,
-            requirement: () => game.buildings.lumber_camp.count >= 20
+            requirement: () => game.buildings.lumber_camp.count >= 5
         },
         stone_workshop: {
-            name: "Steenbewerkerij",
+            name: "Steenoven",
             desc: "Verbetert steenproductie en opslag.",
-            cost: { researchPoints: 600, gold: 500 },
+            cost: { researchPoints: 50, gold: 50 },
             unlocked: false,
-            requirement: () => game.buildings.quarry.count >= 15
+            requirement: () => game.buildings.quarry.count >= 5
         },
         houses: {
             name: "Huis",
-            desc: "Een mooi stenen huis",
-            cost: { researchPoints: 300 },
+            desc: "Een mooi stenen huis.",
+            cost: { researchPoints: 75 },
             unlocked: false,
-            requirement: () => game.buildings.hut.count >= 47
+            requirement: () => game.resources.beam.amount >= 10 && game.resources.brick.amount >= 10
         },
         merchant_guild: {
             name: "Handelsgilde",
@@ -360,6 +375,11 @@ function getInitialState() {
         },
         diplomacy: { discoveredTribes: {} },
         settings: { showManualActions: true },
+        achievements: {
+            first_steps: false,          // 100 max pop
+            flint_monument: false,       // Steentijd voltooid
+            iron_discovery: false        // Voorbereiding voor later
+        },
         // PRESTIGE WORDT HIER NIET GERESET, die bewaren we apart
         lastTick: Date.now()
     };
@@ -379,6 +399,8 @@ function loadGame() {
     const loadedData = JSON.parse(saved);
 
     // Gebruik Object.assign of een loop om de basis 'game' te vullen met loadedData
+    game.era = loadedData.era || 1;
+
     // Belangrijk voor Prestige:
     if (loadedData.prestige) {
         game.prestige.points = loadedData.prestige.points || 0;
@@ -461,6 +483,14 @@ function loadGame() {
                     game.military.units[key].assignedDef = loadedUnit.assignedDef || 0;
                 }
             }
+        }
+    }
+
+    // -- Achievements laden --
+    if (loadedData.achievements) {
+        if (!game.achievements) game.achievements = {};
+        for (let aKey in loadedData.achievements) {
+            game.achievements[aKey] = loadedData.achievements[aKey];
         }
     }
 

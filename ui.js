@@ -108,7 +108,7 @@ function updateResourceBar() {
         // Respecteer de instellingen van Tab 9 (Settings)
         const isHidden = game.settings && game.settings.hiddenResources && game.settings.hiddenResources.includes(key);
 
-        if (!isHidden && (res.unlocked || res.amount > 0)) {
+        if (!isHidden && (res.discovered || res.amount > 0)) {
             let icon = iconMap[key] || "📦";
             if (res.icon) icon = res.icon;
 
@@ -413,8 +413,8 @@ function renderBuildings() {
         const b = game.buildings[key];
         if (!b.unlocked) continue;
 
-        // Tijdperk 1 restricties: verberg geavanceerde gebouwen EN het vuursteen monument (die staat in Tab 8)
-        if ((!game.era || game.era === 1) && ['house', 'wood_workshop', 'stone_workshop', 'school', 'bank', 'irrigation_system', 'warehouse', 'barracks', 'scout_post', 'flint_monument'].includes(key)) continue;
+        // Het vuursteen monument staat permanent in de Prestige Tab. Verberg geavanceerde gebouwen in Tijdperk 1.
+        if (key === 'flint_monument' || ((!game.era || game.era === 1) && ['house', 'wood_workshop', 'stone_workshop', 'school', 'bank', 'irrigation_system', 'warehouse', 'storage_house', 'barracks', 'scout_post'].includes(key))) continue;
 
         let displayCost = {};
         let actualAmount = 0;
@@ -1091,6 +1091,12 @@ function renderPrestige() {
     }
     upgradesHtml += '</div>';
 
+    const achievementsMeta = {
+        first_steps: { icon: '👣', name: 'Eerste Stappen', desc: 'Bereik 100 Totale Bevolking.' },
+        flint_monument: { icon: '🗿', name: 'Steentijd Voltooid', desc: 'Bouw het Vuursteen Monument.' },
+        iron_discovery: { icon: '⛏️', name: 'Meester Verzamelaar', desc: 'Verzamel 10k Hout en 10k Steen.' }
+    };
+
     let canEvolve = true;
     let btnTitle = "";
     let btnText = "🌟 Evolueer Nu";
@@ -1107,46 +1113,72 @@ function renderPrestige() {
         warningHtml = canEvolve ? "" : `<div style="text-align: center; margin-top: 10px; font-size: 0.8em; color: var(--red);">Je hebt 100 Totale Bevolking nodig om te evolueren.</div>`;
     }
 
-    let monumentHtml = "";
-    if (!game.era || game.era === 1) {
-        const b = game.buildings.flint_monument;
-        if (b) {
-            if (b.count >= 1) {
-                monumentHtml = `
-                    <h3 style="margin-top: 0; margin-bottom: 5px;">Voltooide Tijdperken</h3>
-                    <div class="panel" style="border-left: 5px solid var(--green); margin-bottom: 20px; background: rgba(166, 227, 161, 0.05);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3 style="margin: 0; color: var(--green);">🗿 Tijdperk 1: Steentijd</h3>
-                            <span class="badge" style="background: var(--green); color: var(--bg); padding: 5px 10px; border-radius: 20px; font-weight: bold;">✅ Voltooid</span>
+    let achievementsHtml = `
+        <h3 style="margin-top: 20px; margin-bottom: 5px;">🏆 Behaalde Prestaties</h3>
+        <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">Deze achievements geven aan hoever je rijk gekomen is en gaan niet verloren bij een evolutie.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+    `;
+
+    if (game.achievements) {
+        for (let aKey in game.achievements) {
+            if (game.achievements[aKey]) {
+                const meta = achievementsMeta[aKey];
+                if (meta) {
+                    achievementsHtml += `
+                        <div class="panel" style="display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--green); padding: 10px;">
+                            <div style="font-size: 2em;">${meta.icon}</div>
+                            <div>
+                                <strong style="color: var(--green); display: block;">${meta.name}</strong>
+                                <small style="color: var(--subtext);">${meta.desc}</small>
+                            </div>
                         </div>
-                        <p style="font-size: 0.9em; color: var(--subtext);">Je hebt het Vuursteen Monument voltooid. Bereik nu 50 Bevolking om te Evolueren!</p>
-                    </div>
-                `;
-            } else {
-                let displayCost = getCost(b);
-                let affordable = canAfford(displayCost);
-
-                let costTxtHtml = '';
-                for (let r in displayCost) {
-                    const reqAmount = displayCost[r];
-                    const hasAmount = game.resources[r].amount;
-                    const isShort = hasAmount < reqAmount;
-                    costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${game.resources[r].name}</span>, `;
+                    `;
                 }
-                if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
-
-                monumentHtml = `
-                    <div class="panel" style="border-left: 5px solid var(--peach); margin-bottom: 20px;">
-                        <h3 style="margin-top: 0; color: var(--peach);">🗿 ${b.name}</h3>
-                        <p style="font-size: 0.9em; color: var(--subtext);">${b.desc}</p>
-                        <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyBuilding('flint_monument')" ${affordable ? '' : 'disabled'}>
-                            Bouw (${costTxtHtml})
-                        </button>
-                    </div>
-                `;
             }
         }
     }
+
+    // Check of we in era 1 zitten
+    if (!game.era || game.era === 1) {
+        const b = game.buildings.flint_monument;
+        if (!b || b.count === 0) {
+            // Nog niet gebouwd: laat bouwknop zien
+            let displayCost = getCost(b);
+            let affordable = canAfford(displayCost);
+
+            let costTxtHtml = '';
+            for (let r in displayCost) {
+                const reqAmount = displayCost[r];
+                const hasAmount = game.resources[r].amount;
+                const isShort = hasAmount < reqAmount;
+                costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${game.resources[r].name}</span>, `;
+            }
+            if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
+
+            achievementsHtml += `
+                <div class="panel" style="grid-column: 1 / -1; border-left: 5px solid var(--peach); margin-top: 20px;">
+                    <h3 style="margin-top: 0; color: var(--peach);">🗿 ${b.name}</h3>
+                    <p style="font-size: 0.9em; color: var(--subtext);">${b.desc} (Nodig om te Evolueren)</p>
+                    <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyBuilding('flint_monument')" ${affordable ? '' : 'disabled'}>
+                        Bouw (${costTxtHtml})
+                    </button>
+                </div>
+            `;
+        } else if (b.count >= 1 && (!game.achievements || !game.achievements.flint_monument)) {
+            // Wel gebouwd, maar nog niet geëvolueerd
+            achievementsHtml = `
+                <div class="panel" style="border-left: 5px solid var(--green); margin-bottom: 20px; background: rgba(166, 227, 161, 0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; color: var(--green);">🗿 ${b.name}</h3>
+                        <span class="badge" style="background: var(--green); color: var(--bg); padding: 5px 10px; border-radius: 20px; font-weight: bold;">✅ Gebouwd</span>
+                    </div>
+                    <p style="font-size: 0.9em; color: var(--subtext);">Je hebt het Vuursteen Monument opgericht! Zorg nu dat je 50 Bevolking hebt om het tijdperk af te sluiten.</p>
+                </div>
+            ` + achievementsHtml;
+        }
+    }
+
+    achievementsHtml += '</div>';
 
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
@@ -1159,8 +1191,6 @@ function renderPrestige() {
 
         <div style="display: flex; flex-direction: column; gap: 20px;">
             
-            ${monumentHtml}
-
             <!-- Reset info en dashboard -->
             <div class="panel" style="background: rgba(243, 139, 168, 0.05); border-left: 5px solid var(--red);">
                 <h3 style="color: var(--red); margin-top: 0;">⚠️ Wat gebeurt er bij een Evolutie?</h3>
@@ -1195,6 +1225,8 @@ function renderPrestige() {
                 ${upgradesHtml}
             </div>
 
+            ${achievementsHtml}
+
         </div>
     `;
 }
@@ -1215,7 +1247,7 @@ function renderSettings() {
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 20px;">
-            
+
             <!-- Weergave Opties -->
             <div class="panel">
                 <h3 style="margin-top: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">
@@ -1248,16 +1280,16 @@ function renderSettings() {
             <div class="panel" style="border-left: 3px solid var(--blue);">
                 <h3 style="margin-top: 0; color: var(--blue);">💾 Data Beheer (Save & Load)</h3>
                 <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">De game slaat automatisch op. Je kunt hier een backup maken of je voortgang naar een ander apparaat verplaatsen.</p>
-                
+
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
                     <button class="build-btn" style="background: var(--surface2); color: var(--text); border: none;" onclick="saveGame(); alert('✅ Spel handmatig opgeslagen!');">
                         💾 Nu Opslaan
                     </button>
                     <button class="build-btn" style="background: var(--surface2); color: var(--text); border: none;" onclick="exportGame()">
-                        � Exporteer Save
+                        📤 Exporteer Save
                     </button>
                     <button class="build-btn" style="background: var(--surface2); color: var(--text); border: none;" onclick="importGame()">
-                        � Importeer Save
+                        📥 Importeer Save
                     </button>
                 </div>
             </div>
@@ -1270,7 +1302,7 @@ function renderSettings() {
                 <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">
                     <strong>Waarschuwing:</strong> Een harde reset wist de volledige save-file, INCLUSIEF je Prestige Punten en stammen. Je begint letterlijk vanaf het moment dat je de site voor het eerst bezocht. Dit kan niet ongedaan worden gemaakt.
                 </p>
-                
+
                 <button class="build-btn" style="background: var(--red); border: none; width: 100%;" onclick="hardReset()">
                     ⚠️ VOLLEDIGE RESET UITVOEREN
                 </button>
@@ -1305,11 +1337,11 @@ function renderSettings() {
                 const resName = res.name || key.charAt(0).toUpperCase() + key.slice(1);
 
                 togglesContainer.innerHTML += `
-                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
-                        <input type="checkbox" ${!isHidden ? 'checked' : ''} onchange="toggleResourceVisibility('${key}', this.checked)">
-                        ${icon} ${resName}
-                    </label>
-                `;
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
+                <input type="checkbox" ${!isHidden ? 'checked' : ''} onchange="toggleResourceVisibility('${key}', this.checked)">
+                ${icon} ${resName}
+            </label>
+        `;
             }
         }
 
@@ -1373,7 +1405,7 @@ function deteriorateRelation(tribeKey, action) {
 
     if (action === 'insult') {
         tribe.relation = Math.max(0, tribe.relation - 10);
-        alert(`Je hebt de gezant van ${tribe.name} beledigd. De relatie is nu ${tribe.relation}.`);
+        alert(`Je hebt de gezant van ${tribe.name} beledigd.De relatie is nu ${tribe.relation}.`);
     } else if (action === 'provoke') {
         tribe.relation = Math.max(0, tribe.relation - 25);
         alert(`Je hebt je leger laten paraderen langs de grens van ${tribe.name}. Ze zijn woedend!`);
@@ -1424,28 +1456,43 @@ const mainCategoryIcons = {
 };
 const categoryOrder = ['management', 'world', 'progress', 'menu'];
 
-window.selectCategory = function (catKey) {
+window.selectCategory = function (catKey, forceRebuild = false) {
     window.currentCategory = catKey;
     const container = document.getElementById('unified-nav-container');
     if (!container) return;
 
-    let html = '';
+    // Check if we need to build the DOM
+    if (forceRebuild || container.children.length === 0) {
+        let html = '';
+        for (let c of categoryOrder) {
+            html += `<button class="nav-main-icon" id="nav-main-${c}" onclick="selectCategory('${c}')" title="${c}">${mainCategoryIcons[c]}</button>`;
 
-    for (let c of categoryOrder) {
-        const isActiveCat = (c === catKey);
-        html += `<button class="nav-main-icon ${isActiveCat ? 'active' : ''}" onclick="selectCategory('${c}')" title="${c}">${mainCategoryIcons[c]}</button>`;
-
-        if (isActiveCat) {
+            html += `<div class="sub-nav-group" id="sub-nav-group-${c}">`;
             const tabs = tabCategories[c];
             tabs.forEach(tab => {
-                // Tijdperk 1 restricties: verberg Onderzoek, Diplomatie, Verkennen en Leger
                 if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)) return;
                 html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
             });
+            html += `</div>`;
         }
+        container.innerHTML = html;
     }
 
-    container.innerHTML = html;
+    // Now toggle classes for expansion
+    for (let c of categoryOrder) {
+        const mainIcon = document.getElementById(`nav-main-${c}`);
+        const subGroup = document.getElementById(`sub-nav-group-${c}`);
+
+        if (mainIcon) {
+            if (c === catKey) mainIcon.classList.add('active');
+            else mainIcon.classList.remove('active');
+        }
+
+        if (subGroup) {
+            if (c === catKey) subGroup.classList.add('expanded');
+            else subGroup.classList.remove('expanded');
+        }
+    }
 
     const tabs = tabCategories[catKey];
     const isActiveInCat = tabs.some(t => t.id === window.currentTab);
@@ -1585,3 +1632,28 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+// --- Floating Notifications ---
+function showNotification(message, type = 'info') {
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        document.body.appendChild(container);
+    }
+    const notif = document.createElement('div');
+    notif.className = 'notification';
+    notif.innerHTML = message;
+
+    if (type === 'error') notif.style.borderLeftColor = 'var(--red)';
+    else if (type === 'success') notif.style.borderLeftColor = 'var(--green)';
+    else if (type === 'warning') notif.style.borderLeftColor = 'var(--yellow)';
+
+    container.appendChild(notif);
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        notif.style.transform = 'translateX(100%)';
+        notif.style.transition = 'all 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
+}

@@ -130,6 +130,10 @@ function recalcStone() {
     let baseStone = (job.effect.stone * job.count * multiplier * prestigeBoost);
 
     game.resources.stone.perSec += baseStone;
+
+    // Consumptie door steenhouwer
+    const stoneworkers = game.jobs.stoneworker.effect.stone * game.jobs.stoneworker.count * prestigeBoost;
+    game.resources.stone.perSec += stoneworkers;
 }
 function recalcBrick() {
     game.resources.brick.perSec = 0;
@@ -535,9 +539,8 @@ function handleFamine() {
     }
 }
 function checkUnlocks() {
-    // Tijdperk 1: Ontgrendel steenhouwerij als er genoeg hout is, 
-    // want de research tab is verborgen in dit tijdperk!
-    if ((!game.era || game.era === 1) && game.resources.wood.amount >= 30) {
+    // Ontgrendel steenhouwerij als er genoeg hout is, ongeacht tijdperk
+    if (game.resources.wood.amount >= 30) {
         game.buildings.quarry.unlocked = true;
         game.jobs.miner.unlocked = true;
         game.resources.stone.discovered = true;
@@ -553,6 +556,8 @@ function checkUnlocks() {
     if (game.research.toolmaking.unlocked) {
         game.buildings.quarry.unlocked = true;
         game.jobs.miner.unlocked = true;
+    }
+    if (game.research.military_training.unlocked) {
         game.buildings.barracks.unlocked = true;
         game.jobs.soldier.unlocked = true;
     }
@@ -577,6 +582,9 @@ function checkUnlocks() {
     if (game.research.warehouse.unlocked) {
         game.buildings.warehouse.unlocked = true;
     }
+    if (game.research.storage_house.unlocked) {
+        game.buildings.storage_house.unlocked = true;
+    }
     if (game.research.banking.unlocked) {
         game.buildings.bank.unlocked = true;
         game.jobs.banker.unlocked = true;
@@ -600,6 +608,30 @@ function checkUnlocks() {
     if (game.research.houses.unlocked) {
         game.buildings.house.unlocked = true;
     }
+
+    checkAchievements();
+}
+
+function checkAchievements() {
+    if (!game.achievements) return;
+
+    // 1. First Steps: 100 max population
+    if (!game.achievements.first_steps && game.resources.population.max >= 100) {
+        game.achievements.first_steps = true;
+        showNotification("🏆 Achievement Vrijgespeeld: Eerste Stappen! (100 Max Bevolking)", "success");
+    }
+
+    // 2. Flint Monument: Gebouwd
+    if (!game.achievements.flint_monument && game.buildings.flint_monument && game.buildings.flint_monument.count >= 1) {
+        game.achievements.flint_monument = true;
+        showNotification("🏆 Achievement Vrijgespeeld: Tijdperk 1 Voltooid! (Vuursteen Monument gebouwd)", "success");
+    }
+
+    // 3. Iron Discovery: Stiekem alvast voor tijdperk 3
+    if (!game.achievements.iron_discovery && game.resources.wood.amount >= 10000 && game.resources.stone.amount >= 10000) {
+        game.achievements.iron_discovery = true;
+        showNotification("🏆 Achievement Vrijgespeeld: Meester Verzamelaar! (10k Hout & Steen)", "success");
+    }
 }
 function discoverTribe() {
     const keys = Object.keys(game.tribeTemplates);
@@ -611,9 +643,9 @@ function discoverTribe() {
         // Kopieer de template naar onze ontdekte lijst
         game.diplomacy.discoveredTribes[randomKey] = { ...game.tribeTemplates[randomKey] };
         game.diplomacy.unlocked = true;
-        alert(`Nieuws van de grens: Je hebt ${game.tribeTemplates[randomKey].name} ontdekt!`);
+        showNotification(`Nieuws van de grens: Je hebt ${game.tribeTemplates[randomKey].name} ontdekt!`, 'success');
     } else {
-        alert("Je verkenners hebben de hele regio in kaart gebracht, maar geen nieuwe stammen gevonden.");
+        showNotification("Je verkenners hebben de hele regio in kaart gebracht, maar geen nieuwe stammen gevonden.", 'warning');
     }
 }
 function calculatePrestigePoints() {
@@ -658,10 +690,24 @@ function getPrestigeBreakdown() {
     }
     const researchPoints = researchCount * 2;
 
+    let eraBonusPoints = 0;
+    let eraBonusHtml = '';
+
+    if ((!game.era || game.era === 1) && game.buildings.flint_monument && game.buildings.flint_monument.count >= 1 && game.resources.population.amount >= 50) {
+        eraBonusPoints = 10;
+        eraBonusHtml = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 6px; border-left: 3px solid var(--peach);">
+                <span>🌟 Evolutie (Tijdperk 2)</span>
+                <strong style="color: var(--peach);">+10</strong>
+            </div>
+        `;
+    }
+
     return {
-        total: goldPoints + buildingPoints + tribePoints + researchPoints,
+        total: goldPoints + buildingPoints + tribePoints + researchPoints + eraBonusPoints,
         details: `
             <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9em;">
+                ${eraBonusHtml}
                 
                 <!-- Goud -->
                 <div>
@@ -776,7 +822,7 @@ function assignJob(jobKey, direction) {
             const maxRemovable = job.count - totalTrained;
             amountToChange = Math.min(amountToChange, maxRemovable);
             if (amountToChange <= 0 && maxRemovable <= 0) {
-                alert("Je kunt deze Basis Soldaten niet ontslaan, omdat ze in dienst zijn als getrainde eenheid (Zwaardvechter, etc). Ontsla eerst je eenheden in het Leger tabblad.");
+                showNotification("Je kunt deze Basis Soldaten niet ontslaan, omdat ze in dienst zijn als getrainde eenheid (Zwaardvechter, etc). Ontsla eerst je eenheden in het Leger tabblad.", 'warning');
                 return;
             }
         }
@@ -839,17 +885,17 @@ function triggerExpeditionEvent(typeKey) {
                             giveReward(typeKey, 1);
                             clearEvent();
                         } else {
-                            alert('Niet genoeg goud!');
+                            showNotification('Niet genoeg goud!', 'error');
                         }
                     }
                 },
                 {
                     text: "Vlucht! (50% kans op behoud buit)", action: () => {
                         if (Math.random() > 0.5) {
-                            alert('Je verkenners zijn ontsnapt mét de buit!');
+                            showNotification('Je verkenners zijn ontsnapt mét de buit!', 'success');
                             giveReward(typeKey, 1);
                         } else {
-                            alert('Ze zijn gevlucht, maar moesten hun spullen achterlaten...');
+                            showNotification('Ze zijn gevlucht, maar moesten hun spullen achterlaten...', 'warning');
                         }
                         clearEvent();
                     }
@@ -913,7 +959,7 @@ function giveReward(type, multiplier = 1) {
             msg += `Je vond een verlaten schatkamer! + ${gold} goud.`;
         }
     }
-    alert(msg);
+    showNotification(msg, 'success');
 }
 
 function toggleTradeRoute(tribeKey) {
@@ -927,7 +973,7 @@ function toggleTradeRoute(tribeKey) {
         if (tribe.relation >= 60) {
             tribe.tradeRouteActive = true;
         } else {
-            alert("De relatie is niet goed genoeg om een handelsroute te starten.");
+            showNotification("De relatie is niet goed genoeg om een handelsroute te starten.", 'warning');
         }
     }
     recalcRates();
@@ -940,7 +986,7 @@ function demandTribute(tribeKey) {
     // Breek eventuele allianties direct af bij vijandige acties
     if (tribe.isAllied) {
         tribe.isAllied = false;
-        alert(`💢 Alliantie verbroken! Je hebt ${tribe.name} verraden door tribuut te eisen.`);
+        showNotification(`💢 Alliantie verbroken! Je hebt ${tribe.name} verraden door tribuut te eisen.`, 'error');
     }
 
     // Verlaag relatie flink
@@ -950,33 +996,33 @@ function demandTribute(tribeKey) {
     // Breek handel af als ze je nu haten
     if (tribe.relation < 60 && tribe.tradeRouteActive) {
         tribe.tradeRouteActive = false;
-        alert(`${tribe.name} weigert nog langer met je te handelen!`);
+        showNotification(`${tribe.name} weigert nog langer met je te handelen!`, 'warning');
     }
 
     // Geef buit op basis van hun specialiteit (dit staat in tradeYield)
-    let lootMsg = `Je hebt succesvol ${tribe.name} afgeperst voor tribuut! Buit: \n`;
+    let lootMsg = `Je hebt succesvol ${tribe.name} afgeperst voor tribuut! Buit: <br>`;
     for (let resType in tribe.tradeYield) {
         const amount = Math.floor(500 * tribe.tradeYield[resType]);
         addResource(resType, amount);
-        lootMsg += `- ${amount} ${game.resources[resType].name} \n`;
+        lootMsg += `- ${amount} ${game.resources[resType].name} <br>`;
     }
 
     updateUI();
     recalcRates();
-    alert(lootMsg);
+    showNotification(lootMsg, 'success');
 }
 
 function formAlliance(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
 
     if (tribe.relation < 90) {
-        alert("Je relatie met dit volk is niet goed genoeg voor een alliantie (Minstens 90 nodig).");
+        showNotification("Je relatie met dit volk is niet goed genoeg voor een alliantie (Minstens 90 nodig).", 'warning');
         return;
     }
 
     const cost = { gold: 2000, food: 2000 };
     if (!canAfford(cost)) {
-        alert("Je hebt niet genoeg middelen (2000 Goud, 2000 Voedsel) om dit verdrag te tekenen.");
+        showNotification("Je hebt niet genoeg middelen (2000 Goud, 2000 Voedsel) om dit verdrag te tekenen.", 'error');
         return;
     }
 
@@ -985,7 +1031,7 @@ function formAlliance(tribeKey) {
 
     recalcRates();
     updateUI();
-    alert(`Alliantie gevormd met ${tribe.name} !Je ontvangt nu een permanente stroom van hun specialiteiten.`);
+    showNotification(`Alliantie gevormd met ${tribe.name}! Je krijgt nu een permanente stroom van hun specialiteiten.`, 'success');
 }
 
 /*
@@ -1375,7 +1421,7 @@ function performPrestige() {
     if (currentEra === 1) {
         if (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1 && game.resources.population.amount >= 50) {
             newEra = 2;
-            earnedPoints = 10; // Beloning voor overgang naar Tijdperk 2
+            earnedPoints = 10 + calculatePrestigePoints(); // Beloning voor overgang naar Tijdperk 2 + je stad score
         } else {
             return; // Niet voldaan aan de eisen
         }
@@ -1389,12 +1435,16 @@ function performPrestige() {
 
     // 3. Prestige Upgrades & Punten veiligstellen
     const permanentPrestige = JSON.parse(JSON.stringify(game.prestige));
+    const permanentAchievements = game.achievements ? JSON.parse(JSON.stringify(game.achievements)) : {};
+    const permanentTribes = (game.diplomacy && game.diplomacy.discoveredTribes) ? JSON.parse(JSON.stringify(game.diplomacy.discoveredTribes)) : {};
 
     // 4. De Game resetten naar de basis
     game = getInitialState();
 
     // 5. Prestige data en Tijdperk terugzetten
     game.prestige = permanentPrestige;
+    game.achievements = permanentAchievements;
+    if (game.diplomacy) game.diplomacy.discoveredTribes = permanentTribes;
     game.era = newEra;
 
     // 6. "Starter Pack" bonus uitdelen

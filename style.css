@@ -1,20 +1,34 @@
 :root {
-    --bg: #ebeee3;
-    --panel: #d6e2c8;
-    --text: #1b1c20;
-    --accent: #b1a756;
+    --bg: #0d0f18;
+    /* Diepe donkere achtergrond */
+    --panel: #1a1c29;
+    /* Iets lichtere panel achtergrond */
+    --text: #e2e8f0;
+    /* Lichte, leesbare tekst */
+    --accent: #8839ef;
+    /* Mauve/Paars als primaire accentkleur */
     --red: #f38ba8;
+    /* Felle rode waarschuwingskleur */
     --green: #a6e3a1;
+    /* Frisse groene succeskleur */
 
-    /* Extra kleuren voor Prestige UI & Progress Bars ! */
-    --surface0: #d0dcbf;
-    --surface1: rgba(0, 0, 0, 0.1);
-    --surface2: rgba(0, 0, 0, 0.2);
-    --subtext: #5c5f77;
-    --yellow: #df8e1d;
-    --blue: #1e66f5;
-    --peach: #fe640b;
-    --mauve: #8839ef;
+    /* Extra kleuren voor UI & Progress Bars */
+    --surface0: #313244;
+    /* Donkergrijze oppervlakte */
+    --surface1: rgba(255, 255, 255, 0.05);
+    /* Lichte glazen overlay */
+    --surface2: rgba(255, 255, 255, 0.1);
+    /* Sterkere glazen overlay */
+    --subtext: #a6adc8;
+    /* Gedempte grijze tekst */
+    --yellow: #f9e2af;
+    /* Goud/Geel accent */
+    --blue: #89b4fa;
+    /* Blauw accent */
+    --peach: #fab387;
+    /* Perzik accent */
+    --mauve: #cba6f7;
+    /* Lichter paars accent */
 }
 
 *,
@@ -26,7 +40,7 @@
 body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Outfit', sans-serif;
     margin: 0;
     /* Gebruik svh (Small Viewport Height) voor mobiel */
     height: 100svh;
@@ -52,22 +66,22 @@ body {
     height: calc(100svh - 70px - 60px);
     /* 100vh minus nav minus resource-bar */
     padding-bottom: 20px;
-    /* Extra ademruimte onderaan */
-    background: linear-gradient(45deg, #d6e2c8, #313244);
-    border: 1px solid #d6e2c8;
+    padding-bottom: 20px;
+    background: var(--bg);
+    border: none;
 }
 
 #resource-bar {
     position: sticky;
     top: 0;
     width: 100%;
-    background: linear-gradient(45deg, #d6e2c8, #313244);
+    background: var(--panel);
     display: flex;
     gap: 8px;
     padding: 10px;
     z-index: 1001;
-    border-bottom: 2px solid var(--accent);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    border-bottom: 2px solid var(--surface2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 
     /* Horizontaal scrollen voor veel resources */
     overflow-x: auto;
@@ -89,11 +103,15 @@ body {
     flex-direction: column;
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
-    padding: 5px 12px 10px 12px;
+    padding: 5px;
     border-radius: 6px;
-    min-width: 60px;
+    min-width: 85px;
+    width: 85px;
+    max-width: 85px;
+    flex-shrink: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
+    white-space: nowrap;
     /* Zorgt dat de fill-bar de afgeronde hoeken volgt */
     cursor: pointer;
 }
@@ -116,9 +134,11 @@ body {
     z-index: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
     font-weight: bold;
     color: var(--text);
+    font-variant-numeric: tabular-nums;
 }
 
 .res-icon {
@@ -266,12 +286,16 @@ body {
 
 .panel {
     background: var(--panel);
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    background: linear-gradient(45deg, #d6e2c8, #313244);
-    border: 1px solid #d6e2c8;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--surface2);
+    transition: box-shadow 0.2s ease;
+}
+
+.panel:hover {
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Unified Horizontale Navigatie */
@@ -281,8 +305,9 @@ body {
     left: 0;
     width: 100%;
     height: 70px;
-    background: linear-gradient(45deg, #d6e2c8, #313244);
-    border-top: 2px solid #313244;
+    background: var(--panel);
+    border-top: 2px solid var(--surface2);
+    transition: background 0.3s ease;
     display: flex;
     align-items: center;
     overflow-x: auto;
@@ -322,6 +347,20 @@ body {
     background: rgba(203, 166, 247, 0.2);
     border-color: var(--mauve);
     box-shadow: 0 0 10px rgba(203, 166, 247, 0.4);
+}
+
+.sub-nav-group {
+    display: flex;
+    overflow: hidden;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.sub-nav-group.expanded {
+    max-width: 500px;
+    /* Groot genoeg voor de knoppen */
+    opacity: 1;
 }
 
 .nav-sub-btn {
@@ -376,19 +415,21 @@ body {
 
 .progress-container {
     width: 100%;
-    background-color: #45475a;
-    border-radius: 8px;
-    height: 20px;
+    background-color: var(--surface0);
+    border-radius: 10px;
+    height: 22px;
     margin: 5px 0;
     overflow: hidden;
     position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .progress-bar {
     height: 100%;
-    background-color: var(--accent);
+    background: linear-gradient(90deg, var(--mauve), var(--accent));
     width: 0%;
-    transition: width 0.3s ease;
+    border-radius: 10px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .progress-text {
@@ -402,17 +443,24 @@ body {
 }
 
 .tap-btn {
-    background: var(--panel);
-    border: 1px solid var(--accent);
+    background: var(--surface0);
+    border: 1px solid var(--surface2);
     color: var(--text);
     padding: 15px;
-    border-radius: 10px;
-    font-size: 1.2em;
+    border-radius: 12px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
     touch-action: manipulation;
-    /* Voorkomt inzoomen op mobiel bij snel tappen */
 }
 
-.tap-btn:active {
+.tap-btn:hover:not(:disabled) {
+    background: var(--surface2);
+    border-color: var(--accent);
+}
+
+.tap-btn:active:not(:disabled) {
     transform: scale(0.95);
     background: var(--accent);
     color: var(--bg);
@@ -420,12 +468,12 @@ body {
 
 @keyframes floatUp {
     0% {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
         opacity: 1;
     }
 
     100% {
-        transform: translateY(-50px);
+        transform: translateY(-60px) scale(1.2);
         opacity: 0;
     }
 }
@@ -687,5 +735,44 @@ input:checked+.slider:before {
 @media (max-width: 768px) {
     .nav-arrow {
         display: none;
+    }
+}
+
+/* --- Floating Notifications --- */
+#notification-container {
+    position: fixed;
+    bottom: 80px;
+    /* Boven de navigatiebalk */
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.notification {
+    background: var(--surface0);
+    color: var(--text);
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    border-left: 5px solid var(--accent);
+    font-weight: 500;
+    font-size: 0.9em;
+    animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    opacity: 0.95;
+    pointer-events: auto;
+}
+
+@keyframes slideInRight {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 0.95;
     }
 }
