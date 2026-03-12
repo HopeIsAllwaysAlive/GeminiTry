@@ -48,7 +48,15 @@ let game = {
         firekeeper: { name: "Vuurbewaarder", count: 0, max: 0, effect: { researchPoints: 0.5, wood: -0.5 }, unlocked: false, stream: "Vuurbeheersing" },
         fisher: { name: "Visser", count: 0, max: 0, effect: { food: 3 }, unlocked: false, stream: "Vissen" },
         scribe: { name: "Klerk", count: 0, max: 0, effect: { researchPoints: 2, food: -1 }, unlocked: false, stream: "Schrift" },
-        merchant: { name: "Marktkoopman", count: 0, max: 0, effect: { gold: 0.5, food: -0.5 }, unlocked: false, stream: "Handel" }
+        merchant: { name: "Marktkoopman", count: 0, max: 0, effect: { gold: 0.5, food: -0.5 }, unlocked: false, stream: "Handel" },
+        // Era 3 Streams
+        blacksmith: { name: "Smid", count: 0, max: 0, effect: { brick: -0.5, gold: 1, food: -2 }, unlocked: false, stream: "Smeedkunst" },
+        philosopher: { name: "Filosoof", count: 0, max: 0, effect: { researchPoints: 5, intel: 1, food: -1 }, unlocked: false, stream: "Filosofie" },
+        navigator: { name: "Navigator", count: 0, max: 0, effect: { gold: 3, intel: 2, food: -2 }, unlocked: false, stream: "Navigatie" },
+        // Era 4 Streams
+        gladiator: { name: "Gladiator", count: 0, max: 0, effect: { gold: 4, food: -3 }, unlocked: false, stream: "Verovering" },
+        senator: { name: "Senator", count: 0, max: 0, effect: { intel: 3, researchPoints: 5, gold: -2 }, unlocked: false, stream: "Democratie" },
+        engineer: { name: "Ingenieur", count: 0, max: 0, effect: { stone: 5, brick: 5, food: -2 }, unlocked: false, stream: "Wegenbouw" }
     },
     buildings: {
         flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
@@ -64,6 +72,20 @@ let game = {
         library: { name: "Bibliotheek", count: 0, cost: { wood: 500, stone: 200 }, provides: { job_teacher: 5, max_researchPoints: 1500 }, desc: "Het absolute kenniscentrum van Tijdperk 2.", unlocked: false, stream: "Schrift" },
         market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: true, stream: "Handel" },
         trading_post: { name: "Handelspost", count: 0, cost: { wood: 400, stone: 200 }, provides: { max_gold: 1500, job_merchant: 5 }, desc: "Knooppunt voor verre handelaren.", unlocked: false, stream: "Handel" },
+        // Era 3 Streams
+        iron_mine: { name: "IJzermijn", count: 0, cost: { wood: 500, stone: 500 }, provides: { job_blacksmith: 2 }, desc: "Een diepe mijn voor sterker metaal.", unlocked: false, stream: "Smeedkunst" },
+        forge: { name: "Smidse", count: 0, cost: { brick: 200, beam: 200, gold: 500 }, provides: { max_brick: 1000, job_blacksmith: 5 }, desc: "Hier worden ijzeren voorwerpen gesmeed.", unlocked: false, stream: "Smeedkunst" },
+        academy: { name: "Academie", count: 0, cost: { wood: 800, stone: 400, gold: 200 }, provides: { job_philosopher: 2, max_researchPoints: 2000 }, desc: "Een plek voor denkers.", unlocked: false, stream: "Filosofie" },
+        forum: { name: "Forum", count: 0, cost: { brick: 500, gold: 1000 }, provides: { job_philosopher: 5, max_intel: 500 }, desc: "Publiek debat versterkt de kennis.", unlocked: false, stream: "Filosofie" },
+        shipyard: { name: "Scheepswerf", count: 0, cost: { beam: 300, wood: 1000 }, provides: { job_navigator: 2 }, desc: "Bouwt boten voor de verre handel.", unlocked: false, stream: "Navigatie" },
+        harbor: { name: "Haven", count: 0, cost: { beam: 500, stone: 1000, gold: 2000 }, provides: { max_gold: 5000, job_navigator: 5 }, desc: "Een enorm handelsknooppunt over zee.", unlocked: false, stream: "Navigatie" },
+        // Era 4 Streams
+        colosseum: { name: "Colosseum", count: 0, cost: { brick: 2000, stone: 5000 }, provides: { job_gladiator: 5, max_population: 50 }, desc: "Gladiatorengevechten leveren massief goud op.", unlocked: false, stream: "Verovering" },
+        siege_workshop: { name: "Belegeringswerkplaats", count: 0, cost: { wood: 3000, beam: 1000 }, provides: { job_gladiator: 2, max_gold: 5000 }, desc: "Bouwt wapens voor de verovering.", unlocked: false, stream: "Verovering" },
+        senate_house: { name: "Senaatsgebouw", count: 0, cost: { stone: 2000, gold: 3000 }, provides: { job_senator: 5, max_intel: 1000 }, desc: "Het politieke hart van je rijk.", unlocked: false, stream: "Democratie" },
+        public_baths: { name: "Badhuis", count: 0, cost: { stone: 4000, brick: 1000 }, provides: { max_population: 100, job_senator: 2 }, desc: "Verbetert de publieke hygiëne enorm.", unlocked: false, stream: "Democratie" },
+        paved_road: { name: "Verharde Weg", count: 0, cost: { stone: 5000, brick: 5000 }, provides: { job_engineer: 3, max_stone: 10000 }, desc: "Grootschalige logistiek.", unlocked: false, stream: "Wegenbouw" },
+        aqueduct: { name: "Aquaduct", count: 0, cost: { brick: 8000, gold: 2000 }, provides: { max_food: 10000, job_engineer: 2 }, desc: "Voorziet steden van vers water.", unlocked: false, stream: "Wegenbouw" },
         // Basis gebouwen
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
         house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
@@ -131,6 +153,104 @@ let game = {
             unlocked: false,
             stream: "Handel",
             requirement: () => game.buildings.market_stall && game.buildings.market_stall.count >= 2
+        },
+        // Era 3 Streams
+        iron_working: {
+            name: "IJzerbewerking",
+            desc: "Speelt de IJzermijn vrij voor ijzersterke materialen.",
+            cost: { researchPoints: 1000, stone: 1000 },
+            unlocked: false,
+            stream: "Smeedkunst",
+            requirement: () => game.era >= 3
+        },
+        advanced_smelting: {
+            name: "Geavanceerd Smeden",
+            desc: "Speelt de Smidse vrij.",
+            cost: { brick: 500, researchPoints: 2000 },
+            unlocked: false,
+            stream: "Smeedkunst",
+            requirement: () => game.buildings.iron_mine && game.buildings.iron_mine.count >= 1
+        },
+        logic_philosophy: {
+            name: "Logica",
+            desc: "Speelt de Academie vrij.",
+            cost: { researchPoints: 1200, wood: 1000 },
+            unlocked: false,
+            stream: "Filosofie",
+            requirement: () => game.era >= 3
+        },
+        ethics: {
+            name: "Ethiek",
+            desc: "Speelt het Forum vrij.",
+            cost: { intel: 200, researchPoints: 2500 },
+            unlocked: false,
+            stream: "Filosofie",
+            requirement: () => game.buildings.academy && game.buildings.academy.count >= 1
+        },
+        shipbuilding: {
+            name: "Scheepsbouw",
+            desc: "Speelt de Scheepswerf vrij voor overzeese verkenning.",
+            cost: { researchPoints: 1000, beam: 200 },
+            unlocked: false,
+            stream: "Navigatie",
+            requirement: () => game.era >= 3
+        },
+        astronomy: {
+            name: "Astronomie",
+            desc: "Navigeer op de sterren. Speelt de Haven vrij.",
+            cost: { intel: 200, researchPoints: 2000 },
+            unlocked: false,
+            stream: "Navigatie",
+            requirement: () => game.buildings.shipyard && game.buildings.shipyard.count >= 1
+        },
+        // Era 4 Streams
+        military_engineering: {
+            name: "Militaire Bouwkunde",
+            desc: "Speelt de Belegeringswerkplaats vrij.",
+            cost: { researchPoints: 3000, beam: 1000 },
+            unlocked: false,
+            stream: "Verovering",
+            requirement: () => game.era >= 4
+        },
+        gladiator_combats: {
+            name: "Gladiatorengevechten",
+            desc: "Speelt het Colosseum vrij.",
+            cost: { gold: 3000, researchPoints: 4000 },
+            unlocked: false,
+            stream: "Verovering",
+            requirement: () => game.buildings.siege_workshop && game.buildings.siege_workshop.count >= 1
+        },
+        civic_duty: {
+            name: "Burgerplicht",
+            desc: "Speelt het Badhuis vrij.",
+            cost: { researchPoints: 3000, brick: 1000 },
+            unlocked: false,
+            stream: "Democratie",
+            requirement: () => game.era >= 4
+        },
+        constitution: {
+            name: "Grondwet",
+            desc: "Speelt het Senaatsgebouw vrij.",
+            cost: { intel: 500, researchPoints: 5000 },
+            unlocked: false,
+            stream: "Democratie",
+            requirement: () => game.buildings.public_baths && game.buildings.public_baths.count >= 1
+        },
+        surveying: {
+            name: "Landmeetkunde",
+            desc: "Speelt de Verharde Weg vrij.",
+            cost: { researchPoints: 3000, stone: 2000 },
+            unlocked: false,
+            stream: "Wegenbouw",
+            requirement: () => game.era >= 4
+        },
+        hydraulics: {
+            name: "Hydraulica",
+            desc: "Speelt het Aquaduct vrij.",
+            cost: { brick: 3000, researchPoints: 4000 },
+            unlocked: false,
+            stream: "Wegenbouw",
+            requirement: () => game.buildings.paved_road && game.buildings.paved_road.count >= 1
         },
         toolmaking: {
             name: "Gereedschap maken",
@@ -408,6 +528,19 @@ function getInitialState() {
             library: { name: "Bibliotheek", count: 0, cost: { wood: 500, stone: 200 }, provides: { job_teacher: 5, max_researchPoints: 1500 }, desc: "Het absolute kenniscentrum van Tijdperk 2.", unlocked: false, stream: "Schrift" },
             market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: true, stream: "Handel" },
             trading_post: { name: "Handelspost", count: 0, cost: { wood: 400, stone: 200 }, provides: { max_gold: 1500, job_merchant: 5 }, desc: "Knooppunt voor verre handelaren.", unlocked: false, stream: "Handel" },
+            // Era 3 Streams
+            iron_mine: { name: "IJzermijn", count: 0, cost: { wood: 500, stone: 500 }, provides: { job_blacksmith: 2 }, desc: "Een diepe mijn voor sterker metaal.", unlocked: false, stream: "Smeedkunst" },
+            forge: { name: "Smidse", count: 0, cost: { brick: 200, beam: 200, gold: 500 }, provides: { max_brick: 1000, job_blacksmith: 5 }, desc: "Hier worden ijzeren voorwerpen gesmeed.", unlocked: false, stream: "Smeedkunst" },
+            academy: { name: "Academie", count: 0, cost: { wood: 800, stone: 400, gold: 200 }, provides: { job_philosopher: 2, max_researchPoints: 2000 }, desc: "Een plek voor denkers.", unlocked: false, stream: "Filosofie" },
+            forum: { name: "Forum", count: 0, cost: { brick: 500, gold: 1000 }, provides: { job_philosopher: 5, max_intel: 500 }, desc: "Publiek debat versterkt de kennis.", unlocked: false, stream: "Filosofie" },
+            harbor: { name: "Haven", count: 0, cost: { beam: 500, stone: 1000, gold: 2000 }, provides: { max_gold: 5000, job_navigator: 5 }, desc: "Een enorm handelsknooppunt over zee.", unlocked: false, stream: "Navigatie" },
+            // Era 4 Streams
+            colosseum: { name: "Colosseum", count: 0, cost: { brick: 2000, stone: 5000 }, provides: { job_gladiator: 5, max_population: 50 }, desc: "Gladiatorengevechten leveren massief goud op.", unlocked: false, stream: "Verovering" },
+            siege_workshop: { name: "Belegeringswerkplaats", count: 0, cost: { wood: 3000, beam: 1000 }, provides: { job_gladiator: 2, max_gold: 5000 }, desc: "Bouwt wapens voor de verovering.", unlocked: false, stream: "Verovering" },
+            senate_house: { name: "Senaatsgebouw", count: 0, cost: { stone: 2000, gold: 3000 }, provides: { job_senator: 5, max_intel: 1000 }, desc: "Het politieke hart van je rijk.", unlocked: false, stream: "Democratie" },
+            public_baths: { name: "Badhuis", count: 0, cost: { stone: 4000, brick: 1000 }, provides: { max_population: 100, job_senator: 2 }, desc: "Verbetert de publieke hygiëne enorm.", unlocked: false, stream: "Democratie" },
+            paved_road: { name: "Verharde Weg", count: 0, cost: { stone: 5000, brick: 5000 }, provides: { job_engineer: 3, max_stone: 10000 }, desc: "Grootschalige logistiek.", unlocked: false, stream: "Wegenbouw" },
+            aqueduct: { name: "Aquaduct", count: 0, cost: { brick: 8000, gold: 2000 }, provides: { max_food: 10000, job_engineer: 2 }, desc: "Voorziet steden van vers water.", unlocked: false, stream: "Wegenbouw" },
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
             house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
             farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
@@ -436,7 +569,13 @@ function getInitialState() {
             firekeeper: { count: 0 },
             fisher: { count: 0 },
             scribe: { count: 0 },
-            merchant: { count: 0 }
+            merchant: { count: 0 },
+            blacksmith: { count: 0 },
+            philosopher: { count: 0 },
+            navigator: { count: 0 },
+            gladiator: { count: 0 },
+            senator: { count: 0 },
+            engineer: { count: 0 }
         },
         research: {
             cooking: { unlocked: false },
@@ -445,6 +584,18 @@ function getInitialState() {
             bronze_weapons: { unlocked: false },
             record_keeping: { unlocked: false },
             currency: { unlocked: false },
+            iron_working: { unlocked: false },
+            advanced_smelting: { unlocked: false },
+            logic_philosophy: { unlocked: false },
+            ethics: { unlocked: false },
+            shipbuilding: { unlocked: false },
+            astronomy: { unlocked: false },
+            military_engineering: { unlocked: false },
+            gladiator_combats: { unlocked: false },
+            civic_duty: { unlocked: false },
+            constitution: { unlocked: false },
+            surveying: { unlocked: false },
+            hydraulics: { unlocked: false },
             toolmaking: { unlocked: false },
             // agriculture: { unlocked: false },
             education: { unlocked: false },

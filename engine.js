@@ -80,152 +80,84 @@ function recalcLimits() {
     }
 }
 
-function recalcWood() {
-    game.resources.wood.perSec = 0;
+function recalcRates() {
+    recalcLimits();
 
-    const job = game.jobs.woodcutter;
-    let multiplier = 1;
-
-    // Specifieke upgrades / tech
-    if (game.research.axe_tech.unlocked) multiplier += 1; // +100%
-    if (game.research.wood_tech.unlocked) multiplier += 0.5; // +50%
-
-    // Basis prestige multiplier
+    // 0. Basis prestige multiplier
     const prestigeBoost = 1 + (game.prestige.points * 0.01);
 
-    // Bereken basis opbrengst
-    let baseWood = (job.effect.wood * job.count * multiplier * prestigeBoost);
+    // 1. Reset alle grondstoffen perSec naar 0
+    for (let resKey in game.resources) {
+        if (game.resources[resKey]) game.resources[resKey].perSec = 0;
+    }
 
-    game.resources.wood.perSec += baseWood;
-
-    // Consumptie door houtbewerker
-    const woodworkers = game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost;
-    game.resources.wood.perSec += woodworkers;
-}
-
-function recalcBeam() {
-    game.resources.beam.perSec = 0;
-    const job = game.jobs.woodworker;
-    let multiplier = 1;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    game.resources.beam.perSec += (job.effect.beam * job.count * multiplier * prestigeBoost);
-}
-
-function recalcFood() {
+    // 2. Bevolkingsgroei & Idle consumptie
+    game.resources.population.perSec = 0.25 * prestigeBoost;
     const idlePop = getIdlePopulation();
-    const food = game.resources.food;
-    food.perSec = 0;
-    const job = game.jobs.farmer;
-    let multiplier = 1;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    // Specifieke upgrades voor boeren
-    if (game.research.plow_invention.unlocked) multiplier *= 1.5;
-    if (game.buildings.irrigation_system.count > 0) multiplier *= game.buildings.irrigation_system.count;
+    game.resources.food.perSec += (-0.5 * idlePop);
 
-    let baseFood = (job.effect.food * job.count * multiplier * prestigeBoost);
+    // 3. Loop over alle jobs voor dynamische berekeningen
+    for (let jobKey in game.jobs) {
+        const job = game.jobs[jobKey];
+        if (!job.count || job.count <= 0) continue;
 
-    food.perSec += baseFood;
+        let multiplier = 1;
 
-    food.perSec += (-0.5 * idlePop); // Kleine voedselconsumptie per idle pop
-    for (let key in game.jobs) {
-        const jobs = game.jobs[key];
-        for (let resType in jobs.effect) {
-            if (resType === 'food' && key !== 'farmer') {
-                food.perSec += (jobs.effect[resType] * jobs.count);
-                //   console.log(`Job ${key} heeft een effect op voedsel: ${jobs.effect[resType]} per job, totaal ${jobs.effect[resType] * jobs.count}`);
+        // Specifieke multipliers voor basisbanen (uit oude technieken)
+        if (jobKey === 'woodcutter') {
+            if (game.research.axe_tech && game.research.axe_tech.unlocked) multiplier += 1;
+            if (game.research.wood_tech && game.research.wood_tech.unlocked) multiplier += 0.5;
+        } else if (jobKey === 'farmer') {
+            if (game.research.plow_invention && game.research.plow_invention.unlocked) multiplier *= 1.5;
+            if (game.buildings.irrigation_system && game.buildings.irrigation_system.count > 0) {
+                multiplier *= game.buildings.irrigation_system.count;
             }
         }
-    };
-    food.perSec -= getSoldierMaintenance().food; // Voedselconsumptie van soldaten
-}
 
-function recalcStone() {
-    game.resources.stone.perSec = 0;
-    const job = game.jobs.miner;
-    let multiplier = 1;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
+        // Toepassen van de job effecten (Zowel positief als negatief multi-resource support)
+        for (let effectKey in job.effect) {
+            if (!game.resources[effectKey]) continue;
+            let baseYield = job.effect[effectKey] * job.count;
 
-    let baseStone = (job.effect.stone * job.count * multiplier * prestigeBoost);
+            if (baseYield > 0) {
+                game.resources[effectKey].perSec += (baseYield * multiplier * prestigeBoost);
+            } else {
+                // Consumptie schaalt met prestigeBoost (zoals stoneworker hout kostte via prestigeBoost in oude logs)
+                game.resources[effectKey].perSec += (baseYield * prestigeBoost);
+            }
+        }
+    }
 
-    game.resources.stone.perSec += baseStone;
+    // 4. Overige (Niet-job) Berekeningen
+    // Militaire consumptie (Food & Gold)
+    const soldiersCost = getSoldierMaintenance();
+    game.resources.food.perSec -= soldiersCost.food;
+    game.resources.gold.perSec -= soldiersCost.gold;
+    recalcMilitary();
 
-    // Consumptie door steenhouwer
-    const stoneworkers = game.jobs.stoneworker.effect.stone * game.jobs.stoneworker.count * prestigeBoost;
-    game.resources.stone.perSec += stoneworkers;
-}
-function recalcBrick() {
-    game.resources.brick.perSec = 0;
-    const job = game.jobs.stoneworker;
-    let multiplier = 1;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    game.resources.brick.perSec += (job.effect.brick * job.count * multiplier * prestigeBoost);
-}
-
-function recalcResearch() {
-    game.resources.researchPoints.perSec = 0;
-    const job = game.jobs.teacher;
-    let multiplier = 1;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    game.resources.researchPoints.perSec += (job.effect.researchPoints * job.count * prestigeBoost);
-}
-
-function recalcGold() {
-    game.resources.gold.perSec = 0;
-    const job = game.jobs.banker;
-    let multiplier = 1;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
-
-    let baseGold = (job.effect.gold * job.count * multiplier * prestigeBoost);
-
-    // Passieve belasting
+    // Belasting
     const taxIncome = (game.resources.population.amount * (1 / 60));
-    baseGold += taxIncome * prestigeBoost; // Belastingopbrengst, beïnvloed door prestige
+    game.resources.gold.perSec += (taxIncome * prestigeBoost);
 
-    game.resources.gold.perSec += baseGold;
-
-    // Tribuut van overwonnen tribes
+    // Tribuut
     for (let key in game.diplomacy.discoveredTribes) {
         const tribe = game.diplomacy.discoveredTribes[key];
         if (tribe.isConquered) {
             game.resources.gold.perSec += tribe.tributeAmount || 5;
         }
     }
-    if (game.resources.gold.perSec > 0) {
-        game.resources.gold.discovered = true;
-    }
 
-    game.resources.gold.perSec -= getSoldierMaintenance().gold; // Goudconsumptie van soldaten
-}
+    // Discovery check (als iets gegenereerd wordt, is het ontdekt)
+    if (game.resources.intel && game.resources.intel.perSec > 0) game.resources.intel.discovered = true;
+    if (game.resources.gold && game.resources.gold.perSec > 0) game.resources.gold.discovered = true;
 
-function recalcIntel() {
-    const job = game.jobs.scout_job;
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
-    game.resources.intel.perSec = (job.effect.intel * job.count) * prestigeBoost;
-    if (game.resources.intel.perSec > 0) game.resources.intel.discovered = true;
-}
-
-function recalcRates() {
-    recalcLimits();
-    recalcWood();
-    recalcBeam();
-    recalcFood();
-    recalcStone();
-    recalcBrick();
-    recalcResearch();
-    recalcGold();
-    recalcMilitary();
-    recalcIntel();
-    const prestigeMultiplier = 1 + (game.prestige.points * 0.01);
-    game.resources.population.perSec = 0.25 * prestigeMultiplier; // Bevolking groeit langzaam, beïnvloed door prestige
-
-    // Bereken diplomatieke multiplier
+    // 5. Diplomatie & Handel
     let tradeBonusMult = 1;
     if (game.research.merchant_guild && game.research.merchant_guild.unlocked) tradeBonusMult += 0.20;
     if (game.prestige.upgrades.diplomatic_charm && game.prestige.upgrades.diplomatic_charm.level > 0) {
         tradeBonusMult += (game.prestige.upgrades.diplomatic_charm.level * 0.10);
     }
 
-    // Bereken alle diplomatieke effecten op resources
     for (let key in game.diplomacy.discoveredTribes) {
         const tribe = game.diplomacy.discoveredTribes[key];
 
@@ -236,10 +168,10 @@ function recalcRates() {
                     if (game.resources[cRes]) game.resources[cRes].perSec -= tribe.tradeCost[cRes];
                 }
             }
-            if (tribe.tradeYield) { // let op: we gebruiken nu tradeYield i.p.v resources
+            if (tribe.tradeYield) {
                 for (let yRes in tribe.tradeYield) {
                     if (game.resources[yRes]) {
-                        game.resources[yRes].perSec += (tribe.tradeYield[yRes] * tradeBonusMult * prestigeMultiplier);
+                        game.resources[yRes].perSec += (tribe.tradeYield[yRes] * tradeBonusMult * prestigeBoost);
                     }
                 }
             }
@@ -249,7 +181,7 @@ function recalcRates() {
         if (tribe.isAllied && tribe.tradeYield) {
             for (let yRes in tribe.tradeYield) {
                 if (game.resources[yRes]) {
-                    game.resources[yRes].perSec += (2 * prestigeMultiplier); // platte +2 op hun focus
+                    game.resources[yRes].perSec += (2 * prestigeBoost); // platte +2 op hun focus
                 }
             }
         }
@@ -604,6 +536,32 @@ function checkUnlocks() {
     if (game.research.record_keeping.unlocked) game.buildings.library.unlocked = true;
     if (game.research.currency.unlocked) game.buildings.trading_post.unlocked = true;
 
+    // NIEUWE UNLOCKS ERA 3 STREAMS
+    if (game.research.iron_working.unlocked) game.buildings.iron_mine.unlocked = true;
+    if (game.research.logic_philosophy.unlocked) game.buildings.academy.unlocked = true;
+    if (game.research.shipbuilding.unlocked) game.buildings.shipyard.unlocked = true;
+
+    if (game.buildings.iron_mine.count > 0) game.jobs.blacksmith.unlocked = true;
+    if (game.buildings.academy.count > 0) game.jobs.philosopher.unlocked = true;
+    if (game.buildings.shipyard.count > 0) game.jobs.navigator.unlocked = true;
+
+    if (game.research.advanced_smelting.unlocked) game.buildings.forge.unlocked = true;
+    if (game.research.ethics.unlocked) game.buildings.forum.unlocked = true;
+    if (game.research.astronomy.unlocked) game.buildings.harbor.unlocked = true;
+
+    // NIEUWE UNLOCKS ERA 4 STREAMS
+    if (game.research.military_engineering.unlocked) game.buildings.siege_workshop.unlocked = true;
+    if (game.research.civic_duty.unlocked) game.buildings.public_baths.unlocked = true;
+    if (game.research.surveying.unlocked) game.buildings.paved_road.unlocked = true;
+
+    if (game.buildings.siege_workshop.count > 0) game.jobs.gladiator.unlocked = true;
+    if (game.buildings.public_baths.count > 0) game.jobs.senator.unlocked = true;
+    if (game.buildings.paved_road.count > 0) game.jobs.engineer.unlocked = true;
+
+    if (game.research.gladiator_combats.unlocked) game.buildings.colosseum.unlocked = true;
+    if (game.research.constitution.unlocked) game.buildings.senate_house.unlocked = true;
+    if (game.research.hydraulics.unlocked) game.buildings.aqueduct.unlocked = true;
+
     // BASE UNLOCKS
     if (game.research.education.unlocked) {
         game.buildings.school.unlocked = true;
@@ -656,7 +614,7 @@ function checkAchievements() {
     }
 
     // 2. Flint Monument: Gebouwd
-    if (!game.achievements.flint_monument && game.buildings.flint_monument && game.buildings.flint_monument.count >= 1) {
+    if (!game.achievements.flint_monument && ((game.buildings.flint_monument && game.buildings.flint_monument.count >= 1) || (game.era > 1))) {
         game.achievements.flint_monument = true;
         showNotification("🏆 Achievement Vrijgespeeld: Tijdperk 1 Voltooid! (Vuursteen Monument gebouwd)", "success");
     }
@@ -1468,6 +1426,7 @@ function performPrestige() {
     game.prestige.totalEarned += earnedPoints;
 
     // 3. Prestige Upgrades & Punten veiligstellen
+    checkAchievements(); // Forceer een check voor eventuele gemiste achievements (bijv. Vuursteen Monument nét gebouwd)
     const permanentPrestige = JSON.parse(JSON.stringify(game.prestige));
 
     // Bewaar nieuw gespeelde stromen in de prestige progressie

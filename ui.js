@@ -22,16 +22,44 @@ function checkStreamSelection() {
     const unlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[eraStr]) || [];
 
     let optionsHtml = '';
+    const prevEraStr = String(game.era - 1);
+    const prevEraInfo = game.era > 1 ? ERA_DEFINITIONS[prevEraStr] : null;
+
+    // Bepaal de 'sleutel' van de stream die ze vorig tijdperk kozen (indien > 1)
+    let chosenPrevKey = null;
+    if (prevEraInfo && game.currentStreams[prevEraStr]) {
+        for (const [k, name] of Object.entries(prevEraInfo.streams)) {
+            if (name === game.currentStreams[prevEraStr]) {
+                chosenPrevKey = k;
+                break;
+            }
+        }
+    }
+
     for (const [key, streamName] of Object.entries(eraInfo.streams)) {
-        const isUnlocked = unlocked.includes(streamName);
-        const badgeHtml = isUnlocked ? `<span class="badge" style="background:var(--green);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7em;">✨ Eerder Voltooid</span>` : '';
+        const isPermanentlyUnlocked = unlocked.includes(streamName);
+
+        // Mag de speler dit kiezen?
+        // Ja, if Era 1.
+        // Ja, if Eerder behaald (Prestige unlock).
+        // Ja, if ze in het *vorige* tijdperk hetzelfde pad ('A', 'B' of 'C') kozen.
+        const canPick = game.era === 1 || isPermanentlyUnlocked || key === chosenPrevKey;
+
+        const badgeHtml = isPermanentlyUnlocked ? `<span class="badge" style="background:var(--green);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7em;">✨ Eerder Voltooid</span>` : '';
+        const lockedStyle = canPick ? '' : 'filter: grayscale(1); opacity: 0.5; cursor: not-allowed; border-left-color: var(--surface2) !important;';
+
+        // Zorg dat de onclick alleen afgaat als canPick true is
+        const onClickAttr = canPick ? `onclick="selectStream('${streamName}')"` : '';
+        const warningHtml = canPick ? '' : `<div style="color:var(--red); font-size:0.8em; margin-top:5px;">🔒 Vereist Pad ${key} in Tijdperk ${game.era - 1}</div>`;
+
         optionsHtml += `
-            <div class="panel stream-card" style="margin-bottom: 15px; cursor: pointer; text-align: left; border-left: 5px solid var(--mauve); transition: transform 0.2s;" onclick="selectStream('${streamName}')">
+            <div class="panel stream-card" style="margin-bottom: 15px; cursor: pointer; text-align: left; border-left: 5px solid var(--mauve); transition: transform 0.2s; ${lockedStyle}" ${onClickAttr}>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3 style="margin:0; color:var(--peach);">Pad ${key}: ${streamName}</h3>
                     ${badgeHtml}
                 </div>
                 <p style="font-size:0.9em; color:var(--subtext); margin-top:5px;">Kies dit pad om de unieke gebouwen en onderzoeken vrij te spelen.</p>
+                ${warningHtml}
             </div>
         `;
     }
@@ -1301,6 +1329,17 @@ function renderPrestige() {
     `;
 }
 
+window.cheatMaxResources = function () {
+    for (let r in game.resources) {
+        if (game.resources[r].max > 0) {
+            game.resources[r].amount = game.resources[r].max;
+        }
+        game.resources[r].discovered = true;
+    }
+    if (game.prestige) game.prestige.points += 100;
+    updateUI();
+};
+
 function renderSettings() {
     const container = document.getElementById('tab-settings');
     if (!container) return;
@@ -1375,6 +1414,15 @@ function renderSettings() {
 
                 <button class="build-btn" style="background: var(--red); border: none; width: 100%;" onclick="hardReset()">
                     ⚠️ VOLLEDIGE RESET UITVOEREN
+                </button>
+            </div>
+
+            <!-- Developer Tools -->
+            <div class="panel" style="border-left: 3px solid var(--green);">
+                <h3 style="margin-top: 0; color: var(--green);">🛠️ Developer Tools</h3>
+                <p style="font-size: 0.85em; color: var(--subtext); margin-bottom: 15px;">Gebruik deze test-knoppen om sneller content te kunnen verifiëren zonder te wachten op grondstoffen.</p>
+                <button class="build-btn" style="background: var(--surface1); border: 1px solid var(--green); color: var(--green); width: 100%;" onclick="cheatMaxResources()">
+                    ⚡ Vul alle Grondstoffen tot MAX (+100 Prestige)
                 </button>
             </div>
 
