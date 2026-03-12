@@ -29,6 +29,7 @@ function checkStreamSelection() {
     let chosenPrevKey = null;
     if (prevEraInfo && game.currentStreams[prevEraStr]) {
         for (const [k, name] of Object.entries(prevEraInfo.streams)) {
+            // Check based on stream ID string
             if (name === game.currentStreams[prevEraStr]) {
                 chosenPrevKey = k;
                 break;
@@ -36,14 +37,21 @@ function checkStreamSelection() {
         }
     }
 
+    // fallback: als we door een load/save error de vorige key missen, sta alles toe
+    const isFirstTimeEra = (game.era === 1) || (game.era > 1 && !chosenPrevKey && !game.currentStreams[prevEraStr]);
+
     for (const [key, streamName] of Object.entries(eraInfo.streams)) {
-        const isPermanentlyUnlocked = unlocked.includes(streamName);
+        // Controleer ook of de naam matcht in unlockedStreams (voor prestigedoorgang)
+        let isPermanentlyUnlocked = false;
+        if (unlocked && unlocked.length > 0) {
+            isPermanentlyUnlocked = unlocked.includes(streamName);
+        }
 
         // Mag de speler dit kiezen?
-        // Ja, if Era 1.
+        // Ja, if Era 1 (of een verweesde save game state).
         // Ja, if Eerder behaald (Prestige unlock).
         // Ja, if ze in het *vorige* tijdperk hetzelfde pad ('A', 'B' of 'C') kozen.
-        const canPick = game.era === 1 || isPermanentlyUnlocked || key === chosenPrevKey;
+        const canPick = isFirstTimeEra || isPermanentlyUnlocked || key === chosenPrevKey;
 
         const badgeHtml = isPermanentlyUnlocked ? `<span class="badge" style="background:var(--green);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7em;">✨ Eerder Voltooid</span>` : '';
         const lockedStyle = canPick ? '' : 'filter: grayscale(1); opacity: 0.5; cursor: not-allowed; border-left-color: var(--surface2) !important;';
@@ -335,129 +343,65 @@ function getProductionDetails(key) {
     }
     const tribeEffects = getTribeBonuses(key);
 
-    // Specifieke logica per grondstof, één op één met engine.js recalcXYZ functies
-    if (key === 'wood') {
-        const houthakkers = game.jobs.woodcutter.effect.wood * game.jobs.woodcutter.count;
-        addRow("Productie", houthakkers, true);
-        if (houthakkers > 0) {
-            let multText = "";
-            let addMult = 0;
-            if (game.research.axe_tech?.unlocked) { addMult += 1; multText += "Bijl (+100%) "; }
-            if (game.research.wood_tech?.unlocked) { addMult += 0.5; multText += "Hout Tech (+50%) "; }
-            if (addMult > 0) {
-                const bonusVal = houthakkers * addMult;
-                addRow(`↳ Multiplier (${multText.trim()})`, `(x${1 + addMult}) +${bonusVal.toFixed(2)}/s`, true, true);
-            }
+    // 1. DYNAMISCHE JOBS PRODUCTIE & CONSUMPTIE
+    // Hier kijken we naar alle banen en kijken of ze de gevraagde 'key' resource produceren of consumeren
+    let totalBaseJobProduction = 0;
 
-            if (game.prestige.points > 0) {
-                const currentTotal = houthakkers * (1 + addMult);
-                const pBonus = currentTotal * (prestigeBoost - 1);
-                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-            }
+    for (let jKey in game.jobs) {
+        const job = game.jobs[jKey];
+        if (!job.count || job.count <= 0) continue;
+        if (!job.effect[key]) continue; // Heeft deze baan effect op de huidige resource?
+
+        let baseYield = job.effect[key] * job.count;
+        let jobMultiplier = 1;
+        let jobMultText = "";
+
+        // Actieve multipliers per specifieke job (net als in recalcRates)
+        if (jKey === 'woodcutter') {
+            if (game.research.axe_tech?.unlocked) { jobMultiplier += 1; jobMultText += "Bijl (+100%) "; }
+            if (game.research.wood_tech?.unlocked) { jobMultiplier += 0.5; jobMultText += "Hout Tech (+50%) "; }
+        } else if (jKey === 'farmer') {
+            if (game.research.plow_invention?.unlocked) { jobMultiplier *= 1.5; jobMultText += "Ploeg (x1.5) "; }
+            if (game.buildings.irrigation_system?.count > 0) { jobMultiplier *= game.buildings.irrigation_system.count; jobMultText += `Irrigatie (x${game.buildings.irrigation_system.count}) `; }
         }
 
-        // Consumptie houtbewerker
-        const houtbewerkers = game.jobs.woodworker.effect.wood * game.jobs.woodworker.count * prestigeBoost;
-        addRow("Consumptie (Houtbewerkers)", houtbewerkers, false); // Waarde is negatief uit effect, dus isPositive false
+        // Als de baan de grondstof PROCEERT
+        if (baseYield > 0) {
+            addRow(`Productie (${job.name})`, baseYield, true);
+            totalBaseJobProduction += (baseYield * jobMultiplier); // Sla op voor prestige berekening later
+
+            // Als er multipliers zijn voor deze baan, laat ze zien
+            if (jobMultiplier !== 1) {
+                const bonusVal = baseYield * (jobMultiplier - 1);
+                addRow(`↳ Multiplier (${jobMultText.trim()})`, `(x${jobMultiplier.toFixed(1)}) +${bonusVal.toFixed(2)}/s`, true, true);
+            }
+        }
+        // Als de baan de grondstof CONSUMEERT
+        else if (baseYield < 0) {
+            // Let op: Net als in recalcRates schalen consumpties mee met de prestigeBoost in deze game architectuur (zoals stoneworker en woodworker)
+            let consumed = baseYield * prestigeBoost;
+            addRow(`Consumptie (${job.name})`, consumed, false);
+        }
     }
-    else if (key === 'beam') {
-        const bewerkers = game.jobs.woodworker.effect.beam * game.jobs.woodworker.count;
-        addRow("Productie (Houtbewerkers)", bewerkers, true);
-        if (bewerkers > 0 && game.prestige.points > 0) {
-            const pBonus = bewerkers * (prestigeBoost - 1);
-            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-        }
+
+    // 2. GLOBALE PRESTIGE BONUS OP PRODUCTIE
+    // Wordt berekend over de samengevoegde (ge-multipliceerde) base production van alle jobs
+    if (totalBaseJobProduction > 0 && game.prestige.points > 0) {
+        const pBonus = totalBaseJobProduction * (prestigeBoost - 1);
+        addRow(`Algemene Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, false);
     }
-    else if (key === 'food') {
-        const boeren = game.jobs.farmer.effect.food * game.jobs.farmer.count;
-        addRow("Productie (Boeren)", boeren, true);
 
-        if (boeren > 0) {
-            let isMultActive = false;
-            let multVal = 1;
-            let multText = "";
-            if (game.research.plow_invention?.unlocked) { multVal *= 1.5; multText += "Ploeg (x1.5) "; isMultActive = true; }
-            if (game.buildings.irrigation_system?.count > 0) { multVal *= game.buildings.irrigation_system.count; multText += `Irrigatie (x${game.buildings.irrigation_system.count}) `; isMultActive = true; }
-            if (isMultActive) {
-                const bonusVal = boeren * (multVal - 1);
-                addRow(`↳ Multiplier (${multText.trim()})`, `(x${multVal}) +${bonusVal.toFixed(2)}/s`, true, true);
-            }
-
-            if (game.prestige.points > 0) {
-                const currentTotal = boeren * multVal;
-                const pBonus = currentTotal * (prestigeBoost - 1);
-                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-            }
-        }
-
-        // Andere jobs die food produceren (bv vissers later)
-        let otherJobs = 0;
-        for (let jKey in game.jobs) {
-            if (jKey !== 'farmer' && game.jobs[jKey].effect.food) {
-                const amount = game.jobs[jKey].effect.food * game.jobs[jKey].count;
-                addRow(`Overige Jobs (${game.jobs[jKey].name})`, amount, amount > 0);
-            }
-        }
-
-        // Consumptie
+    // 3. SPECIFIEKE NIET-BANEN LOGICA PER GRONDSTOF
+    if (key === 'food') {
         const idlePop = getIdlePopulation();
         addRow("Consumptie (Vrije Bevolking)", (-0.5 * idlePop), false);
 
         const soldierFood = getSoldierMaintenance().food;
         addRow("Consumptie (Leger Onderhoud)", -soldierFood, false);
     }
-    else if (key === 'stone') {
-        const miners = game.jobs.miner.effect.stone * game.jobs.miner.count;
-        addRow("Productie (Mijnwerkers)", miners, true);
-        if (miners > 0) {
-            if (game.prestige.points > 0) {
-                const pBonus = miners * (prestigeBoost - 1);
-                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-            }
-        }
-
-        // Consumptie door steenhouwer
-        const stoneworkers = game.jobs.stoneworker.effect.stone * game.jobs.stoneworker.count * prestigeBoost;
-        addRow("Consumptie (Steenhouwers)", stoneworkers, false);
-    }
-    else if (key === 'brick') {
-        const bewerkers = game.jobs.stoneworker.effect.brick * game.jobs.stoneworker.count;
-        addRow("Productie (Steenhouwers)", bewerkers, true);
-        if (bewerkers > 0 && game.prestige.points > 0) {
-            const pBonus = bewerkers * (prestigeBoost - 1);
-            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-        }
-    }
-    else if (key === 'researchPoints') {
-        const leraren = game.jobs.teacher.effect.researchPoints * game.jobs.teacher.count;
-        addRow("Productie (Onderzoekers)", leraren, true);
-        if (leraren > 0 && game.prestige.points > 0) {
-            const pBonus = leraren * (prestigeBoost - 1);
-            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-        }
-    }
-    else if (key === 'intel') {
-        const verkenners = game.jobs.scout_job.effect.intel * game.jobs.scout_job.count;
-        addRow("Productie (Verkenners)", verkenners, true);
-        if (verkenners > 0 && game.prestige.points > 0) {
-            const pBonus = verkenners * (prestigeBoost - 1);
-            addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-        }
-    }
     else if (key === 'gold') {
-        const bankers = game.jobs.banker.effect.gold * game.jobs.banker.count;
-        addRow("Productie (Bankiers)", bankers, true);
-
         const tax = (game.resources.population.amount * (1 / 60));
-        addRow("Belastingen (Van Bevolking)", tax, true);
-
-        const baseTotal = bankers + tax;
-        if (baseTotal > 0) {
-            if (game.prestige.points > 0) {
-                const pBonus = baseTotal * (prestigeBoost - 1);
-                addRow(`↳ Prestige Bonus`, `(x${prestigeBoost.toFixed(2)}) +${pBonus.toFixed(2)}/s`, true, true);
-            }
-        }
+        addRow("Belastingen (Van Bevolking)", tax * prestigeBoost, true);
 
         // Tribuut
         let tribute = 0;
