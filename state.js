@@ -1,10 +1,26 @@
 //const { act } = require("react");
 window.currentTab = 'jobs'; // De standaard tab bij het opstarten
 let buyAmount = 1;
+
+const ERA_DEFINITIONS = {
+    1: { name: "Prehistorie", streams: { A: "Jagen", B: "Vuurbeheersing", C: "Vissen" } },
+    2: { name: "Bronstijd", streams: { A: "Militairisme", B: "Schrift", C: "Handel" } },
+    3: { name: "IJzertijd", streams: { A: "Smeedkunst", B: "Filosofie", C: "Navigatie" } },
+    4: { name: "Klassieke Oudheid", streams: { A: "Verovering", B: "Democratie", C: "Wegenbouw" } },
+    5: { name: "Middeleeuwen", streams: { A: "Feodalisme", B: "Theologie", C: "Gilden" } },
+    6: { name: "Renaissance", streams: { A: "Buskruit", B: "Humanisme", C: "Cartografie" } },
+    7: { name: "Verlichting", streams: { A: "Imperialisme", B: "Wetenschappelijke Methode", C: "Mercantillisme" } },
+    8: { name: "Industrie", streams: { A: "Automatisering", B: "Thermodynamica", C: "Vakbonden" } },
+    9: { name: "Atoom", streams: { A: "Kernsplitsing", B: "Kwantumfysica", C: "Luchtvaart" } },
+    10: { name: "Digitaal", streams: { A: "Cyber-oorlogsvoering", B: "AI & Algoritmes", C: "Wereldeconomie" } },
+    11: { name: "Toekomst", streams: { A: "Galactische Hegemonie", B: "Transcendentie", C: "Dyson-technologie" } }
+};
+
 // --- DE DATA (HET BREIN VAN DE GAME) ---
 let game = {
 
     era: 1, // Nieuw in Fase 4 (Gelaagd prestige systeem)
+    currentStreams: {}, // Era -> actieve Stream ID
 
     resources: {
         food: { name: "Voedsel", amount: 10, max: 100, perSec: 0, manualGain: 1, discovered: true },
@@ -26,10 +42,29 @@ let game = {
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 }, unlocked: false },
         scout_job: { name: "Verkenner", count: 0, max: 0, effect: { intel: 1, food: -2 }, unlocked: false },
         soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -0.1, food: -2 }, unlocked: false },
-        banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false }
+        banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false },
+        // Era 1 & 2 Streams
+        hunter: { name: "Jager", count: 0, max: 0, effect: { food: 1.5, intel: 0.2 }, unlocked: false, stream: "Jagen" },
+        firekeeper: { name: "Vuurbewaarder", count: 0, max: 0, effect: { researchPoints: 0.5, wood: -0.5 }, unlocked: false, stream: "Vuurbeheersing" },
+        fisher: { name: "Visser", count: 0, max: 0, effect: { food: 3 }, unlocked: false, stream: "Vissen" },
+        scribe: { name: "Klerk", count: 0, max: 0, effect: { researchPoints: 2, food: -1 }, unlocked: false, stream: "Schrift" },
+        merchant: { name: "Marktkoopman", count: 0, max: 0, effect: { gold: 0.5, food: -0.5 }, unlocked: false, stream: "Handel" }
     },
     buildings: {
         flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
+        // Era 1 Streams
+        hunters_camp: { name: "Jagerskamp", count: 0, cost: { wood: 15 }, provides: { job_hunter: 2 }, desc: "Werkplek voor jagers. (+Voedsel, +Intel)", unlocked: true, stream: "Jagen" },
+        fire_pit: { name: "Vuurplaats", count: 0, cost: { wood: 50, stone: 10 }, provides: { max_population: 5, job_firekeeper: 1 }, desc: "Houdt dieren weg. (+Bevolking, +Research)", unlocked: true, stream: "Vuurbeheersing" },
+        smokehouse: { name: "Rookhuis", count: 0, cost: { wood: 100, stone: 30 }, provides: { max_food: 300 }, desc: "Maakt voedsel lang houdbaar.", unlocked: false, stream: "Vuurbeheersing" },
+        fishing_pier: { name: "Vissteiger", count: 0, cost: { wood: 30 }, provides: { job_fisher: 2 }, desc: "Een plek om enorme hoeveelheden vis te vangen.", unlocked: true, stream: "Vissen" },
+        boat_builder: { name: "Botenbouwer", count: 0, cost: { wood: 200 }, provides: { job_fisher: 3, max_wood: 100 }, desc: "Kano's voor dieper water.", unlocked: false, stream: "Vissen" },
+        // Era 2 Streams
+        guard_tower: { name: "Uitkijktoren", count: 0, cost: { wood: 300, stone: 100 }, provides: { job_scout_job: 5, max_intel: 100 }, desc: "Versterkte verkenning en veiligheid.", unlocked: true, stream: "Militairisme" },
+        scribe_hut: { name: "Schrijvershut", count: 0, cost: { wood: 200, food: 100 }, provides: { job_scribe: 2, max_researchPoints: 500 }, desc: "Klerken verwerken informatie sneller.", unlocked: true, stream: "Schrift" },
+        library: { name: "Bibliotheek", count: 0, cost: { wood: 500, stone: 200 }, provides: { job_teacher: 5, max_researchPoints: 1500 }, desc: "Het absolute kenniscentrum van Tijdperk 2.", unlocked: false, stream: "Schrift" },
+        market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: true, stream: "Handel" },
+        trading_post: { name: "Handelspost", count: 0, cost: { wood: 400, stone: 200 }, provides: { max_gold: 1500, job_merchant: 5 }, desc: "Knooppunt voor verre handelaren.", unlocked: false, stream: "Handel" },
+        // Basis gebouwen
         hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
         house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
         farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
@@ -47,6 +82,56 @@ let game = {
     },
 
     research: {
+        // Era 1 Streams
+        cooking: {
+            name: "Kookkunst",
+            desc: "Voedsel wordt efficiënter verteerd. Speelt het Rookhuis vrij voor opslag.",
+            cost: { food: 30, researchPoints: 20 },
+            unlocked: false,
+            stream: "Vuurbeheersing",
+            requirement: () => game.buildings.fire_pit && game.buildings.fire_pit.count >= 1
+        },
+        fishing_nets: {
+            name: "Vangnetten",
+            desc: "Speelt de Botenbouwer vrij voor betere visserij.",
+            cost: { wood: 100, food: 50 },
+            unlocked: false,
+            stream: "Vissen",
+            requirement: () => game.buildings.fishing_pier && game.buildings.fishing_pier.count >= 1
+        },
+        spear_crafting: {
+            name: "Speer Vervaardiging",
+            desc: "Maakt toekomstige offensieve expedities makkelijker.",
+            cost: { wood: 100, intel: 20 },
+            unlocked: false,
+            stream: "Jagen",
+            requirement: () => game.buildings.hunters_camp && game.buildings.hunters_camp.count >= 2
+        },
+        // Era 2 Streams
+        bronze_weapons: {
+            name: "Bronzen Wapens",
+            desc: "Een opstapje voor krachtigere gevechtseenheden.",
+            cost: { stone: 200, researchPoints: 100 },
+            unlocked: false,
+            stream: "Militairisme",
+            requirement: () => game.buildings.guard_tower && game.buildings.guard_tower.count >= 1
+        },
+        record_keeping: {
+            name: "Boekhouding",
+            desc: "Gestructureerde verwerking van data. Ontgrendelt de Bibliotheek.",
+            cost: { researchPoints: 200, wood: 200 },
+            unlocked: false,
+            stream: "Schrift",
+            requirement: () => game.buildings.scribe_hut && game.buildings.scribe_hut.count >= 1
+        },
+        currency: {
+            name: "Valuta",
+            desc: "Ontgrendelt de grootschalige Handelspost.",
+            cost: { gold: 100, researchPoints: 50 },
+            unlocked: false,
+            stream: "Handel",
+            requirement: () => game.buildings.market_stall && game.buildings.market_stall.count >= 2
+        },
         toolmaking: {
             name: "Gereedschap maken",
             desc: "Ontgrendelt de Steenhouwerij en Mijnwerkers.",
@@ -280,6 +365,7 @@ let game = {
     prestige: {
         points: 0,
         totalEarned: 0,
+        unlockedStreams: {}, // Era -> Array van Stream IDs die ooit gekozen zijn
         upgrades: {
             starter_pack: { name: "Snelle Start", level: 0, max: 5, cost: 10, desc: "Begin elke reset met +500 alle resources per level." },
             military_academy: { name: "Militaire Academie", level: 0, max: 1, cost: 50, desc: "Unlockt de 'Ridder' unit vanaf het begin." },
@@ -298,6 +384,7 @@ let game = {
 function getInitialState() {
     return {
         era: 1,
+        currentStreams: {},
         resources: {
             wood: { amount: 0, max: 100, perSec: 0, manualGain: 1, unlocked: true },
             beam: { amount: 0, max: 50, perSec: 0, unlocked: false },
@@ -311,6 +398,16 @@ function getInitialState() {
         },
         buildings: {
             flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
+            hunters_camp: { name: "Jagerskamp", count: 0, cost: { wood: 15 }, provides: { job_hunter: 2 }, desc: "Werkplek voor jagers. (+Voedsel, +Intel)", unlocked: true, stream: "Jagen" },
+            fire_pit: { name: "Vuurplaats", count: 0, cost: { wood: 50, stone: 10 }, provides: { max_population: 5, job_firekeeper: 1 }, desc: "Houdt dieren weg. (+Bevolking, +Research)", unlocked: true, stream: "Vuurbeheersing" },
+            smokehouse: { name: "Rookhuis", count: 0, cost: { wood: 100, stone: 30 }, provides: { max_food: 300 }, desc: "Maakt voedsel lang houdbaar.", unlocked: false, stream: "Vuurbeheersing" },
+            fishing_pier: { name: "Vissteiger", count: 0, cost: { wood: 30 }, provides: { job_fisher: 2 }, desc: "Een plek om enorme hoeveelheden vis te vangen.", unlocked: true, stream: "Vissen" },
+            boat_builder: { name: "Botenbouwer", count: 0, cost: { wood: 200 }, provides: { job_fisher: 3, max_wood: 100 }, desc: "Kano's voor dieper water.", unlocked: false, stream: "Vissen" },
+            guard_tower: { name: "Uitkijktoren", count: 0, cost: { wood: 300, stone: 100 }, provides: { job_scout_job: 5, max_intel: 100 }, desc: "Versterkte verkenning en veiligheid.", unlocked: true, stream: "Militairisme" },
+            scribe_hut: { name: "Schrijvershut", count: 0, cost: { wood: 200, food: 100 }, provides: { job_scribe: 2, max_researchPoints: 500 }, desc: "Klerken verwerken informatie sneller.", unlocked: true, stream: "Schrift" },
+            library: { name: "Bibliotheek", count: 0, cost: { wood: 500, stone: 200 }, provides: { job_teacher: 5, max_researchPoints: 1500 }, desc: "Het absolute kenniscentrum van Tijdperk 2.", unlocked: false, stream: "Schrift" },
+            market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: true, stream: "Handel" },
+            trading_post: { name: "Handelspost", count: 0, cost: { wood: 400, stone: 200 }, provides: { max_gold: 1500, job_merchant: 5 }, desc: "Knooppunt voor verre handelaren.", unlocked: false, stream: "Handel" },
             hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
             house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
             farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
@@ -334,9 +431,20 @@ function getInitialState() {
             teacher: { count: 0 },
             scout_job: { count: 0 },
             //soldier: { count: 0 }
-            banker: { count: 0 }
+            banker: { count: 0 },
+            hunter: { count: 0 },
+            firekeeper: { count: 0 },
+            fisher: { count: 0 },
+            scribe: { count: 0 },
+            merchant: { count: 0 }
         },
         research: {
+            cooking: { unlocked: false },
+            fishing_nets: { unlocked: false },
+            spear_crafting: { unlocked: false },
+            bronze_weapons: { unlocked: false },
+            record_keeping: { unlocked: false },
+            currency: { unlocked: false },
             toolmaking: { unlocked: false },
             // agriculture: { unlocked: false },
             education: { unlocked: false },
@@ -400,11 +508,13 @@ function loadGame() {
 
     // Gebruik Object.assign of een loop om de basis 'game' te vullen met loadedData
     game.era = loadedData.era || 1;
+    game.currentStreams = loadedData.currentStreams || {};
 
     // Belangrijk voor Prestige:
     if (loadedData.prestige) {
         game.prestige.points = loadedData.prestige.points || 0;
         game.prestige.totalEarned = loadedData.prestige.totalEarned || 0;
+        game.prestige.unlockedStreams = loadedData.prestige.unlockedStreams || {};
 
         // Laad de levels van de upgrades in de bestaande structuur
         for (let key in loadedData.prestige.upgrades) {

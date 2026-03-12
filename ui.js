@@ -1,5 +1,71 @@
 // --- UI RENDERING ---
+let isStreamModalOpen = false;
+
+function checkStreamSelection() {
+    if (!game.currentStreams) game.currentStreams = {};
+    const eraStr = String(game.era);
+
+    // Als we al een geselecteerde stroom hebben, of we de modal al tonen, doe niets
+    if (game.currentStreams[eraStr] || isStreamModalOpen) return;
+
+    const eraInfo = typeof ERA_DEFINITIONS !== 'undefined' ? ERA_DEFINITIONS[eraStr] : null;
+    if (!eraInfo) {
+        // Fallback voor era's die evt nog niet in de tabel staan
+        game.currentStreams[eraStr] = "Standaard";
+        return;
+    }
+
+    isStreamModalOpen = true;
+    const modal = document.getElementById('modal-container');
+
+    // Weergeven welke al "permanent unlocked" zijn door prestige
+    const unlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[eraStr]) || [];
+
+    let optionsHtml = '';
+    for (const [key, streamName] of Object.entries(eraInfo.streams)) {
+        const isUnlocked = unlocked.includes(streamName);
+        const badgeHtml = isUnlocked ? `<span class="badge" style="background:var(--green);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7em;">✨ Eerder Voltooid</span>` : '';
+        optionsHtml += `
+            <div class="panel stream-card" style="margin-bottom: 15px; cursor: pointer; text-align: left; border-left: 5px solid var(--mauve); transition: transform 0.2s;" onclick="selectStream('${streamName}')">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:var(--peach);">Pad ${key}: ${streamName}</h3>
+                    ${badgeHtml}
+                </div>
+                <p style="font-size:0.9em; color:var(--subtext); margin-top:5px;">Kies dit pad om de unieke gebouwen en onderzoeken vrij te spelen.</p>
+            </div>
+        `;
+    }
+
+    modal.innerHTML = `
+        <div class="detail-overlay" style="z-index: 1000; display:flex; flex-direction:column; justify-content:center; align-items:center; background: rgba(0,0,0,0.8);">
+            <div class="detail-content panel" style="max-width: 500px; width: 90%; text-align: center;">
+                <h2 style="color:var(--text); margin-top:0;">Tijdperk ${game.era}: ${eraInfo.name}</h2>
+                <p style="color:var(--subtext); margin-bottom:20px;">
+                    Kies de stroming voor jouw beschaving in dit tijdperk. Deze keuze is permanent voor deze levensloop (totdat je weer een Prestige uitvoert).
+                </p>
+                ${optionsHtml}
+            </div>
+        </div>
+    `;
+    modal.style.display = 'block';
+}
+
+window.selectStream = function (streamName) {
+    const eraStr = String(game.era);
+    game.currentStreams[eraStr] = streamName;
+    isStreamModalOpen = false;
+    const modal = document.getElementById('modal-container');
+    if (modal) modal.style.display = 'none';
+
+    saveGame();
+    if (typeof checkUnlocks === 'function') checkUnlocks();
+    updateUI();
+};
+
 function updateUI() {
+    checkStreamSelection();
+    if (isStreamModalOpen) return; // Pauzeer UI updates zolang de keuze modal open staat
+
     // Deze moet ALTIJD draaien (elke seconde)
     updateResourceBar()
     //  updateNavigationGlow();
@@ -411,6 +477,7 @@ function renderBuildings() {
     container.innerHTML = getBuyAmountBarHtml();
     for (let key in game.buildings) {
         const b = game.buildings[key];
+        if (b.stream && typeof isStreamActive === 'function' && !isStreamActive(b.stream)) continue;
         if (!b.unlocked) continue;
 
         // Het vuursteen monument staat permanent in de Prestige Tab. Verberg geavanceerde gebouwen in Tijdperk 1.
@@ -531,6 +598,7 @@ function renderJobs() {
 
     for (let key in game.jobs) {
         const job = game.jobs[key];
+        if (job.stream && typeof isStreamActive === 'function' && !isStreamActive(job.stream)) continue;
         if (!job.unlocked) continue;
 
         // Tijdperk 1 restricties: verberg geavanceerde banen
@@ -601,6 +669,7 @@ function renderResearch() {
 
     for (let key in game.research) {
         const r = game.research[key];
+        if (r.stream && typeof isStreamActive === 'function' && !isStreamActive(r.stream)) continue;
 
         if (r.researched) {
             hasCompleted = true;
@@ -741,6 +810,7 @@ function renderExplore() {
         container.innerHTML += '<p><small>Zend je verkenners op pad om grondstoffen, nieuwe volken of geheimen te ontdekken. Kost Intel en Voedsel.</small></p>';
         for (let key in game.expeditions.types) {
             const e = game.expeditions.types[key];
+            if (e.stream && typeof isStreamActive === 'function' && !isStreamActive(e.stream)) continue;
             if (!e.requirements()) continue;
 
             let costTxtHtml = '';

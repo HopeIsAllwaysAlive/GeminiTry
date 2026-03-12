@@ -1,4 +1,22 @@
 // --- CORE LOGICA ---
+function isStreamActive(streamName) {
+    if (!streamName) return true; // Niets vereist
+
+    // Check huidige run
+    for (const era in game.currentStreams) {
+        if (game.currentStreams[era] === streamName) return true;
+    }
+
+    // Check permanente prestige unlocks
+    if (game.prestige && game.prestige.unlockedStreams) {
+        for (const era in game.prestige.unlockedStreams) {
+            if (game.prestige.unlockedStreams[era] && game.prestige.unlockedStreams[era].includes(streamName)) return true;
+        }
+    }
+
+    return false;
+}
+
 function addResource(type, amount) {
     const res = game.resources[type];
     if (!res) return;
@@ -570,7 +588,23 @@ function checkUnlocks() {
         game.resources.intel.discovered = true;
         //   game.expeditions.easy.unlocked = true;
     }
-    // NIEUWE UNLOCKS
+
+    // NIEUWE UNLOCKS ERA 1 STREAMS
+    if (game.buildings.hunters_camp.count > 0) game.jobs.hunter.unlocked = true;
+    if (game.buildings.fire_pit.count > 0) game.jobs.firekeeper.unlocked = true;
+    if (game.buildings.fishing_pier.count > 0) game.jobs.fisher.unlocked = true;
+
+    if (game.research.cooking.unlocked) game.buildings.smokehouse.unlocked = true;
+    if (game.research.fishing_nets.unlocked) game.buildings.boat_builder.unlocked = true;
+
+    // NIEUWE UNLOCKS ERA 2 STREAMS
+    if (game.buildings.scribe_hut.count > 0) game.jobs.scribe.unlocked = true;
+    if (game.buildings.market_stall.count > 0) game.jobs.merchant.unlocked = true;
+
+    if (game.research.record_keeping.unlocked) game.buildings.library.unlocked = true;
+    if (game.research.currency.unlocked) game.buildings.trading_post.unlocked = true;
+
+    // BASE UNLOCKS
     if (game.research.education.unlocked) {
         game.buildings.school.unlocked = true;
         game.jobs.teacher.unlocked = true;
@@ -1435,6 +1469,21 @@ function performPrestige() {
 
     // 3. Prestige Upgrades & Punten veiligstellen
     const permanentPrestige = JSON.parse(JSON.stringify(game.prestige));
+
+    // Bewaar nieuw gespeelde stromen in de prestige progressie
+    if (game.currentStreams) {
+        if (!permanentPrestige.unlockedStreams) permanentPrestige.unlockedStreams = {};
+        for (let e in game.currentStreams) {
+            if (!permanentPrestige.unlockedStreams[e]) {
+                permanentPrestige.unlockedStreams[e] = [];
+            }
+            const activeStream = game.currentStreams[e];
+            if (!permanentPrestige.unlockedStreams[e].includes(activeStream)) {
+                permanentPrestige.unlockedStreams[e].push(activeStream);
+            }
+        }
+    }
+
     const permanentAchievements = game.achievements ? JSON.parse(JSON.stringify(game.achievements)) : {};
     const permanentTribes = (game.diplomacy && game.diplomacy.discoveredTribes) ? JSON.parse(JSON.stringify(game.diplomacy.discoveredTribes)) : {};
 
