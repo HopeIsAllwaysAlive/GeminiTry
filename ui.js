@@ -1518,48 +1518,39 @@ const mainCategoryIcons = {
 };
 const categoryOrder = ['management', 'world', 'progress', 'menu'];
 
-window.selectCategory = function (catKey, forceRebuild = false) {
+window.selectCategory = function (catKey) {
     window.currentCategory = catKey;
     const container = document.getElementById('unified-nav-container');
     if (!container) return;
 
-    // Check if we need to build the DOM
-    if (forceRebuild || container.children.length === 0) {
-        let html = '';
-        for (let c of categoryOrder) {
-            html += `<button class="nav-main-icon" id="nav-main-${c}" onclick="selectCategory('${c}')" title="${c}">${mainCategoryIcons[c]}</button>`;
+    let html = '';
 
-            html += `<div class="sub-nav-group" id="sub-nav-group-${c}">`;
-            const tabs = tabCategories[c];
-            tabs.forEach(tab => {
-                if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)) return;
-                html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
-            });
-            html += `</div>`;
-        }
-        container.innerHTML = html;
-    }
-
-    // Now toggle classes for expansion
-    for (let c of categoryOrder) {
-        const mainIcon = document.getElementById(`nav-main-${c}`);
-        const subGroup = document.getElementById(`sub-nav-group-${c}`);
-
-        if (mainIcon) {
-            if (c === catKey) mainIcon.classList.add('active');
-            else mainIcon.classList.remove('active');
-        }
-
-        if (subGroup) {
-            if (c === catKey) subGroup.classList.add('expanded');
-            else subGroup.classList.remove('expanded');
-        }
-    }
-
+    // 1. Sub-nav bar (bovenste laag van de bottom nav)
+    html += '<nav id="sub-nav-bar" class="sub-nav-bar">';
     const tabs = tabCategories[catKey];
-    const isActiveInCat = tabs.some(t => t.id === window.currentTab);
+    if (tabs) {
+        tabs.forEach(tab => {
+            if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)) return;
+            html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
+        });
+    }
+    html += '</nav>';
 
-    if (!isActiveInCat && tabs.length > 0) {
+    // 2. Main-nav bar (onderste laag)
+    html += '<nav id="main-nav-bar" class="main-nav-bar">';
+    for (let c of categoryOrder) {
+        const isActive = c === catKey ? 'active' : '';
+        html += `<button class="nav-main-icon ${isActive}" id="nav-main-${c}" onclick="selectCategory('${c}')" title="${c}">
+                    ${mainCategoryIcons[c]}
+                 </button>`;
+    }
+    html += '</nav>';
+
+    container.innerHTML = html;
+
+    const isActiveInCat = tabs && tabs.some(t => t.id === window.currentTab);
+
+    if (!isActiveInCat && tabs && tabs.length > 0) {
         const validTabs = tabs.filter(tab => !((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)));
         if (validTabs.length > 0) {
             showTab(validTabs[0].id);

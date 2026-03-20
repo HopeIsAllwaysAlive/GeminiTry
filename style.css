@@ -63,9 +63,8 @@ body {
     /* CENTREERT de content horizontaal */
 
     /* De truc: zorg dat de container zelf stopt boven de nav */
-    height: calc(100svh - 70px - 60px);
-    /* 100vh minus nav minus resource-bar */
-    padding-bottom: 20px;
+    height: calc(100svh - 120px - 60px);
+    /* 100vh minus nav (120px) minus resource-bar (60px) */
     padding-bottom: 20px;
     background: var(--bg);
     border: none;
@@ -298,92 +297,89 @@ body {
     box-shadow: 0 12px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* Unified Horizontale Navigatie */
+/* Unified Horizontale Navigatie (2-Tier) */
 .unified-bottom-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 70px;
-    background: var(--panel);
-    border-top: 2px solid var(--surface2);
-    transition: background 0.3s ease;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+}
+
+.sub-nav-bar {
+    width: 100%;
+    height: 55px; /* Compact lint voor tabs */
+    background: rgba(30, 30, 46, 0.95);
+    backdrop-filter: blur(8px); /* Lichte glassmorphism */
+    border-top: 1px solid var(--surface2);
     display: flex;
     align-items: center;
     overflow-x: auto;
     white-space: nowrap;
-    z-index: 2000;
-    padding: 0 10px;
-    padding-bottom: env(safe-area-inset-bottom);
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
-    /* Verberg scrollbar */
-    -ms-overflow-style: none;
-    /* IE and Edge */
-    scrollbar-width: none;
-    /* Firefox */
+    padding: 0 5px;
+    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; /* Firefox */
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.4);
 }
 
-.unified-bottom-bar::-webkit-scrollbar {
+.sub-nav-bar::-webkit-scrollbar {
     display: none;
 }
 
+.main-nav-bar {
+    width: 100%;
+    height: 65px;
+    background: var(--bg); /* Diepe 0d0f18 achtergrond */
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
 .nav-main-icon {
-    flex-shrink: 0;
-    width: 50px;
-    height: 50px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex: 1;
+    height: 100%;
+    background: transparent;
+    border: none;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.5em;
-    margin: 0 5px;
+    font-size: 1.6em;
     cursor: pointer;
     transition: all 0.2s ease;
+    opacity: 0.6;
 }
 
 .nav-main-icon.active {
-    background: rgba(203, 166, 247, 0.2);
-    border-color: var(--mauve);
-    box-shadow: 0 0 10px rgba(203, 166, 247, 0.4);
-}
-
-.sub-nav-group {
-    display: flex;
-    overflow: hidden;
-    max-width: 0;
-    opacity: 0;
-    transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-}
-
-.sub-nav-group.expanded {
-    max-width: 500px;
-    /* Groot genoeg voor de knoppen */
     opacity: 1;
+    transform: scale(1.15);
+    color: var(--accent);
 }
 
 .nav-sub-btn {
     flex-shrink: 0;
-    height: 40px;
-    padding: 0 15px;
+    height: 38px;
+    padding: 0 18px;
     margin: 0 5px;
     border-radius: 20px;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid #45475a;
     color: var(--text);
-    font-weight: bold;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
 }
 
 .nav-sub-btn.active {
     background: var(--green);
-    color: var(--bg);
+    color: #111;
     border-color: var(--green);
+    font-weight: bold;
 }
 
 .nav-sub-btn:hover:not(.active) {
