@@ -1419,6 +1419,7 @@ function performPrestige() {
         }
     } else {
         earnedPoints = calculatePrestigePoints();
+        newEra = 1; // Volledige prestige: terug naar Tijdperk 1
     }
 
     // 2. Punten bijschrijven
@@ -1446,6 +1447,12 @@ function performPrestige() {
     const permanentAchievements = game.achievements ? JSON.parse(JSON.stringify(game.achievements)) : {};
     const permanentTribes = (game.diplomacy && game.diplomacy.discoveredTribes) ? JSON.parse(JSON.stringify(game.diplomacy.discoveredTribes)) : {};
 
+    // Bewaar tijdelijk de gekozen streams als dit een Evolutie is (geen volledige Prestige)
+    let preservedStreams = {};
+    if (newEra > currentEra && game.currentStreams) {
+        preservedStreams = JSON.parse(JSON.stringify(game.currentStreams));
+    }
+
     // 4. De Game resetten naar de basis
     game = getInitialState();
 
@@ -1454,6 +1461,9 @@ function performPrestige() {
     game.achievements = permanentAchievements;
     if (game.diplomacy) game.diplomacy.discoveredTribes = permanentTribes;
     game.era = newEra;
+    if (newEra > currentEra) {
+        game.currentStreams = preservedStreams;
+    }
 
     // 6. "Starter Pack" bonus uitdelen
     const starterLevel = game.prestige.upgrades.starter_pack.level;

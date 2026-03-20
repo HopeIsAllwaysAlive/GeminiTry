@@ -37,8 +37,8 @@ function checkStreamSelection() {
         }
     }
 
-    // fallback: als we door een load/save error de vorige key missen, sta alles toe
-    const isFirstTimeEra = (game.era === 1) || (game.era > 1 && !chosenPrevKey && !game.currentStreams[prevEraStr]);
+    // Strict selectie: Alleen open als Era 1 is.
+    const isFirstTimeEra = (game.era === 1);
 
     for (const [key, streamName] of Object.entries(eraInfo.streams)) {
         // Controleer ook of de naam matcht in unlockedStreams (voor prestigedoorgang)
@@ -48,7 +48,7 @@ function checkStreamSelection() {
         }
 
         // Mag de speler dit kiezen?
-        // Ja, if Era 1 (of een verweesde save game state).
+        // Ja, if Era 1 (eerste keer of total prestige).
         // Ja, if Eerder behaald (Prestige unlock).
         // Ja, if ze in het *vorige* tijdperk hetzelfde pad ('A', 'B' of 'C') kozen.
         const canPick = isFirstTimeEra || isPermanentlyUnlocked || key === chosenPrevKey;
