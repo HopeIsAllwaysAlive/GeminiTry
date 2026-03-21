@@ -140,6 +140,9 @@ function updateUI() {
         case 'settings':
             renderSettings();
             break;
+        case 'state':
+            renderStateTab();
+            break;
     }
 }
 
@@ -1496,7 +1499,8 @@ const tabCategories = {
         { id: 'prestige', icon: '✨', label: 'Tijdperken' }
     ],
     menu: [
-        { id: 'settings', icon: '⚙️', label: 'Settings' }
+        { id: 'settings', icon: '⚙️', label: 'Settings' },
+        { id: 'state', icon: '🔍', label: 'State' }
     ]
 };
 
@@ -1505,7 +1509,7 @@ const swipeOrder = [
     'jobs', 'resources', 'population',
     'explore', 'diplomacy', 'military',
     'research', 'prestige',
-    'settings'
+    'settings', 'state'
 ];
 
 window.currentCategory = 'management';
@@ -1710,3 +1714,271 @@ function showNotification(message, type = 'info') {
         setTimeout(() => notif.remove(), 300);
     }, 3000);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE DEBUG TAB
+// ─────────────────────────────────────────────────────────────────────────────
+function renderStateTab() {
+    const container = document.getElementById('tab-state');
+    if (!container) return;
+
+    // Helperfuncties voor compacte weergave
+    const badge = (val) => {
+        if (typeof val === 'boolean') {
+            const c = val ? '#a6e3a1' : '#6c7086';
+            return `<span style="color:${c};font-weight:bold;">${val ? '✓' : '✗'}</span>`;
+        }
+        if (typeof val === 'number') {
+            const c = val > 0 ? '#a6e3a1' : val < 0 ? '#f38ba8' : '#cdd6f4';
+            return `<span style="color:${c};">${Number.isInteger(val) ? val : val.toFixed(2)}</span>`;
+        }
+        return `<span style="color:#cdd6f4;">${val ?? '—'}</span>`;
+    };
+
+    const section = (icon, title, rows, accentColor = '#89b4fa') => `
+        <details class="panel state-section" open style="margin-bottom:12px;padding:0;border-left:4px solid ${accentColor};border-radius:8px;">
+            <summary style="cursor:pointer;padding:12px 16px;font-weight:bold;font-size:0.95em;display:flex;align-items:center;gap:8px;user-select:none;">
+                <span>${icon}</span> <span style="color:${accentColor};">${title}</span>
+            </summary>
+            <div style="padding:0 16px 14px;overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.8em;">
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </details>`;
+
+    const row = (label, ...cells) => `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+            <td style="padding:4px 8px 4px 0;color:#a6adc8;white-space:nowrap;min-width:120px;">${label}</td>
+            ${cells.map(c => `<td style="padding:4px 6px;text-align:right;">${c}</td>`).join('')}
+        </tr>`;
+
+    const subheader = (label) => `
+        <tr><td colspan="6" style="padding:8px 0 3px;color:#cba6f7;font-weight:bold;font-size:0.85em;border-top:1px solid rgba(255,255,255,0.1);">${label}</td></tr>`;
+
+    const th = (...labels) => `
+        <tr style="opacity:0.5;">
+            ${labels.map(l => `<th style="text-align:${l === labels[0] ? 'left' : 'right'};padding:4px 6px 4px ${l === labels[0] ? '0' : '6px'};font-size:0.78em;">${l}</th>`).join('')}
+        </tr>`;
+
+    let html = `
+        <h1 style="margin-bottom:4px;">🔍 Game State</h1>
+        <p style="color:#a6adc8;font-size:0.82em;margin-bottom:20px;">Realtime overzicht van alle game-state. Ververst elke seconde. Klik op een sectie om in/uit te klappen.</p>`;
+
+    // ─── 1. ERA & STREAMS ──────────────────────────────────────────────────
+    {
+        let rows = '';
+        rows += row('Era', `<strong style="color:#cba6f7;font-size:1.2em;">${game.era}</strong>`);
+
+        const streams = game.currentStreams || {};
+        const streamDisplay = Object.entries(streams).length > 0
+            ? Object.entries(streams).map(([e, s]) => `<span style="color:#89dceb;">Era ${e}:</span> <strong>${s}</strong>`).join('<br>')
+            : '—';
+        rows += row('Huidige Streams', streamDisplay);
+
+        const unl = game.prestige?.unlockedStreams || {};
+        const unlDisplay = Object.entries(unl).length > 0
+            ? Object.entries(unl).map(([e, arr]) => `<span style="color:#cba6f7;">Era ${e}:</span> ${arr.join(', ')}`).join('<br>')
+            : badge(false);
+        rows += row('Permanente Unlocks', unlDisplay);
+        html += section('🌍', 'Era & Streams', rows, '#cba6f7');
+    }
+
+    // ─── 2. RESOURCES ──────────────────────────────────────────────────────
+    {
+        let rows = th('Naam', 'Hoeveelheid', 'Max', '/s', 'Ontdekt');
+        for (let key in game.resources) {
+            const r = game.resources[key];
+            rows += row(
+                r.name || key,
+                badge(Math.floor(r.amount)),
+                `<span style="color:#6c7086;">${r.max ?? '∞'}</span>`,
+                r.perSec !== undefined ? badge(parseFloat(r.perSec.toFixed(2))) : '—',
+                badge(r.discovered ?? true)
+            );
+        }
+        html += section('💎', 'Resources', rows, '#89b4fa');
+    }
+
+    // ─── 3. JOBS ───────────────────────────────────────────────────────────
+    {
+        let rows = th('Naam', 'Count', 'Max', 'Unlocked', 'Stream');
+        for (let key in game.jobs) {
+            const j = game.jobs[key];
+            const nameColor = j.unlocked ? '#cdd6f4' : '#6c7086';
+            rows += row(
+                `<span style="color:${nameColor};">${j.name || key}</span>`,
+                badge(j.count),
+                `<span style="color:#6c7086;">${j.max ?? 0}</span>`,
+                badge(j.unlocked),
+                j.stream ? `<span style="color:#89dceb;font-size:0.8em;">${j.stream}</span>` : '—'
+            );
+        }
+        html += section('👷', 'Jobs', rows, '#a6e3a1');
+    }
+
+    // ─── 4. BUILDINGS ──────────────────────────────────────────────────────
+    {
+        let rows = th('Naam', 'Aantal', 'Unlocked', 'Stream', '');
+        let hasAny = false;
+        for (let key in game.buildings) {
+            const b = game.buildings[key];
+            if (!b.unlocked && b.count === 0) continue;
+            hasAny = true;
+            rows += row(
+                b.name || key,
+                badge(b.count),
+                badge(b.unlocked),
+                b.stream ? `<span style="color:#89dceb;font-size:0.8em;">${b.stream}</span>` : '—',
+                ''
+            );
+        }
+        if (!hasAny) rows += row('<em style="color:#6c7086;">Geen gebouwen zichtbaar</em>');
+        html += section('🏗️', 'Gebouwen', rows, '#fab387');
+    }
+
+    // ─── 5. RESEARCH ───────────────────────────────────────────────────────
+    {
+        let rows = th('Naam', 'Vereiste', 'Unlocked', 'Researched', 'Stream');
+        for (let key in game.research) {
+            const r = game.research[key];
+            const nameColor = r.researched ? '#a6e3a1' : r.unlocked ? '#cdd6f4' : '#6c7086';
+            // Controleer of requirement beschikbaar is
+            let reqMet = false;
+            try { reqMet = r.requirement ? r.requirement() : true; } catch(e) {}
+            rows += row(
+                `<span style="color:${nameColor};">${r.name || key}</span>`,
+                badge(reqMet),
+                badge(r.unlocked),
+                badge(r.researched ?? false),
+                r.stream ? `<span style="color:#89dceb;font-size:0.8em;">${r.stream}</span>` : '—'
+            );
+        }
+        html += section('🔬', 'Research', rows, '#f9e2af');
+    }
+
+    // ─── 6. PRESTIGE ───────────────────────────────────────────────────────
+    {
+        const p = game.prestige || {};
+        let rows = '';
+        rows += row('Punten', `<strong style="color:#f9e2af;font-size:1.1em;">${p.points ?? 0}</strong>`);
+        rows += row('Totaal Verdiend', `<span style="color:#6c7086;">${p.totalEarned ?? 0}</span>`);
+        rows += subheader('Upgrades');
+        rows += th('Naam', 'Level', 'Max', 'Cost (pp)');
+        for (let key in (p.upgrades || {})) {
+            const u = p.upgrades[key];
+            const maxed = u.level >= u.max;
+            rows += row(
+                u.name || key,
+                `<span style="color:${maxed ? '#a6e3a1' : '#cdd6f4'};">${u.level}</span>`,
+                `<span style="color:#6c7086;">${u.max}</span>`,
+                `<span style="color:#6c7086;">${u.cost}</span>`
+            );
+        }
+        html += section('🌟', 'Prestige', rows, '#f9e2af');
+    }
+
+    // ─── 7. MILITAIR ───────────────────────────────────────────────────────
+    {
+        const mil = game.military || {};
+        let rows = '';
+        rows += row('Aanvalskracht', `<span style="color:#f38ba8;font-weight:bold;">${Math.floor(mil.attackPower ?? 0)}</span>`);
+        rows += row('Verdedigingskracht', `<span style="color:#a6e3a1;font-weight:bold;">${Math.floor(mil.defensePower ?? 0)}</span>`);
+        rows += subheader('Eenheden');
+        rows += th('Unit', 'Totaal', 'Off', 'Def', 'Unlocked');
+        for (let key in (mil.units || {})) {
+            const u = mil.units[key];
+            rows += row(
+                u.name || key,
+                badge(u.total ?? 0),
+                `<span style="color:#f38ba8;">${u.assignedOff ?? 0}</span>`,
+                `<span style="color:#a6e3a1;">${u.assignedDef ?? 0}</span>`,
+                badge(u.unlocked)
+            );
+        }
+        html += section('⚔️', 'Militair', rows, '#f38ba8');
+    }
+
+    // ─── 8. EXPEDITIES ─────────────────────────────────────────────────────
+    {
+        const exp = game.expeditions || {};
+        let rows = '';
+        rows += row('Actief', badge(exp.active ?? false));
+        rows += row('Timer Resterend', exp.timer > 0 ? `<span style="color:#89dceb;">${Math.ceil(exp.timer)}s</span>` : '—');
+        rows += row('Huidig Type', `<span style="color:#89dceb;">${exp.currentType ?? '—'}</span>`);
+        rows += subheader('Missie Types');
+        rows += th('Naam', 'Duur', 'Slagingskans', 'Beschikbaar');
+        for (let key in (exp.types || {})) {
+            const t = exp.types[key];
+            let req = false;
+            try { req = t.requirements ? t.requirements() : true; } catch(e) {}
+            rows += row(
+                t.name || key,
+                `<span style="color:#6c7086;">${t.duration}s</span>`,
+                `<span style="color:#6c7086;">${(t.successRate * 100).toFixed(0)}%</span>`,
+                badge(req)
+            );
+        }
+        html += section('🗺️', 'Expedities', rows, '#89dceb');
+    }
+
+    // ─── 9. DIPLOMATIE ─────────────────────────────────────────────────────
+    {
+        const dip = game.diplomacy || {};
+        let rows = '';
+        rows += row('Diplomatie Ontgrendeld', badge(dip.unlocked ?? false));
+        const discoveredTribes = dip.discoveredTribes || {};
+        const templates = game.tribeTemplates || {};
+
+        // Toon ALLE bekende stam-templates met ontdekt-status
+        rows += subheader('Alle Stammen (uit tribeTemplates)');
+        rows += th('Naam', 'Ontdekt', 'Relatie', 'Handel Actief', 'Alliantie', 'Veroverd');
+        for (let key in templates) {
+            const tmpl = templates[key];
+            const disc = discoveredTribes[key];
+            const isDiscovered = !!disc;
+            if (isDiscovered) {
+                const relColor = disc.relation >= 60 ? '#a6e3a1' : disc.relation <= 30 ? '#f38ba8' : '#cdd6f4';
+                rows += row(
+                    `<strong>${tmpl.name || key}</strong>`,
+                    badge(true),
+                    `<span style="color:${relColor};font-weight:bold;">${disc.relation}/100</span>`,
+                    badge(disc.tradeRouteActive ?? false),
+                    badge(disc.isAllied ?? false),
+                    badge(disc.isConquered ?? false)
+                );
+            } else {
+                rows += row(
+                    `<span style="color:#6c7086;">${tmpl.name || key}</span>`,
+                    badge(false),
+                    `<span style="color:#6c7086;">—</span>`,
+                    '—', '—', '—'
+                );
+            }
+        }
+        html += section('🤝', 'Diplomatie', rows, '#94e2d5');
+    }
+
+    // ─── 10. OVERIGE FLAGS ─────────────────────────────────────────────────
+    {
+        let rows = '';
+        rows += row('buyAmount', `<span style="color:#cba6f7;">${buyAmount}</span>`);
+        rows += row('currentTab', `<span style="color:#89dceb;">${window.currentTab}</span>`);
+        rows += row('currentCategory', `<span style="color:#89dceb;">${window.currentCategory}</span>`);
+        rows += row('isStreamModalOpen', badge(typeof isStreamModalOpen !== 'undefined' ? isStreamModalOpen : false));
+        const ls = game.lastSave || game.lastTick;
+        rows += row('Laatste Save/Tick', ls ? new Date(ls).toLocaleTimeString('nl-NL') : '—');
+
+        const settings = game.settings || {};
+        rows += subheader('Settings');
+        rows += row('showManualActions', badge(settings.showManualActions ?? true));
+        const hidden = settings.hiddenResources || [];
+        rows += row('hiddenResources', hidden.length > 0
+            ? hidden.map(h => `<span style="color:#f38ba8;">${h}</span>`).join(', ')
+            : '<span style="color:#6c7086;">Geen</span>');
+        html += section('⚙️', 'Overige Flags', rows, '#6c7086');
+    }
+
+    container.innerHTML = html;
+}
+
