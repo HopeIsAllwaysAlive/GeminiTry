@@ -20,6 +20,10 @@ function checkStreamSelection() {
 
     // Weergeven welke in het HUIDIGE era al zijn voltooid (voor het visuele badge)
     const currentUnlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[eraStr]) || [];
+    
+    const prevEraStr = String(game.era - 1);
+    const prevEraInfo = game.era > 1 ? ERA_DEFINITIONS[prevEraStr] : null;
+
     // Weergeven welke in de VORIGE era zijn voltooid (om de deur te openen voor cross-laning)
     const prevUnlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[prevEraStr]) || [];
 
