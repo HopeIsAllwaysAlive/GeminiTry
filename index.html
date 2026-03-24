@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.4">
 </head>
 
 <body>
@@ -22,103 +22,98 @@
             <!-- Wordt dynamisch gevuld door updateResourceBar in ui.js -->
         </div>
 
-    <div id="tab-content">
-        <div class="scroll-container">
-            <main>
-                <section id="tab-jobs" class="tab-content active">
-                    <h1>Handmatige Jobs & Gebouwen</h1>
+        <div id="tab-content">
+            <div class="scroll-container">
+                <main>
+                    <section id="tab-jobs" class="tab-content active">
+                        <h1>Handmatige Jobs & Gebouwen</h1>
 
-                    <div class="panel" id="manual-actions-panel">
-                        <h3>Handmatige Acties</h3>
-                        <div id="manual-actions-container" class="action-grid"
-                            style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;"></div>
-                    </div>
+                        <div class="panel" id="manual-actions-panel">
+                            <h3>Handmatige Acties</h3>
+                            <div id="manual-actions-container" class="action-grid"
+                                style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;"></div>
+                        </div>
 
-                    <div class="panel">
-                        <h3>Gebouwen (Creëer werkplekken)</h3>
-                        <div id="building-list" class="building-grid"></div>
+                        <div class="panel">
+                            <h3>Gebouwen (Creëer werkplekken)</h3>
+                            <div id="building-list" class="building-grid"></div>
+                        </div>
+                    </section>
+                </main>
+
+
+                <section id="tab-resources" class="tab-content">
+                    <h1>Goederen Overzicht</h1>
+                    <div id="resources-container" style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Wordt gevuld door renderResources() -->
                     </div>
                 </section>
-            </main>
 
+                <section id="tab-population" class="tab-content">
+                    <h1>Bevolking Management</h1>
 
-            <section id="tab-resources" class="tab-content">
-                <h1>Goederen Overzicht</h1>
-                <div id="resources-container" style="display: flex; flex-direction: column; gap: 15px;">
-                    <!-- Wordt gevuld door renderResources() -->
-                </div>
-            </section>
-
-            <section id="tab-population" class="tab-content">
-                <h1>Bevolking Management</h1>
-
-                <!-- Populatie Dashboard -->
-                <div class="panel"
-                    style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--accent);">
-                    <div>
-                        <div style="font-size: 0.9em; color: #a6adc8;">Vrije Bevolking</div>
-                        <div style="font-size: 2em; font-weight: bold; color: var(--green);" id="pop-idle">0</div>
+                    <!-- Populatie Dashboard -->
+                    <div class="panel"
+                        style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--accent);">
+                        <div>
+                            <div style="font-size: 0.9em; color: #a6adc8;">Vrije Bevolking</div>
+                            <div style="font-size: 2em; font-weight: bold; color: var(--green);" id="pop-idle">0</div>
+                        </div>
+                        <div style="border-right: 1px solid rgba(255,255,255,0.1); margin: 0 15px;"></div>
+                        <div>
+                            <div style="font-size: 0.9em; color: #a6adc8;">Totale Bevolking</div>
+                            <div style="font-size: 2em; font-weight: bold;" id="pop-total">0</div>
+                        </div>
                     </div>
-                    <div style="border-right: 1px solid rgba(255,255,255,0.1); margin: 0 15px;"></div>
-                    <div>
-                        <div style="font-size: 0.9em; color: #a6adc8;">Totale Bevolking</div>
-                        <div style="font-size: 2em; font-weight: bold;" id="pop-total">0</div>
-                    </div>
-                </div>
 
-                <h3>Banen Toewijzen</h3>
-                <div id="jobs-container"></div>
-            </section>
+                    <h3>Banen Toewijzen</h3>
+                    <div id="jobs-container"></div>
+                </section>
 
-            <section id="tab-research" class="tab-content">
-                <h1>Research</h1>
-                <p>WIP</p>
-            </section>
-            <section id="tab-explore" class="tab-content">
-                <h1>Verkennen</h1>
-                <p>WIP</p>
-            </section>
-            <section id="tab-diplomacy" class="tab-content">
-                <h1>Diplomatie</h1>
-                <p>WIP</p>
-            </section>
-            <section id="tab-military" class="tab-content">
-                <h1>Leger</h1>
-                <p>WIP</p>
-            </section>
-            <section id="tab-prestige" class="tab-content">
-                <h1>Prestige</h1>
-                <p>WIP</p>
-            </section>
-            <section id="tab-settings" class="tab-content">
-                <h1>Instellingen</h1>
-                <p>WIP</p>
-            </section>
-            <section id="tab-state" class="tab-content">
-                <!-- Wordt dynamisch gevuld door renderStateTab() in ui.js -->
-            </section>
+                <section id="tab-research" class="tab-content">
+                    <h1>Research</h1>
+                    <p>WIP</p>
+                </section>
+                <section id="tab-explore" class="tab-content">
+                    <h1>Verkennen</h1>
+                    <p>WIP</p>
+                </section>
+                <section id="tab-diplomacy" class="tab-content">
+                    <h1>Diplomatie</h1>
+                    <p>WIP</p>
+                </section>
+                <section id="tab-military" class="tab-content">
+                    <h1>Leger</h1>
+                    <p>WIP</p>
+                </section>
+                <section id="tab-prestige" class="tab-content">
+                    <h1>Prestige</h1>
+                    <p>WIP</p>
+                </section>
+                <section id="tab-settings" class="tab-content">
+                    <h1>Instellingen</h1>
+                    <p>WIP</p>
+                </section>
+                <section id="tab-state" class="tab-content">
+                    <!-- Wordt dynamisch gevuld door renderStateTab() in ui.js -->
+                </section>
+            <!-- Einde span-content / scroll container -->
+            </div> 
+
+            <!-- Desktop navigatie knoppen -->
+            <button class="nav-arrow left-arrow" onclick="changeTabDirection(-1)" title="Vorige Tab"
+                aria-label="Vorige">❮</button>
+            <button class="nav-arrow right-arrow" onclick="changeTabDirection(1)" title="Volgende Tab"
+                aria-label="Volgende">❯</button>
+
+            <div id="modal-container" style="display:none;"></div>
         </div>
-
-    </div>
-    </div>
-    </div>
-
-        <!-- Einde tab-content -->
-        </div> 
-
-        <!-- Desktop navigatie knoppen -->
-        <button class="nav-arrow left-arrow" onclick="changeTabDirection(-1)" title="Vorige Tab"
-            aria-label="Vorige">❮</button>
-        <button class="nav-arrow right-arrow" onclick="changeTabDirection(1)" title="Volgende Tab"
-            aria-label="Volgende">❯</button>
-
-        <div id="modal-container" style="display:none;"></div>
     </div> <!-- Einde main-column -->
 
-    <script src="state.js?v=1.1"></script>
-    <script src="engine.js?v=1.1"></script>
-    <script src="ui.js?v=1.1"></script>
-    <script src="main.js?v=1.1"></script>
+    <script src="state.js?v=1.4"></script>
+    <script src="engine.js?v=1.4"></script>
+    <script src="ui.js?v=1.4"></script>
+    <script src="main.js?v=1.4"></script>
 </body>
 
 </html>
