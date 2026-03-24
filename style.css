@@ -47,7 +47,14 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* Voorkom dat de hele body scrolt */
+}
+
+.main-column {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
 }
 
 /* Een container die wel mag scrollen */
@@ -773,3 +780,47 @@ input:checked+.slider:before {
     }
 }   
  
+
+/* --- DESKTOP LAYOUT (Responsive Sidebar) --- */
+@media (min-width: 768px) {
+    body {
+        flex-direction: row; 
+    }
+
+    .unified-bottom-bar {
+        position: static;
+        width: 250px;
+        height: 100svh;
+        flex-direction: column;
+        justify-content: flex-start;
+        border-top: none;
+        border-right: 2px solid var(--surface2);
+        padding-top: 20px;
+        background: var(--panel);
+        overflow-y: auto;
+    }
+
+    .unified-bottom-bar button {
+        width: 100%;
+        justify-content: flex-start; 
+        padding: 15px 20px;
+        border-radius: 8px; 
+        margin-bottom: 5px;
+        font-size: 1.1em;
+    }
+
+    .unified-bottom-bar button.active {
+        background: var(--surface2);
+        border-left: 4px solid var(--accent);
+        border-bottom: none;
+    }
+
+    .scroll-container {
+        height: calc(100svh - 60px); 
+        padding-bottom: 40px;
+    }
+
+    .building-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
