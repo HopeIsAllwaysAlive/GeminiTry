@@ -18,12 +18,12 @@ function checkStreamSelection() {
     isStreamModalOpen = true;
     const modal = document.getElementById('modal-container');
 
-    // Weergeven welke al "permanent unlocked" zijn door prestige
-    const unlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[eraStr]) || [];
+    // Weergeven welke in het HUIDIGE era al zijn voltooid (voor het visuele badge)
+    const currentUnlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[eraStr]) || [];
+    // Weergeven welke in de VORIGE era zijn voltooid (om de deur te openen voor cross-laning)
+    const prevUnlocked = (game.prestige && game.prestige.unlockedStreams && game.prestige.unlockedStreams[prevEraStr]) || [];
 
     let optionsHtml = '';
-    const prevEraStr = String(game.era - 1);
-    const prevEraInfo = game.era > 1 ? ERA_DEFINITIONS[prevEraStr] : null;
 
     // Bepaal de 'sleutel' van de stream die ze vorig tijdperk kozen (indien > 1)
     let chosenPrevKey = null;
@@ -41,24 +41,33 @@ function checkStreamSelection() {
     const isFirstTimeEra = (game.era === 1);
 
     for (const [key, streamName] of Object.entries(eraInfo.streams)) {
-        // Controleer ook of de naam matcht in unlockedStreams (voor prestigedoorgang)
+        // Wat is de naam van deze 'key' in de vorige era?
+        let prevStreamNameForThisKey = null;
+        if (prevEraInfo) {
+            prevStreamNameForThisKey = prevEraInfo.streams[key];
+        }
+
+        // De Deur is open als je in een *vorige* play-through de prerequisite van deze Era hebt uitgespeeld.
         let isPermanentlyUnlocked = false;
-        if (unlocked && unlocked.length > 0) {
-            isPermanentlyUnlocked = unlocked.includes(streamName);
+        if (prevUnlocked && prevUnlocked.length > 0 && prevStreamNameForThisKey) {
+            isPermanentlyUnlocked = prevUnlocked.includes(prevStreamNameForThisKey);
         }
 
         // Mag de speler dit kiezen?
         // Ja, if Era 1 (eerste keer of total prestige).
-        // Ja, if Eerder behaald (Prestige unlock).
-        // Ja, if ze in het *vorige* tijdperk hetzelfde pad ('A', 'B' of 'C') kozen.
+        // Ja, if de prerequisite stream in de vorige era perm unlocked is.
+        // Ja, if ze in het *vorige* tijdperk hetzelfde pad ('A', 'B' of 'C') kozen (huidige levensloop).
         const canPick = isFirstTimeEra || isPermanentlyUnlocked || key === chosenPrevKey;
 
-        const badgeHtml = isPermanentlyUnlocked ? `<span class="badge" style="background:var(--green);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7em;">✨ Eerder Voltooid</span>` : '';
+        // Visuele indicatie of ze dezé specifieke stream al eens uitspeelden
+        const isAlreadyBeaten = currentUnlocked.includes(streamName);
+        const badgeHtml = isAlreadyBeaten ? `<span class="badge" style="background:var(--green);color:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.7em;">✨ Eerder Voltooid</span>` : '';
+        
         const lockedStyle = canPick ? '' : 'filter: grayscale(1); opacity: 0.5; cursor: not-allowed; border-left-color: var(--surface2) !important;';
 
         // Zorg dat de onclick alleen afgaat als canPick true is
         const onClickAttr = canPick ? `onclick="selectStream('${streamName}')"` : '';
-        const warningHtml = canPick ? '' : `<div style="color:var(--red); font-size:0.8em; margin-top:5px;">🔒 Vereist Pad ${key} in Tijdperk ${game.era - 1}</div>`;
+        const warningHtml = canPick ? '' : `<div style="color:var(--red); font-size:0.8em; margin-top:5px;">🔒 Vereist Pad ${key} (${prevStreamNameForThisKey}) in Tijdperk ${game.era - 1}</div>`;
 
         optionsHtml += `
             <div class="panel stream-card" style="margin-bottom: 15px; cursor: pointer; text-align: left; border-left: 5px solid var(--mauve); transition: transform 0.2s; ${lockedStyle}" ${onClickAttr}>
