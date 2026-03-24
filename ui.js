@@ -1238,11 +1238,10 @@ function renderPrestige() {
             
             <!-- Reset info en dashboard -->
             <div class="panel" style="background: rgba(243, 139, 168, 0.05); border-left: 5px solid var(--red);">
-                <h3 style="color: var(--red); margin-top: 0;">⚠️ Wat gebeurt er bij een Evolutie?</h3>
+                <h3 style="color: var(--red); margin-top: 0;">⚠️ Wat is het verschil?</h3>
                 <ul style="font-size: 0.85em; color: var(--subtext); margin: 0; padding-left: 20px;">
-                    <li><strong>Vernietigd:</strong> Je grondstoffen, bevolking, gebouwen, onderzoeken en leger.</li>
-                    <li><strong>Behouden:</strong> Je ontdekte/veroverde stammen (Diplomatie), <strong>Prestige Punten</strong> en <strong>Verworven Upgrades</strong>.</li>
-                    <li><strong>Beloning:</strong> Je claimt de verdiende Prestige Punten hieronder.</li>
+                    <li style="margin-bottom: 5px;"><strong>🔄 Volledige Prestige:</strong> Je wist alles (ook je huidige pad-keuzes) en keert terug naar Tijdperk 1 om opnieuw te beginnen of een andere tactiek te proberen. Je ontvangt hiervoor prestige punten!</li>
+                    <li><strong>🌟 Evolutie:</strong> Je stroomt door naar het <strong>volgende tijdperk</strong>. Je behoudt je gekozen Paden én je ontvangt de verdiende prestige punten.</li>
                 </ul>
             </div>
 
@@ -1252,12 +1251,18 @@ function renderPrestige() {
                     ${breakdown.details}
                 </div>
                 
-                <button class="build-btn" style="width: 100%; height: 60px; font-size: 1.2em; background: var(--mauve); border: none; box-shadow: 0 4px 15px rgba(203, 166, 247, 0.4);" 
-                        onclick="if(confirm('Weet je zeker dat je wilt evolueren naar een nieuw tijdperk? Je begint helemaal opnieuw!')) performPrestige()" 
-                        ${canEvolve ? '' : 'disabled'}
-                        title="${btnTitle}">
-                    ${btnText}
-                </button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <button class="build-btn" style="height: 60px; font-size: 1.1em; background: var(--surface1); border: 2px solid var(--red); color: var(--text);" 
+                            onclick="if(confirm('Weet je zeker dat je ALLES wilt resetten en terug wilt keren naar Tijdperk 1?')) performPrestige(false)">
+                        🔄 Volledige Prestige
+                    </button>
+                    <button class="build-btn" style="height: 60px; font-size: 1.1em; background: var(--mauve); border: none; box-shadow: 0 4px 15px rgba(203, 166, 247, 0.4);" 
+                            onclick="if(confirm('Weet je zeker dat je wilt evolueren naar het volgende tijdperk?')) performPrestige(true)" 
+                            ${canEvolve ? '' : 'disabled'}
+                            title="${btnTitle}">
+                        ${btnText}
+                    </button>
+                </div>
                 ${warningHtml}
             </div>
 

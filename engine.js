@@ -1404,18 +1404,27 @@ function triggerRebellion(tribeKey) {
     updateUI();
 }
 
-function performPrestige() {
+function performPrestige(isEvolution = false) {
     const currentEra = game.era || 1;
     let newEra = currentEra;
     let earnedPoints = 0;
 
     // 1. Bereken de punten en het nieuwe tijdperk
-    if (currentEra === 1) {
-        if (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1 && game.resources.population.amount >= 50) {
-            newEra = 2;
-            earnedPoints = 10 + calculatePrestigePoints(); // Beloning voor overgang naar Tijdperk 2 + je stad score
+    if (isEvolution) {
+        if (currentEra === 1) {
+            if (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1 && game.resources.population.amount >= 50) {
+                newEra = 2;
+                earnedPoints = 10 + calculatePrestigePoints(); // Beloning voor overgang naar Tijdperk 2 + je stad score
+            } else {
+                return; // Niet voldaan aan de eisen
+            }
         } else {
-            return; // Niet voldaan aan de eisen
+            if (game.resources.population.amount >= 100) {
+                newEra = currentEra + 1;
+                earnedPoints = calculatePrestigePoints();
+            } else {
+                return; // Niet voldaan aan de eisen
+            }
         }
     } else {
         earnedPoints = calculatePrestigePoints();
