@@ -12,9 +12,15 @@
 </head>
 
 <body>
-    <div id="resource-bar" class="horizontal-scroll">
-        <!-- Wordt dynamisch gevuld door updateResourceBar in ui.js -->
-    </div>
+    <!-- Unified Horizontale Navigatie (Desktop: Links, Mobiel: Onder) -->
+    <nav id="unified-nav-container" class="unified-bottom-bar">
+        <!-- Wordt dynamisch opgebouwd in ui.js -->
+    </nav>
+
+    <div class="main-column">
+        <div id="resource-bar" class="horizontal-scroll">
+            <!-- Wordt dynamisch gevuld door updateResourceBar in ui.js -->
+        </div>
 
     <div id="tab-content">
         <div class="scroll-container">
@@ -97,21 +103,22 @@
     </div>
     </div>
 
-    <!-- Desktop navigatie knoppen -->
-    <button class="nav-arrow left-arrow" onclick="changeTabDirection(-1)" title="Vorige Tab"
-        aria-label="Vorige">❮</button>
-    <button class="nav-arrow right-arrow" onclick="changeTabDirection(1)" title="Volgende Tab"
-        aria-label="Volgende">❯</button>
+        <!-- Einde tab-content -->
+        </div> 
 
-    <!-- Unified Horizontale Navigatie -->
-    <nav id="unified-nav-container" class="unified-bottom-bar">
-        <!-- Wordt dynamisch opgebouwd in ui.js -->
-    </nav>
+        <!-- Desktop navigatie knoppen -->
+        <button class="nav-arrow left-arrow" onclick="changeTabDirection(-1)" title="Vorige Tab"
+            aria-label="Vorige">❮</button>
+        <button class="nav-arrow right-arrow" onclick="changeTabDirection(1)" title="Volgende Tab"
+            aria-label="Volgende">❯</button>
+
+        <div id="modal-container" style="display:none;"></div>
+    </div> <!-- Einde main-column -->
+
     <script src="state.js?v=1.1"></script>
     <script src="engine.js?v=1.1"></script>
     <script src="ui.js?v=1.1"></script>
     <script src="main.js?v=1.1"></script>
-    <div id="modal-container" style="display:none;"></div>
 </body>
 
 </html>
