@@ -460,71 +460,56 @@ function getBuyAmountBarHtml() {
     `;
 }
 
+
+window.uiState = window.uiState || { openCategories: {} };
+
+function toggleCategory(categoryId) {
+    if (window.uiState.openCategories[categoryId]) {
+        delete window.uiState.openCategories[categoryId];
+    } else {
+        window.uiState.openCategories[categoryId] = true;
+    }
+}
+
+function determineCategory(item, isBuilding = false) {
+    const effects = isBuilding ? item.provides : item.effect;
+    if (!effects) return "Basis & Opslag";
+
+    if (isBuilding) {
+        for (let key in effects) {
+            if (key.startsWith('job_')) {
+                const jobKey = key.replace('job_', '');
+                if (game.jobs[jobKey]) return determineCategory(game.jobs[jobKey], false);
+            }
+        }
+    }
+
+    const check = (k) => (effects[k] && effects[k] > 0) || (effects['max_' + k] && effects['max_' + k] > 0);
+    if (check('researchPoints')) return "Kennis";
+    if (check('intel')) return "Invloed";
+    if (check('gold')) return "Rijkdom";
+    if (check('food')) return "Voedsel";
+    if (check('wood') || check('stone') || check('brick') || check('beam')) return "Goederen";
+    
+    return "Basis & Opslag";
+}
+
 function renderBuildings() {
     const container = document.getElementById('building-list');
     container.innerHTML = getBuyAmountBarHtml();
+    
+    const categories = { "Kennis": "", "Invloed": "", "Rijkdom": "", "Goederen": "", "Voedsel": "", "Basis & Opslag": "" };
+    
     for (let key in game.buildings) {
         const b = game.buildings[key];
         if (b.stream && typeof isStreamActive === 'function' && !isStreamActive(b.stream)) continue;
         if (!b.unlocked) continue;
-
-        // Het vuursteen monument staat permanent in de Prestige Tab. Verberg geavanceerde gebouwen in Tijdperk 1.
         if (key === 'flint_monument' || ((!game.era || game.era === 1) && ['house', 'wood_workshop', 'stone_workshop', 'school', 'bank', 'irrigation_system', 'warehouse', 'storage_house', 'barracks', 'scout_post'].includes(key))) continue;
 
         let displayCost = {};
         let actualAmount = 0;
         let affordable = false;
-
         let limit = buyAmount === 'max' ? Infinity : buyAmount;
-
-        // Simuleer aankopen om compounding cost en affordable amount te bepalen
-        for (let i = 0; i < limit; i++) {
-            b.count += 1;
-            const cost = getCost(b);
-            b.count -= 1;
-
-            let combinedCost = {};
-            for (let res in cost) {
-                combinedCost[res] = (displayCost[res] || 0) + cost[res];
-            }
-
-            if (canAfford(combinedCost)) {
-                displayCost = combinedCost;
-                actualAmount++;
-            } else {
-                if (actualAmount === 0) {
-                    // Als we er nul kunnen betalen, toon dan in ieder geval de kosten voor de eerste
-                    // Maar als buyAmount specifiek was (bijv 10) moeten we de kosten voor 10 simuleren,
-                    // ongeacht of we het kunnen betalen of niet, om de speler te tonen hoeveel het kost.
-                    if (buyAmount !== 'max') {
-                        for (let j = 0; j < limit; j++) {
-                            b.count += 1;
-                            const c = getCost(b);
-                            b.count -= 1;
-                            for (let res in c) {
-                                displayCost[res] = (displayCost[res] || 0) + c[res];
-                            }
-                            b.count += 1; // tijdelijk ophogen voor volgende loop-iteratie berekening
-                        }
-                        b.count -= limit; // Reset naar origineel
-                    } else {
-                        displayCost = cost; // Bij MAX tonen we gewoon de kostprijs van 1 als we er 0 kunnen kopen
-                    }
-                }
-                break;
-            }
-
-            // Verhoog tijdelijk count voor de volgende ronde (aleen relevant voor de if block)
-            // Maar wacht, `getCost(item)` kijkt naar `item.count`. Dus we moeten wel `b.count` echt meenemen
-            // en achteraf resetten!
-        }
-
-        // --- SIMULATIE CORRECTIE --- 
-        // Laten we de simulatie opnieuw schrijven, cleaner:
-        displayCost = {};
-        actualAmount = 0;
-        affordable = false;
-
         let originalCount = b.count;
         let runningCost = {};
 
@@ -536,69 +521,73 @@ function renderBuildings() {
             if (canAfford(combinedCost)) {
                 runningCost = combinedCost;
                 actualAmount++;
-                b.count++; // Tijdelijk toevoegen voor de compounding van de VÓLGENDE iteratie
+                b.count++; 
             } else {
                 if (buyAmount !== 'max') {
-                    // Bij specifieke hoeveelheden willen we tóch de totale kosten berekenen (ook al is het rood)
                     runningCost = combinedCost;
                     b.count++;
                 } else {
-                    // Bij MAX stoppen we gewoon, pak de fallback als we er nul konden kopen
                     if (actualAmount === 0) runningCost = costOfNext;
                     break;
                 }
             }
         }
 
-        // Reset de daadwerkelijke state
         b.count = originalCount;
         displayCost = runningCost;
         affordable = buyAmount === 'max' ? (actualAmount > 0) : canAfford(displayCost);
 
         let costTxtHtml = '';
         for (let r in displayCost) {
-            const reqAmount = displayCost[r];
-            const hasAmount = game.resources[r].amount;
-            const resName = game.resources[r].name;
-            const isShort = hasAmount < reqAmount;
-
-            costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${reqAmount} ${resName}</span>, `;
+            const isShort = game.resources[r] ? game.resources[r].amount < displayCost[r] : false;
+            const resName = game.resources[r] ? game.resources[r].name : r;
+            costTxtHtml += `<span style="color: ${isShort ? 'var(--red)' : 'var(--green)'};">${displayCost[r]} ${resName}</span>, `;
         }
         if (costTxtHtml.length > 0) costTxtHtml = costTxtHtml.slice(0, -2);
 
         let label = buyAmount === 'max' ? `MAX (${actualAmount})` : buyAmount;
-        let costDisplay = costTxtHtml;
+        const cat = determineCategory(b, true);
 
-        container.innerHTML += `
+        categories[cat] += `
             <div class="panel">
                 <strong>${b.name}</strong> (Aantal: ${b.count})<br>
                 <small>${b.desc}</small><br>
-                <button class="tap-btn" style="width: 100%; height: 50px;" onclick="buyBuilding('${key}')" ${affordable ? '' : 'disabled'}>
-                    Bouw ${label} (${costDisplay})
+                <button class="tap-btn" style="width: 100%; height: 50px; margin-top: 10px;" onclick="buyBuilding('${key}')" ${affordable ? '' : 'disabled'}>
+                    Bouw ${label} (${costTxtHtml})
                 </button>
             </div>`;
+    }
+
+    for (let c in categories) {
+        if (!categories[c]) continue;
+        const catId = 'bld_' + c.replace(/\s+/g, '_');
+        const isOpen = window.uiState.openCategories[catId] ? 'open' : '';
+        container.innerHTML += `
+            <details ${isOpen} ontoggle="if(this.open) { window.uiState.openCategories['${catId}'] = true; } else { delete window.uiState.openCategories['${catId}']; }" style="margin-bottom: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--surface2);">
+                <summary style="cursor: pointer; font-weight: bold; color: var(--mauve); padding: 5px 0; outline: none;">${c}</summary>
+                <div class="building-grid" style="margin-top: 15px; display: grid; gap: 15px;">
+                    ${categories[c]}
+                </div>
+            </details>`;
     }
 }
 
 function renderJobs() {
-    const container = document.getElementById('jobs-container'); // Verander naar een DIV in je HTML
+    const container = document.getElementById('jobs-container');
     container.innerHTML = getBuyAmountBarHtml();
+
+    const categories = { "Kennis": "", "Invloed": "", "Rijkdom": "", "Goederen": "", "Voedsel": "", "Basis & Opslag": "" };
 
     for (let key in game.jobs) {
         const job = game.jobs[key];
         if (job.stream && typeof isStreamActive === 'function' && !isStreamActive(job.stream)) continue;
         if (!job.unlocked) continue;
-
-        // Tijdperk 1 restricties: verberg geavanceerde banen
         if ((!game.era || game.era === 1) && ['woodworker', 'stoneworker', 'teacher', 'banker'].includes(key)) continue;
 
-        // Bepaal hoeveel werkers we toevoegen of verwijderen met één druk
         const availableWorkers = getIdlePopulation();
-        const fillableJobs = job.max - job.count;
-        const maxAddable = Math.min(availableWorkers, fillableJobs);
+        const maxAddable = Math.min(availableWorkers, job.max - job.count);
         let maxRemovable = job.count;
 
-        // Zorg dat je visual niet meer soldaten laat ontslaan dan kan
         if (key === 'soldier') {
             const totalTrained = Object.values(game.military.units).reduce((sum, u) => sum + u.total, 0);
             maxRemovable = Math.max(0, job.count - totalTrained);
@@ -610,27 +599,27 @@ function renderJobs() {
         const canHire = getIdlePopulation() >= currentBuyAmountAdd && job.count + currentBuyAmountAdd <= job.max;
         const canFire = maxRemovable >= currentBuyAmountRem && maxRemovable > 0;
 
-        // Effect tekst (basis opbrengst van 1 werker)
         let effectTxtParts = [];
         for (let resType in job.effect) {
             const baseValue = job.effect[resType].toFixed(1);
-            const resName = game.resources[resType].name;
-            effectTxtParts.push(`${baseValue > 0 ? '+' : ''}${baseValue} ${resName}`);
+            if(game.resources[resType]) {
+                effectTxtParts.push(`${baseValue > 0 ? '+' : ''}${baseValue} ${game.resources[resType].name}`);
+            }
         }
         const effectDisplay = effectTxtParts.join(', ') + " /s per werker";
 
         const displayAmountAdd = buyAmount === 'max' ? 'Max' : buyAmount;
         const displayAmountRem = buyAmount === 'max' ? 'Max' : buyAmount;
 
-        // 3. De Mobiele "Stepper" Card
-        container.innerHTML += `
+        const cat = determineCategory(job, false);
+        categories[cat] += `
             <div class="panel" style="margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <button class="step-btn" onclick="assignJob('${key}', -1)" style="background: var(--red); white-space: nowrap; min-width: 60px;" ${canFire ? '' : 'disabled'}>
                         <span style="font-size: 0.7em; display:block;">-${displayAmountRem}</span>
                     </button>
                     
-                    <div style="text-align: center; flex: 1;">
+                    <div style="text-align: center; flex: 1; padding: 0 5px;">
                         <div style="font-weight: bold;">${job.name}</div>
                         <div style="font-size: 1.2em;">
                             <span class="big-num">${job.count}</span> / <small>${job.max}</small>
@@ -643,6 +632,19 @@ function renderJobs() {
                     </button>
                 </div>
             </div>`;
+    }
+
+    for (let c in categories) {
+        if (!categories[c]) continue;
+        const catId = 'job_' + c.replace(/\s+/g, '_');
+        const isOpen = window.uiState.openCategories[catId] ? 'open' : '';
+        container.innerHTML += `
+            <details ${isOpen} ontoggle="if(this.open) { window.uiState.openCategories['${catId}'] = true; } else { delete window.uiState.openCategories['${catId}']; }" style="margin-bottom: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--surface2);">
+                <summary style="cursor: pointer; font-weight: bold; color: var(--peach); padding: 5px 0; outline: none;">${c}</summary>
+                <div class="building-grid" style="margin-top: 15px; display: grid; gap: 15px;">
+                    ${categories[c]}
+                </div>
+            </details>`;
     }
 }
 
