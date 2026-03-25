@@ -1542,46 +1542,58 @@ const mainCategoryIcons = {
 };
 const categoryOrder = ['management', 'world', 'progress', 'menu'];
 
-window.selectCategory = function (catKey) {
-    window.currentCategory = catKey;
-    const container = document.getElementById('unified-nav-container');
-    if (!container) return;
-
-    let html = '';
-
-    // 1. Sub-nav bar (bovenste laag van de bottom nav)
-    html += '<nav id="sub-nav-bar" class="sub-nav-bar">';
-    const tabs = tabCategories[catKey];
-    if (tabs) {
-        tabs.forEach(tab => {
-            if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)) return;
-            html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
-        });
-    }
-    html += '</nav>';
-
-    // 2. Main-nav bar (onderste laag)
-    html += '<nav id="main-nav-bar" class="main-nav-bar">';
-    for (let c of categoryOrder) {
-        const isActive = c === catKey ? 'active' : '';
-        html += `<button class="nav-main-icon ${isActive}" id="nav-main-${c}" onclick="selectCategory('${c}')" title="${c}">
-                    ${mainCategoryIcons[c]}
-                 </button>`;
-    }
-    html += '</nav>';
-
-    container.innerHTML = html;
-
-    const isActiveInCat = tabs && tabs.some(t => t.id === window.currentTab);
-
-    if (!isActiveInCat && tabs && tabs.length > 0) {
-        const validTabs = tabs.filter(tab => !((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)));
-        if (validTabs.length > 0) {
-            showTab(validTabs[0].id);
-        }
-    } else {
-        highlightSubNavButton(window.currentTab);
-    }
+window.selectCategory = function (catKey) {
+    window.currentCategory = catKey;
+    const container = document.getElementById('unified-nav-container');
+    if (!container) return;
+
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+    let html = '';
+
+    if (isDesktop) {
+        // DESKTOP: platte lijst van alle tabs per categorie
+        html += '<nav id="sub-nav-bar" class="sub-nav-bar">';
+        for (let c of categoryOrder) {
+            const visibleTabs = tabCategories[c].filter(tab =>
+                !((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id))
+            );
+            if (visibleTabs.length === 0) continue;
+            html += `<div class="sidebar-category-header">${mainCategoryIcons[c]} <span>${c}</span></div>`;
+            visibleTabs.forEach(tab => {
+                html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
+            });
+        }
+        html += '</nav>';
+    } else {
+        // MOBIEL: 2-tier (scrollbaar tab-lint + hoofd-categorie iconen)
+        html += '<nav id="sub-nav-bar" class="sub-nav-bar">';
+        const mobileTabs = tabCategories[catKey];
+        if (mobileTabs) {
+            mobileTabs.forEach(tab => {
+                if ((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)) return;
+                html += `<button class="nav-sub-btn" id="sub-nav-${tab.id}" onclick="showTab('${tab.id}')"><span>${tab.icon}</span> <span>${tab.label}</span></button>`;
+            });
+        }
+        html += '</nav>';
+        html += '<nav id="main-nav-bar" class="main-nav-bar">';
+        for (let c of categoryOrder) {
+            const isActive = c === catKey ? 'active' : '';
+            html += `<button class="nav-main-icon ${isActive}" id="nav-main-${c}" onclick="selectCategory('${c}')" title="${c}">${mainCategoryIcons[c]}</button>`;
+        }
+        html += '</nav>';
+    }
+
+    container.innerHTML = html;
+
+    const tabs = tabCategories[catKey];
+    const isActiveInCat = tabs && tabs.some(t => t.id === window.currentTab);
+
+    if (!isActiveInCat && tabs && tabs.length > 0) {
+        const validTabs = tabs.filter(tab => !((!game.era || game.era === 1) && ['research', 'diplomacy', 'explore', 'military'].includes(tab.id)));
+        if (validTabs.length > 0) showTab(validTabs[0].id);
+    } else {
+        highlightSubNavButton(window.currentTab);
+    }
 }
 
 // Helper functie om de actieve stijl op sub-nav tabs te zetten
