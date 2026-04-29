@@ -3,12 +3,25 @@
 document.addEventListener('DOMContentLoaded', () => {
     loadGame();
     handleOfflineProgress();
-    renderManualButtons();
     updateUI();
-    selectCategory('management');
     showTab('jobs');
 
     setInterval(() => {
+        recalcRates(); // Bereken eerst de actuele productie/consumptie
+
+        // Calendar
+        game.calendar.day++;
+        if (game.calendar.day >= 100) {
+            game.calendar.day = 0;
+            game.calendar.season++;
+            if (game.calendar.season >= 4) {
+                game.calendar.season = 0;
+                game.calendar.year++;
+                if (typeof addToLog === 'function') addToLog(`Jaar ${game.calendar.year} is begonnen.`, 'info');
+            }
+            if (typeof addToLog === 'function') addToLog(`Het seizoen is nu ${game.seasonNames[game.calendar.season]}.`, 'info');
+        }
+
         // Resources & Groei
         for (let key in game.resources) {
             if (key === 'scouts') continue;  // Skip scouts
@@ -38,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(triggerRandomEvent, 60000);
 
     // Check elke 60 seconden voor rebellies
-    setInterval(checkRebellions, 60000);//60000
+    setInterval(checkRebellions, 60000);
 
     setInterval(() => {
         for (let key in game.diplomacy.discoveredTribes) {
@@ -52,43 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-    }, 60000); // Check elke minuut 60000
+    }, 60000);
 });
-
-
-
-window.showTab = function (tabId) {
-    // console.log("Wisselen naar tab:", tabId); // Zie je dit in de console?
-    // 1. Vertel de game welke tab nu 'actief' is
-    window.currentTab = tabId;
-    setBuyAmount(1); // Reset de multiplier naar 1 bij het wisselen van een tab
-
-    // 2. Visueel de tabs wisselen (CSS)
-    const contents = document.getElementsByClassName('tab-content');
-    for (let content of contents) {
-        content.classList.remove('active');
-    }
-
-    const activeTab = document.getElementById('tab-' + tabId);
-    if (activeTab) {
-        activeTab.classList.add('active');
-        // NIEUW: Scroll de container zelf naar boven
-        const container = activeTab.closest('.scroll-container'); // Pas de selector aan naar je werkelijke container class
-        if (container) {
-            container.scrollTop = 0;
-        } else {
-            window.scrollTo(0, 0); // Fallback voor het volledige viewport
-        }
-    }
-
-    // 3. De navigatieknoppen in de swipeable subnav 'active' uiterlijk geven
-    if (typeof highlightSubNavButton !== 'undefined') {
-        highlightSubNavButton(tabId);
-    }
-
-    // 4. Meteen tekenen zodat de speler geen lege pagina ziet
-    updateUI();
-}
 
 const gameEvents = [
     {
@@ -116,7 +94,9 @@ function triggerRandomEvent() {
     if (Math.random() < 0.1) {
         const event = gameEvents[Math.floor(Math.random() * gameEvents.length)];
         event.action();
-        alert(`EVENT: ${event.title}\n\n${event.text}`);
+        if (typeof addToLog === 'function') {
+            addToLog(`EVENT: ${event.title} - ${event.text}`, 'info');
+        }
         updateUI();
     }
 }

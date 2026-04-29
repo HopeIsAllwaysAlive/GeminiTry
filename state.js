@@ -1,4 +1,3 @@
-//const { act } = require("react");
 window.currentTab = 'jobs'; // De standaard tab bij het opstarten
 let buyAmount = 1;
 
@@ -19,25 +18,31 @@ const ERA_DEFINITIONS = {
 // --- DE DATA (HET BREIN VAN DE GAME) ---
 let game = {
 
-    era: 1, // Nieuw in Fase 4 (Gelaagd prestige systeem)
+    era: 1, 
     currentStreams: {}, // Era -> actieve Stream ID
 
     resources: {
-        food: { name: "Voedsel", amount: 10, max: 100, perSec: 0, manualGain: 1, discovered: true },
-        wood: { name: "Hout", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
+        food: { name: "Voedsel", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
+        wood: { name: "Hout", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: false },
         beam: { name: "Balken", amount: 0, max: 50, perSec: 0, discovered: false },
         stone: { name: "Steen", amount: 0, max: 50, perSec: 0, manualGain: 1, discovered: false },
         brick: { name: "Bakstenen", amount: 0, max: 50, perSec: 0, discovered: false },
-        population: { name: "Bevolking", amount: 1, max: 5, perSec: 0, discovered: true },
+        population: { name: "Bevolking", amount: 0, max: 0, perSec: 0, discovered: false },
         gold: { name: "Goud", amount: 0, max: 1000, perSec: 0, discovered: false },
-        researchPoints: { name: "Research Punten", amount: 0, max: 500, perSec: 0, discovered: false },
+        researchPoints: { name: "Research", amount: 0, max: 500, perSec: 0, discovered: false },
         intel: { name: "Intel", amount: 0, max: 100, perSec: 0, discovered: false }
     },
+    calendar: {
+        day: 0,
+        year: 0,
+        season: 0 // 0: Spring, 1: Summer, 2: Autumn, 3: Winter
+    },
+    seasonNames: ["Lente", "Zomer", "Herfst", "Winter"],
     jobs: {
         farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
-        woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -0.5 }, unlocked: false },
+        woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -1 }, unlocked: false },
         woodworker: { name: "Timmerman", count: 0, max: 0, effect: { wood: -3, food: -1, beam: 0.5 }, unlocked: false },
-        miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1 }, unlocked: false },
+        miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1.5 }, unlocked: false },
         stoneworker: { name: "Metselaar", count: 0, max: 0, effect: { stone: -3, food: -1, brick: 0.5 }, unlocked: false },
         teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 }, unlocked: false },
         scout_job: { name: "Verkenner", count: 0, max: 0, effect: { intel: 1, food: -2 }, unlocked: false },
@@ -174,13 +179,22 @@ let game = {
         stone_workshop: { name: "Steenoven", count: 0, cost: { wood: 200, stone: 800 }, provides: { job_stoneworker: 1, max_brick: 100 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
         warehouse: { name: "Pakhuis", count: 0, cost: { wood: 50, stone: 50 }, provides: { max_wood: 100, max_food: 100, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor basis grondstoffen.", unlocked: false },
         storage_house: { name: "Opslaghuis", count: 0, cost: { beam: 50, brick: 50 }, provides: { max_wood: 500, max_stone: 500, max_beam: 200, max_brick: 200 }, desc: "Een massief opslaghuis voor geavanceerde grondstoffen.", unlocked: false },
-        school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.", unlocked: false },
+        school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research genereren.", unlocked: false },
         scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3, max_intel: 50 }, desc: "Traint inwoners om de wereld te verkennen en vergroot opslag voor Intel (+50).", unlocked: false },
         barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 20 soldaten.", unlocked: false },
-        bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
+        bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false },
+        silo: { name: "Silo", count: 0, cost: { wood: 100, stone: 50 }, provides: { max_food: 500 }, desc: "Een grote opslagplaats voor voedsel.", unlocked: false }
     },
 
     research: {
+        food_storage: {
+            name: "Voedselopslag",
+            desc: "Maakt het bouwen van Silo's mogelijk voor massale voedselopslag.",
+            cost: { researchPoints: 75, wood: 150 },
+            unlocked: false,
+            requirement: () => game.buildings.farm_plot.count >= 10,
+            affects: ["food"]
+        },
         // Era 1 Streams
         cooking: {
             name: "Kookkunst",
@@ -188,7 +202,8 @@ let game = {
             cost: { food: 30, researchPoints: 20 },
             unlocked: false,
             stream: "Vuurbeheersing",
-            requirement: () => game.buildings.fire_pit && game.buildings.fire_pit.count >= 1
+            requirement: () => game.buildings.fire_pit && game.buildings.fire_pit.count >= 1,
+            affects: ["food"]
         },
         fishing_nets: {
             name: "Vangnetten",
@@ -196,7 +211,8 @@ let game = {
             cost: { wood: 100, food: 50 },
             unlocked: false,
             stream: "Vissen",
-            requirement: () => game.buildings.fishing_pier && game.buildings.fishing_pier.count >= 1
+            requirement: () => game.buildings.fishing_pier && game.buildings.fishing_pier.count >= 1,
+            affects: ["food"]
         },
         spear_crafting: {
             name: "Speer Vervaardiging",
@@ -204,7 +220,8 @@ let game = {
             cost: { wood: 100, intel: 20 },
             unlocked: false,
             stream: "Jagen",
-            requirement: () => game.buildings.hunters_camp && game.buildings.hunters_camp.count >= 2
+            requirement: () => game.buildings.hunters_camp && game.buildings.hunters_camp.count >= 2,
+            affects: ["intel"]
         },
         // Era 2 Streams
         bronze_weapons: {
@@ -213,7 +230,8 @@ let game = {
             cost: { stone: 200, researchPoints: 100 },
             unlocked: false,
             stream: "Militairisme",
-            requirement: () => game.buildings.guard_tower && game.buildings.guard_tower.count >= 1
+            requirement: () => game.buildings.guard_tower && game.buildings.guard_tower.count >= 1,
+            affects: ["gold"]
         },
         record_keeping: {
             name: "Boekhouding",
@@ -221,7 +239,8 @@ let game = {
             cost: { researchPoints: 200, wood: 200 },
             unlocked: false,
             stream: "Schrift",
-            requirement: () => game.buildings.scribe_hut && game.buildings.scribe_hut.count >= 1
+            requirement: () => game.buildings.scribe_hut && game.buildings.scribe_hut.count >= 1,
+            affects: ["researchPoints"]
         },
         currency: {
             name: "Valuta",
@@ -229,7 +248,8 @@ let game = {
             cost: { gold: 100, researchPoints: 50 },
             unlocked: false,
             stream: "Handel",
-            requirement: () => game.buildings.market_stall && game.buildings.market_stall.count >= 2
+            requirement: () => game.buildings.market_stall && game.buildings.market_stall.count >= 2,
+            affects: ["gold"]
         },
         // Era 3 Streams
         iron_working: {
@@ -238,7 +258,8 @@ let game = {
             cost: { researchPoints: 1000, stone: 1000 },
             unlocked: false,
             stream: "Smeedkunst",
-            requirement: () => game.era >= 3
+            requirement: () => game.era >= 3,
+            affects: ["stone"]
         },
         advanced_smelting: {
             name: "Geavanceerd Smeden",
@@ -246,7 +267,8 @@ let game = {
             cost: { brick: 500, researchPoints: 2000 },
             unlocked: false,
             stream: "Smeedkunst",
-            requirement: () => game.buildings.iron_mine && game.buildings.iron_mine.count >= 1
+            requirement: () => game.buildings.iron_mine && game.buildings.iron_mine.count >= 1,
+            affects: ["brick"]
         },
         logic_philosophy: {
             name: "Logica",
@@ -254,7 +276,8 @@ let game = {
             cost: { researchPoints: 1200, wood: 1000 },
             unlocked: false,
             stream: "Filosofie",
-            requirement: () => game.era >= 3
+            requirement: () => game.era >= 3,
+            affects: ["researchPoints"]
         },
         ethics: {
             name: "Ethiek",
@@ -262,7 +285,8 @@ let game = {
             cost: { intel: 200, researchPoints: 2500 },
             unlocked: false,
             stream: "Filosofie",
-            requirement: () => game.buildings.academy && game.buildings.academy.count >= 1
+            requirement: () => game.buildings.academy && game.buildings.academy.count >= 1,
+            affects: ["intel", "researchPoints"]
         },
         shipbuilding: {
             name: "Scheepsbouw",
@@ -270,7 +294,8 @@ let game = {
             cost: { researchPoints: 1000, beam: 200 },
             unlocked: false,
             stream: "Navigatie",
-            requirement: () => game.era >= 3
+            requirement: () => game.era >= 3,
+            affects: ["intel"]
         },
         astronomy: {
             name: "Astronomie",
@@ -278,7 +303,8 @@ let game = {
             cost: { intel: 200, researchPoints: 2000 },
             unlocked: false,
             stream: "Navigatie",
-            requirement: () => game.buildings.shipyard && game.buildings.shipyard.count >= 1
+            requirement: () => game.buildings.shipyard && game.buildings.shipyard.count >= 1,
+            affects: ["gold", "intel"]
         },
         // Era 4 Streams
         military_engineering: {
@@ -287,7 +313,8 @@ let game = {
             cost: { researchPoints: 3000, beam: 1000 },
             unlocked: false,
             stream: "Verovering",
-            requirement: () => game.era >= 4
+            requirement: () => game.era >= 4,
+            affects: ["gold"]
         },
         gladiator_combats: {
             name: "Gladiatorengevechten",
@@ -295,7 +322,8 @@ let game = {
             cost: { gold: 3000, researchPoints: 4000 },
             unlocked: false,
             stream: "Verovering",
-            requirement: () => game.buildings.siege_workshop && game.buildings.siege_workshop.count >= 1
+            requirement: () => game.buildings.siege_workshop && game.buildings.siege_workshop.count >= 1,
+            affects: ["gold"]
         },
         civic_duty: {
             name: "Burgerplicht",
@@ -303,7 +331,8 @@ let game = {
             cost: { researchPoints: 3000, brick: 1000 },
             unlocked: false,
             stream: "Democratie",
-            requirement: () => game.era >= 4
+            requirement: () => game.era >= 4,
+            affects: ["researchPoints"]
         },
         constitution: {
             name: "Grondwet",
@@ -311,7 +340,8 @@ let game = {
             cost: { intel: 500, researchPoints: 5000 },
             unlocked: false,
             stream: "Democratie",
-            requirement: () => game.buildings.public_baths && game.buildings.public_baths.count >= 1
+            requirement: () => game.buildings.public_baths && game.buildings.public_baths.count >= 1,
+            affects: ["intel", "researchPoints"]
         },
         surveying: {
             name: "Landmeetkunde",
@@ -319,7 +349,8 @@ let game = {
             cost: { researchPoints: 3000, stone: 2000 },
             unlocked: false,
             stream: "Wegenbouw",
-            requirement: () => game.era >= 4
+            requirement: () => game.era >= 4,
+            affects: ["stone"]
         },
         hydraulics: {
             name: "Hydraulica",
@@ -327,203 +358,209 @@ let game = {
             cost: { brick: 3000, researchPoints: 4000 },
             unlocked: false,
             stream: "Wegenbouw",
-            requirement: () => game.buildings.paved_road && game.buildings.paved_road.count >= 1
+            requirement: () => game.buildings.paved_road && game.buildings.paved_road.count >= 1,
+            affects: ["food"]
         },
 // Era 5 Streams
-        vassalage: { name: "Vassallage", desc: "Speelt Kasteel vrij.", cost: { gold: 4000, researchPoints: 6000 }, unlocked: false, stream: "Feodalisme", requirement: () => game.era >= 5 },
-        chivalry: { name: "Ridderorde", desc: "Speelt Feodaal Landgoed vrij.", cost: { food: 5000, researchPoints: 8000 }, unlocked: false, stream: "Feodalisme", requirement: () => game.buildings.castle && game.buildings.castle.count >= 1 },
-        divine_right: { name: "Goddelijk Recht", desc: "Speelt het Klooster vrij.", cost: { researchPoints: 5000, intel: 2000 }, unlocked: false, stream: "Theologie", requirement: () => game.era >= 5 },
-        scholasticism: { name: "Scholastiek", desc: "Speelt de Kathedraal vrij.", cost: { researchPoints: 8000, gold: 3000 }, unlocked: false, stream: "Theologie", requirement: () => game.buildings.monastery && game.buildings.monastery.count >= 1 },
-        guild_system: { name: "Gilde Systeem", desc: "Speelt het Gildehuis vrij.", cost: { beam: 3000, brick: 3000 }, unlocked: false, stream: "Gilden", requirement: () => game.era >= 5 },
-        masterpieces: { name: "Meesterwerken", desc: "Speelt het Marktplein vrij.", cost: { gold: 6000, researchPoints: 7000 }, unlocked: false, stream: "Gilden", requirement: () => game.buildings.guild_hall && game.buildings.guild_hall.count >= 1 },
+        vassalage: { name: "Vassallage", desc: "Speelt Kasteel vrij.", cost: { gold: 4000, researchPoints: 6000 }, unlocked: false, stream: "Feodalisme", requirement: () => game.era >= 5, affects: ["population"] },
+        chivalry: { name: "Ridderorde", desc: "Speelt Feodaal Landgoed vrij.", cost: { food: 5000, researchPoints: 8000 }, unlocked: false, stream: "Feodalisme", requirement: () => game.buildings.castle && game.buildings.castle.count >= 1, affects: ["food"] },
+        divine_right: { name: "Goddelijk Recht", desc: "Speelt het Klooster vrij.", cost: { researchPoints: 5000, intel: 2000 }, unlocked: false, stream: "Theologie", requirement: () => game.era >= 5, affects: ["researchPoints"] },
+        scholasticism: { name: "Scholastiek", desc: "Speelt de Kathedraal vrij.", cost: { researchPoints: 8000, gold: 3000 }, unlocked: false, stream: "Theologie", requirement: () => game.buildings.monastery && game.buildings.monastery.count >= 1, affects: ["intel"] },
+        guild_system: { name: "Gilde Systeem", desc: "Speelt het Gildehuis vrij.", cost: { beam: 3000, brick: 3000 }, unlocked: false, stream: "Gilden", requirement: () => game.era >= 5, affects: ["gold"] },
+        masterpieces: { name: "Meesterwerken", desc: "Speelt het Marktplein vrij.", cost: { gold: 6000, researchPoints: 7000 }, unlocked: false, stream: "Gilden", requirement: () => game.buildings.guild_hall && game.buildings.guild_hall.count >= 1, affects: ["population"] },
         // Era 6 Streams
-        black_powder: { name: "Zwart Kruit", desc: "Speelt Kanongieterij vrij.", cost: { researchPoints: 12000, gold: 8000 }, unlocked: false, stream: "Buskruit", requirement: () => game.era >= 6 },
-        artillery: { name: "Artillerie", desc: "Speelt het Sterfort vrij.", cost: { brick: 8000, researchPoints: 15000 }, unlocked: false, stream: "Buskruit", requirement: () => game.buildings.cannon_foundry && game.buildings.cannon_foundry.count >= 1 },
-        perspective: { name: "Perspectief", desc: "Speelt de Drukpers vrij.", cost: { intel: 5000, researchPoints: 12000 }, unlocked: false, stream: "Humanisme", requirement: () => game.era >= 6 },
-        typography: { name: "Drukwerk", desc: "Speelt de Kunstacademie vrij.", cost: { gold: 10000, researchPoints: 18000 }, unlocked: false, stream: "Humanisme", requirement: () => game.buildings.printing_press && game.buildings.printing_press.count >= 1 },
-        compass: { name: "Kompas", desc: "Speelt het Observatorium vrij.", cost: { researchPoints: 10000, intel: 4000 }, unlocked: false, stream: "Cartografie", requirement: () => game.era >= 6 },
-        world_map: { name: "Wereldkaart", desc: "Speelt de Vlootbasis vrij.", cost: { intel: 8000, gold: 12000 }, unlocked: false, stream: "Cartografie", requirement: () => game.buildings.observatory && game.buildings.observatory.count >= 1 },
+        black_powder: { name: "Zwart Kruit", desc: "Speelt Kanongieterij vrij.", cost: { researchPoints: 12000, gold: 8000 }, unlocked: false, stream: "Buskruit", requirement: () => game.era >= 6, affects: ["gold"] },
+        artillery: { name: "Artillerie", desc: "Speelt het Sterfort vrij.", cost: { brick: 8000, researchPoints: 15000 }, unlocked: false, stream: "Buskruit", requirement: () => game.buildings.cannon_foundry && game.buildings.cannon_foundry.count >= 1, affects: ["population"] },
+        perspective: { name: "Perspectief", desc: "Speelt de Drukpers vrij.", cost: { intel: 5000, researchPoints: 12000 }, unlocked: false, stream: "Humanisme", requirement: () => game.era >= 6, affects: ["researchPoints"] },
+        typography: { name: "Drukwerk", desc: "Speelt de Kunstacademie vrij.", cost: { gold: 10000, researchPoints: 18000 }, unlocked: false, stream: "Humanisme", requirement: () => game.buildings.printing_press && game.buildings.printing_press.count >= 1, affects: ["intel"] },
+        compass: { name: "Kompas", desc: "Speelt het Observatorium vrij.", cost: { researchPoints: 10000, intel: 4000 }, unlocked: false, stream: "Cartografie", requirement: () => game.era >= 6, affects: ["intel"] },
+        world_map: { name: "Wereldkaart", desc: "Speelt de Vlootbasis vrij.", cost: { intel: 8000, gold: 12000 }, unlocked: false, stream: "Cartografie", requirement: () => game.buildings.observatory && game.buildings.observatory.count >= 1, affects: ["gold"] },
         // Era 7 Streams
-        overseas_expansion: { name: "Overzeese Expansie", desc: "Speelt Gouverneurshuis vrij.", cost: { gold: 20000, intel: 10000 }, unlocked: false, stream: "Imperialisme", requirement: () => game.era >= 7 },
-        colonial_rule: { name: "Koloniaal Bestuur", desc: "Speelt de Kolonie vrij.", cost: { food: 25000, researchPoints: 20000 }, unlocked: false, stream: "Imperialisme", requirement: () => game.buildings.governor_mansion && game.buildings.governor_mansion.count >= 1 },
-        empiricism: { name: "Empirisme", desc: "Speelt Laboratorium vrij.", cost: { researchPoints: 25000, intel: 12000 }, unlocked: false, stream: "Wetenschappelijke Methode", requirement: () => game.era >= 7 },
-        calculus: { name: "Calculus", desc: "Speelt Wetenschappelijk Instituut vrij.", cost: { researchPoints: 35000, gold: 15000 }, unlocked: false, stream: "Wetenschappelijke Methode", requirement: () => game.buildings.laboratory && game.buildings.laboratory.count >= 1 },
-        merchant_fleets: { name: "Handelsvloten", desc: "Speelt de Beurs vrij.", cost: { beam: 15000, gold: 25000 }, unlocked: false, stream: "Mercantillisme", requirement: () => game.era >= 7 },
-        stocks: { name: "Aandelen", desc: "Speelt het Oost-Indisch Huis vrij.", cost: { gold: 40000, intel: 15000 }, unlocked: false, stream: "Mercantillisme", requirement: () => game.buildings.stock_exchange && game.buildings.stock_exchange.count >= 1 },
+        overseas_expansion: { name: "Overzeese Expansie", desc: "Speelt Gouverneurshuis vrij.", cost: { gold: 20000, intel: 10000 }, unlocked: false, stream: "Imperialisme", requirement: () => game.era >= 7, affects: ["food"] },
+        colonial_rule: { name: "Koloniaal Bestuur", desc: "Speelt de Kolonie vrij.", cost: { food: 25000, researchPoints: 20000 }, unlocked: false, stream: "Imperialisme", requirement: () => game.buildings.governor_mansion && game.buildings.governor_mansion.count >= 1, affects: ["population"] },
+        empiricism: { name: "Empirisme", desc: "Speelt Laboratorium vrij.", cost: { researchPoints: 25000, intel: 12000 }, unlocked: false, stream: "Wetenschappelijke Methode", requirement: () => game.era >= 7, affects: ["researchPoints"] },
+        calculus: { name: "Calculus", desc: "Speelt Wetenschappelijk Instituut vrij.", cost: { researchPoints: 35000, gold: 15000 }, unlocked: false, stream: "Wetenschappelijke Methode", requirement: () => game.buildings.laboratory && game.buildings.laboratory.count >= 1, affects: ["intel"] },
+        merchant_fleets: { name: "Handelsvloten", desc: "Speelt de Beurs vrij.", cost: { beam: 15000, gold: 25000 }, unlocked: false, stream: "Mercantillisme", requirement: () => game.era >= 7, affects: ["gold"] },
+        stocks: { name: "Aandelen", desc: "Speelt het Oost-Indisch Huis vrij.", cost: { gold: 40000, intel: 15000 }, unlocked: false, stream: "Mercantillisme", requirement: () => game.buildings.stock_exchange && game.buildings.stock_exchange.count >= 1, affects: ["population"] },
         // Era 8 Streams
-        steam_power: { name: "Stoomkracht", desc: "Speelt Stoommachinefabriek vrij.", cost: { brick: 25000, researchPoints: 40000 }, unlocked: false, stream: "Automatisering", requirement: () => game.era >= 8 },
-        mass_production: { name: "Massaproductie", desc: "Speelt Lopende Band vrij.", cost: { gold: 50000, beam: 30000 }, unlocked: false, stream: "Automatisering", requirement: () => game.buildings.steam_factory && game.buildings.steam_factory.count >= 1 },
-        combustion_engine: { name: "Verbrandingsmotor", desc: "Speelt Kolenmijn vrij.", cost: { beam: 20000, researchPoints: 45000 }, unlocked: false, stream: "Thermodynamica", requirement: () => game.era >= 8 },
-        electricity: { name: "Elektriciteit", desc: "Speelt Energiecentrale vrij.", cost: { intel: 20000, gold: 60000 }, unlocked: false, stream: "Thermodynamica", requirement: () => game.buildings.coal_mine && game.buildings.coal_mine.count >= 1 },
-        labor_rights: { name: "Arbeidsrechten", desc: "Speelt Vakbondshuis vrij.", cost: { food: 50000, intel: 20000 }, unlocked: false, stream: "Vakbonden", requirement: () => game.era >= 8 },
-        social_reform: { name: "Sociale Hervorming", desc: "Speelt Arbeiderswijk vrij.", cost: { gold: 40000, researchPoints: 30000 }, unlocked: false, stream: "Vakbonden", requirement: () => game.buildings.union_hall && game.buildings.union_hall.count >= 1 },
+        steam_power: { name: "Stoomkracht", desc: "Speelt Stoommachinefabriek vrij.", cost: { brick: 25000, researchPoints: 40000 }, unlocked: false, stream: "Automatisering", requirement: () => game.era >= 8, affects: ["beam", "brick"] },
+        mass_production: { name: "Massaproductie", desc: "Speelt Lopende Band vrij.", cost: { gold: 50000, beam: 30000 }, unlocked: false, stream: "Automatisering", requirement: () => game.buildings.steam_factory && game.buildings.steam_factory.count >= 1, affects: ["population"] },
+        combustion_engine: { name: "Verbrandingsmotor", desc: "Speelt Kolenmijn vrij.", cost: { beam: 20000, researchPoints: 45000 }, unlocked: false, stream: "Thermodynamica", requirement: () => game.era >= 8, affects: ["intel"] },
+        electricity: { name: "Elektriciteit", desc: "Speelt Energiecentrale vrij.", cost: { intel: 20000, gold: 60000 }, unlocked: false, stream: "Thermodynamica", requirement: () => game.buildings.coal_mine && game.buildings.coal_mine.count >= 1, affects: ["researchPoints"] },
+        labor_rights: { name: "Arbeidsrechten", desc: "Speelt Vakbondshuis vrij.", cost: { food: 50000, intel: 20000 }, unlocked: false, stream: "Vakbonden", requirement: () => game.era >= 8, affects: ["population"] },
+        social_reform: { name: "Sociale Hervorming", desc: "Speelt Arbeiderswijk vrij.", cost: { gold: 40000, researchPoints: 30000 }, unlocked: false, stream: "Vakbonden", requirement: () => game.buildings.union_hall && game.buildings.union_hall.count >= 1, affects: ["food"] },
         // Era 9 Streams
-        radioactivity: { name: "Radioactiviteit", desc: "Speelt Uraniummijn vrij.", cost: { gold: 100000, researchPoints: 80000 }, unlocked: false, stream: "Kernsplitsing", requirement: () => game.era >= 9 },
-        atomic_bomb: { name: "Atoombom", desc: "Speelt Kernreactor vrij.", cost: { intel: 50000, researchPoints: 120000 }, unlocked: false, stream: "Kernsplitsing", requirement: () => game.buildings.uranium_mine && game.buildings.uranium_mine.count >= 1 },
-        quantum_mechanics: { name: "Kwantummechanica", desc: "Speelt Deeltjesversneller vrij.", cost: { researchPoints: 100000, intel: 40000 }, unlocked: false, stream: "Kwantumfysica", requirement: () => game.era >= 9 },
-        superconductivity: { name: "Supergeleiding", desc: "Speelt Kwantumlab vrij.", cost: { gold: 120000, researchPoints: 150000 }, unlocked: false, stream: "Kwantumfysica", requirement: () => game.buildings.particle_accelerator && game.buildings.particle_accelerator.count >= 1 },
-        aerodynamics: { name: "Aerodynamica", desc: "Speelt Vliegveld vrij.", cost: { beam: 80000, brick: 80000 }, unlocked: false, stream: "Luchtvaart", requirement: () => game.era >= 9 },
-        jet_engines: { name: "Straalmotoren", desc: "Speelt Luchtvaartfabriek vrij.", cost: { gold: 150000, intel: 60000 }, unlocked: false, stream: "Luchtvaart", requirement: () => game.buildings.airport && game.buildings.airport.count >= 1 },
+        radioactivity: { name: "Radioactiviteit", desc: "Speelt Uraniummijn vrij.", cost: { gold: 100000, researchPoints: 80000 }, unlocked: false, stream: "Kernsplitsing", requirement: () => game.era >= 9, affects: ["gold"] },
+        atomic_bomb: { name: "Atoombom", desc: "Speelt Kernreactor vrij.", cost: { intel: 50000, researchPoints: 120000 }, unlocked: false, stream: "Kernsplitsing", requirement: () => game.buildings.uranium_mine && game.buildings.uranium_mine.count >= 1, affects: ["researchPoints"] },
+        quantum_mechanics: { name: "Kwantummechanica", desc: "Speelt Deeltjesversneller vrij.", cost: { researchPoints: 100000, intel: 40000 }, unlocked: false, stream: "Kwantumfysica", requirement: () => game.era >= 9, affects: ["researchPoints"] },
+        superconductivity: { name: "Supergeleiding", desc: "Speelt Kwantumlab vrij.", cost: { gold: 120000, researchPoints: 150000 }, unlocked: false, stream: "Kwantumfysica", requirement: () => game.buildings.particle_accelerator && game.buildings.particle_accelerator.count >= 1, affects: ["intel"] },
+        aerodynamics: { name: "Aerodynamica", desc: "Speelt Vliegveld vrij.", cost: { beam: 80000, brick: 80000 }, unlocked: false, stream: "Luchtvaart", requirement: () => game.era >= 9, affects: ["population"] },
+        jet_engines: { name: "Straalmotoren", desc: "Speelt Luchtvaartfabriek vrij.", cost: { gold: 150000, intel: 60000 }, unlocked: false, stream: "Luchtvaart", requirement: () => game.buildings.airport && game.buildings.airport.count >= 1, affects: ["gold"] },
         // Era 10 Streams
-        cryptography: { name: "Cryptografie", desc: "Speelt Serverboerderij vrij.", cost: { researchPoints: 250000, intel: 100000 }, unlocked: false, stream: "Cyber-oorlogsvoering", requirement: () => game.era >= 10 },
-        cyber_espionage: { name: "Cyberspionage", desc: "Speelt Cyberdefensie Centrum vrij.", cost: { gold: 300000, intel: 150000 }, unlocked: false, stream: "Cyber-oorlogsvoering", requirement: () => game.buildings.server_farm && game.buildings.server_farm.count >= 1 },
-        machine_learning: { name: "Machine Learning", desc: "Speelt Datacenter vrij.", cost: { researchPoints: 300000, gold: 200000 }, unlocked: false, stream: "AI & Algoritmes", requirement: () => game.era >= 10 },
-        artificial_intelligence: { name: "Kunstmatige Intelligentie", desc: "Speelt Neuraal Netwerk vrij.", cost: { intel: 150000, researchPoints: 400000 }, unlocked: false, stream: "AI & Algoritmes", requirement: () => game.buildings.data_center && game.buildings.data_center.count >= 1 },
-        globalization: { name: "Globalisatie", desc: "Speelt World Trade Center vrij.", cost: { gold: 400000, beam: 200000 }, unlocked: false, stream: "Wereldeconomie", requirement: () => game.era >= 10 },
-        digital_currency: { name: "Digitale Valuta", desc: "Speelt Multinationals vrij.", cost: { gold: 800000, intel: 200000 }, unlocked: false, stream: "Wereldeconomie", requirement: () => game.buildings.world_trade_center && game.buildings.world_trade_center.count >= 1 },
+        cryptography: { name: "Cryptografie", desc: "Speelt Serverboerderij vrij.", cost: { researchPoints: 250000, intel: 100000 }, unlocked: false, stream: "Cyber-oorlogsvoering", requirement: () => game.era >= 10, affects: ["intel"] },
+        cyber_espionage: { name: "Cyberspionage", desc: "Speelt Cyberdefensie Centrum vrij.", cost: { gold: 300000, intel: 150000 }, unlocked: false, stream: "Cyber-oorlogsvoering", requirement: () => game.buildings.server_farm && game.buildings.server_farm.count >= 1, affects: ["gold"] },
+        machine_learning: { name: "Machine Learning", desc: "Speelt Datacenter vrij.", cost: { researchPoints: 300000, gold: 200000 }, unlocked: false, stream: "AI & Algoritmes", requirement: () => game.era >= 10, affects: ["researchPoints"] },
+        artificial_intelligence: { name: "Kunstmatige Intelligentie", desc: "Speelt Neuraal Netwerk vrij.", cost: { intel: 150000, researchPoints: 400000 }, unlocked: false, stream: "AI & Algoritmes", requirement: () => game.buildings.data_center && game.buildings.data_center.count >= 1, affects: ["food"] },
+        globalization: { name: "Globalisatie", desc: "Speelt World Trade Center vrij.", cost: { gold: 400000, beam: 200000 }, unlocked: false, stream: "Wereldeconomie", requirement: () => game.era >= 10, affects: ["gold"] },
+        digital_currency: { name: "Digitale Valuta", desc: "Speelt Multinationals vrij.", cost: { gold: 800000, intel: 200000 }, unlocked: false, stream: "Wereldeconomie", requirement: () => game.buildings.world_trade_center && game.buildings.world_trade_center.count >= 1, affects: ["population"] },
         // Era 11 Streams
-        warp_drive: { name: "Warp Drive", desc: "Speelt Sterrenbasis vrij.", cost: { researchPoints: 1000000, gold: 1000000 }, unlocked: false, stream: "Galactische Hegemonie", requirement: () => game.era >= 11 },
-        galactic_empire: { name: "Galactisch Imperium", desc: "Speelt Ruimtevloot vrij.", cost: { gold: 3000000, intel: 500000 }, unlocked: false, stream: "Galactische Hegemonie", requirement: () => game.buildings.starbase && game.buildings.starbase.count >= 1 },
-        mind_uploading: { name: "Bewustzijns-upload", desc: "Speelt Mind Upload Center vrij.", cost: { researchPoints: 1500000, intel: 500000 }, unlocked: false, stream: "Transcendentie", requirement: () => game.era >= 11 },
-        singularity: { name: "Singularity", desc: "Speelt Megastructuur vrij.", cost: { researchPoints: 3000000, gold: 2000000 }, unlocked: false, stream: "Transcendentie", requirement: () => game.buildings.mind_upload_center && game.buildings.mind_upload_center.count >= 1 },
-        energy_harvesting: { name: "Energie Oogst", desc: "Speelt Orbitale Werf vrij.", cost: { beam: 1000000, brick: 1000000 }, unlocked: false, stream: "Dyson-technologie", requirement: () => game.era >= 11 },
-        dyson_sphere: { name: "Dyson Bol", desc: "Speelt Dyson Zwerm vrij.", cost: { gold: 5000000, researchPoints: 2500000 }, unlocked: false, stream: "Dyson-technologie", requirement: () => game.buildings.orbital_shipyard && game.buildings.orbital_shipyard.count >= 1 },
+        warp_drive: { name: "Warp Drive", desc: "Speelt Sterrenbasis vrij.", cost: { researchPoints: 1000000, gold: 1000000 }, unlocked: false, stream: "Galactische Hegemonie", requirement: () => game.era >= 11, affects: ["population"] },
+        galactic_empire: { name: "Galactisch Imperium", desc: "Speelt Ruimtevloot vrij.", cost: { gold: 3000000, intel: 500000 }, unlocked: false, stream: "Galactische Hegemonie", requirement: () => game.buildings.starbase && game.buildings.starbase.count >= 1, affects: ["gold"] },
+        mind_uploading: { name: "Bewustzijns-upload", desc: "Speelt Mind Upload Center vrij.", cost: { researchPoints: 1500000, intel: 500000 }, unlocked: false, stream: "Transcendentie", requirement: () => game.era >= 11, affects: ["researchPoints"] },
+        singularity: { name: "Singularity", desc: "Speelt Megastructuur vrij.", cost: { researchPoints: 3000000, gold: 2000000 }, unlocked: false, stream: "Transcendentie", requirement: () => game.buildings.mind_upload_center && game.buildings.mind_upload_center.count >= 1, affects: ["intel"] },
+        energy_harvesting: { name: "Energie Oogst", desc: "Speelt Orbitale Werf vrij.", cost: { beam: 1000000, brick: 1000000 }, unlocked: false, stream: "Dyson-technologie", requirement: () => game.era >= 11, affects: ["beam", "brick"] },
+        dyson_sphere: { name: "Dyson Bol", desc: "Speelt Dyson Zwerm vrij.", cost: { gold: 5000000, researchPoints: 2500000 }, unlocked: false, stream: "Dyson-technologie", requirement: () => game.buildings.orbital_shipyard && game.buildings.orbital_shipyard.count >= 1, affects: ["gold"] },
         toolmaking: {
             name: "Gereedschap maken",
             desc: "Ontgrendelt de Steenhouwerij en Mijnwerkers.",
             cost: { wood: 30, food: 20 },
             unlocked: false,
-            requirement: () => game.resources.wood.amount >= 20
+            requirement: () => game.resources.wood.amount >= 20,
+            affects: ["stone"]
         },
-        military_training: {
-            name: "Militaire Training",
-            desc: "Ontgrendelt de Kazerne en Soldaten.",
-            cost: { wood: 100, stone: 100, food: 100 },
-            unlocked: false,
-            requirement: () => game.buildings.quarry.count >= 1
-        },
-        /*       agriculture: { 
-                   name: "Landbouw", 
-                   desc: "Maakt Akkers mogelijk voor betere voedselproductie.", 
-                   cost: { wood: 40, food: 40 }, 
-                   unlocked: false, 
-                   requirement: () => game.resources.food.amount >= 30 
-               },*/
         education: {
             name: "Educatie",
             desc: "Ontgrendelt de School en Leraren.",
             cost: { wood: 100, food: 100, stone: 20 },
             unlocked: false,
-            requirement: () => game.buildings.hut.count >= 2 // Verschijnt bij 2 hutten
+            requirement: () => game.buildings.hut.count >= 2,
+            affects: ["researchPoints"]
         },
         warehouse: {
             name: "Pakhuis",
             desc: "Maakt het mogelijk om een Pakhuis te bouwen voor extra basisopslag.",
             cost: { researchPoints: 50 },
             unlocked: false,
-            requirement: () => game.research.education.unlocked
+            requirement: () => game.research.education.unlocked,
+            affects: ["food", "wood", "stone"]
         },
         storage_house: {
             name: "Opslaghuis",
             desc: "Maakt een enorm Opslaghuis mogelijk voor geavanceerde grondstoffen.",
             cost: { researchPoints: 200, gold: 50 },
             unlocked: false,
-            requirement: () => game.resources.wood.max >= 500 && game.resources.stone.max >= 500
+            requirement: () => game.resources.wood.max >= 500 && game.resources.stone.max >= 500,
+            affects: ["wood", "stone", "beam", "brick"]
         },
         irrigation_tech: {
             name: "Irrigatie Techniek",
             desc: "Maakt het bouwen van irrigatiesystemen mogelijk.",
             cost: { researchPoints: 50, gold: 20 },
             unlocked: false,
-            requirement: () => game.research.plow_invention.unlocked
+            requirement: () => game.research.plow_invention.unlocked,
+            affects: ["food"]
         },
         plow_invention: {
             name: "De Ploeg",
             desc: "Door een betere ploeg werken boeren 50% effectiever.",
             cost: { wood: 100, stone: 100, gold: 50 },
             unlocked: false,
-            requirement: () => game.buildings.farm_plot.count >= 10 // Pas beschikbaar na Landbouw
+            requirement: () => game.buildings.farm_plot.count >= 10,
+            affects: ["food"]
         },
         expeditions: {
             name: "Expedities",
             desc: "Maakt het mogelijk om expedities te sturen om nieuwe gebieden te verkennen.",
             cost: { researchPoints: 100, gold: 100 },
             unlocked: false,
-            requirement: () => game.resources.population.amount >= 25 // Verschijnt bij 25 bevolking
+            requirement: () => game.resources.population.amount >= 25,
+            affects: ["intel"]
         },
         medium_expeditions: {
             name: "Handelsroute zoeken",
             desc: "Verbeterde expedities die handelsroutes kunnen vinden.",
             cost: { researchPoints: 150, gold: 200 },
             unlocked: false,
-            requirement: () => game.research.expeditions.unlocked
+            requirement: () => game.research.expeditions.unlocked,
+            affects: ["intel"]
         },
         hard_expeditions: {
             name: "Diplomatieke Missies",
             desc: "Geavanceerde expedities die diplomatieke contacten kunnen leggen.",
             cost: { researchPoints: 300, gold: 500 },
             unlocked: false,
-            requirement: () => game.research.medium_expeditions.unlocked
+            requirement: () => game.research.medium_expeditions.unlocked,
+            affects: ["intel"]
         },
         expert_expeditions: {
             name: "Verre Expedities",
             desc: "Expert expedities die unieke ontdekkingen kunnen doen.",
             cost: { researchPoints: 500, gold: 1000 },
             unlocked: false,
-            requirement: () => game.research.hard_expeditions.unlocked
+            requirement: () => game.research.hard_expeditions.unlocked,
+            affects: ["intel"]
         },
         banking: {
             name: "Bankenstelsel",
             desc: "Maakt het mogelijk om een bank te bouwen voor extra goudopslag en rente.",
             cost: { researchPoints: 400, gold: 800 },
             unlocked: false,
-            requirement: () => game.resources.gold.amount >= 1000 //1000
+            requirement: () => game.resources.gold.amount >= 1000,
+            affects: ["gold"]
         },
         knight_training: {
             name: "Ridder Training",
             desc: "Ontgrendelt de Ridder eenheid voor je leger.",
             cost: { researchPoints: 200, gold: 300 },
             unlocked: false,
-            requirement: () => game.buildings.hut.count >= 5
+            requirement: () => false, // Tijdelijk verborgen
+            affects: ["food", "gold"]
         },
         commander_tactics: {
             name: "Commandant Tactieken",
             desc: "Ontgrendelt de Commandant eenheid die de kracht van je leger verhoogt.",
             cost: { researchPoints: 400, gold: 600 },
             unlocked: false,
-            requirement: () => game.research.knight_training.unlocked
+            requirement: () => game.research.knight_training.unlocked,
+            affects: ["food", "gold"]
         },
         wood_tech: {
             name: "Hout Techniek",
             desc: "Door betere houtbewerking, wordt het houtproductie verhoogd.",
             cost: { researchPoints: 50, gold: 50 },
             unlocked: false,
-            requirement: () => game.resources.wood.amount >= 5000
+            requirement: () => game.resources.wood.amount >= 5000,
+            affects: ["wood"]
         },
         axe_tech: {
             name: "Hak Techniek",
             desc: "Door slim te hakken, wordt het houtproductie verhoogd.",
             cost: { researchPoints: 100, gold: 100 },
             unlocked: false,
-            requirement: () => game.jobs.woodcutter.count >= 25
+            requirement: () => game.jobs.woodcutter.count >= 25,
+            affects: ["wood"]
         },
         wood_workshop: {
             name: "Houtzagerij",
             desc: "Verbetert houtproductie en opslag.",
             cost: { researchPoints: 50, gold: 50 },
             unlocked: false,
-            requirement: () => game.buildings.lumber_camp.count >= 5
+            requirement: () => game.buildings.lumber_camp.count >= 5,
+            affects: ["wood", "beam"]
         },
         stone_workshop: {
             name: "Steenoven",
             desc: "Verbetert steenproductie en opslag.",
             cost: { researchPoints: 50, gold: 50 },
             unlocked: false,
-            requirement: () => game.buildings.quarry.count >= 5
+            requirement: () => game.buildings.quarry.count >= 5,
+            affects: ["stone", "brick"]
         },
         houses: {
             name: "Huis",
             desc: "Een mooi stenen huis.",
             cost: { researchPoints: 75 },
             unlocked: false,
-            requirement: () => game.resources.beam.amount >= 10 && game.resources.brick.amount >= 10
+            requirement: () => game.resources.beam.amount >= 10 && game.resources.brick.amount >= 10,
+            affects: ["population"]
         },
         merchant_guild: {
             name: "Handelsgilde",
             desc: "Verhoogt de opbrengst van alle actieve handelsroutes met 20%.",
             cost: { researchPoints: 800, gold: 1500 },
             unlocked: false,
-            requirement: () => game.buildings.bank.count >= 5 && game.diplomacy.unlocked
+            requirement: () => game.buildings.bank.count >= 5 && game.diplomacy.unlocked,
+            affects: ["gold"]
         }
     },
 
@@ -545,27 +582,27 @@ let game = {
                 duration: 20,
                 cost: { food: 300, gold: 100, intel: 150 },
                 successRate: 0.75,
-                requirements: () => game.research.medium_expeditions.unlocked
+                requirements: () => game.research.medium_expeditions.researched
             },
             hard: {
                 name: "Diplomatieke Missie",
                 duration: 30,
                 cost: { food: 800, gold: 300, intel: 400 },
                 successRate: 0.6,
-                requirements: () => game.research.hard_expeditions.unlocked
+                requirements: () => game.research.hard_expeditions.researched
             },
             expert: {
                 name: "Verre Expeditie",
                 duration: 40,
                 cost: { food: 2000, gold: 1500, intel: 800 },
                 successRate: 0.4,
-                requirements: () => game.research.expert_expeditions.unlocked && game.buildings.school.count >= 3
+                requirements: () => game.research.expert_expeditions.researched
             }
         }
     },
     diplomacy: {
         unlocked: false,
-        discoveredTribes: {} // Hier slaan we de ontdekte volken op
+        discoveredTribes: {} 
     },
     // Een 'bibliotheek' met mogelijke volken die je kunt ontdekken
     tribeTemplates: {
@@ -631,117 +668,117 @@ function getInitialState() {
     return {
         era: 1,
         currentStreams: {},
+        calendar: { day: 0, year: 0, season: 0 },
+        seasonNames: ["Lente", "Zomer", "Herfst", "Winter"],
         resources: {
-            wood: { amount: 0, max: 100, perSec: 0, manualGain: 1, unlocked: true },
-            beam: { amount: 0, max: 50, perSec: 0, unlocked: false },
-            stone: { amount: 0, max: 100, perSec: 0, manualGain: 1 },
-            brick: { amount: 0, max: 50, perSec: 0, unlocked: false },
-            gold: { amount: 0, max: 1000, perSec: 0 },
-            food: { amount: 10, max: 150, perSec: 0, manualGain: 1, unlocked: true },
-            population: { amount: 1, max: 5, unlocked: true },
-            researchPoints: { amount: 0, max: 500, perSec: 0 },
-            intel: { amount: 0, max: 100, perSec: 0, name: "Intel", icon: "👁️", discovered: false, unlocked: false }
+            wood: { name: "Hout", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
+            food: { name: "Voedsel", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: true },
+            stone: { name: "Steen", amount: 0, max: 100, perSec: 0, manualGain: 1, discovered: false },
+            beam: { name: "Balken", amount: 0, max: 50, perSec: 0, discovered: false },
+            brick: { name: "Bakstenen", amount: 0, max: 50, perSec: 0, discovered: false },
+            gold: { name: "Goud", amount: 0, max: 1000, perSec: 0, discovered: false },
+            population: { name: "Bevolking", amount: 0, max: 0, perSec: 0, discovered: false },
+            researchPoints: { name: "Research", amount: 0, max: 500, perSec: 0, discovered: false },
+            intel: { name: "Intel", amount: 0, max: 100, perSec: 0, discovered: false }
         },
         buildings: {
-            flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
-            hunters_camp: { name: "Jagerskamp", count: 0, cost: { wood: 15 }, provides: { job_hunter: 2 }, desc: "Werkplek voor jagers. (+Voedsel, +Intel)", unlocked: true, stream: "Jagen" },
-            fire_pit: { name: "Vuurplaats", count: 0, cost: { wood: 50, stone: 10 }, provides: { max_population: 5, job_firekeeper: 1 }, desc: "Houdt dieren weg. (+Bevolking, +Research)", unlocked: true, stream: "Vuurbeheersing" },
+            flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 500, stone: 200 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: false },
+            hunters_camp: { name: "Jagerskamp", count: 0, cost: { wood: 15 }, provides: { job_hunter: 2 }, desc: "Werkplek voor jagers. (+Voedsel, +Intel)", unlocked: false, stream: "Jagen" },
+            fire_pit: { name: "Vuurplaats", count: 0, cost: { wood: 50, stone: 10 }, provides: { max_population: 5, job_firekeeper: 1 }, desc: "Houdt dieren weg. (+Bevolking, +Research)", unlocked: false, stream: "Vuurbeheersing" },
             smokehouse: { name: "Rookhuis", count: 0, cost: { wood: 100, stone: 30 }, provides: { max_food: 300 }, desc: "Maakt voedsel lang houdbaar.", unlocked: false, stream: "Vuurbeheersing" },
-            fishing_pier: { name: "Vissteiger", count: 0, cost: { wood: 30 }, provides: { job_fisher: 2 }, desc: "Een plek om enorme hoeveelheden vis te vangen.", unlocked: true, stream: "Vissen" },
+            fishing_pier: { name: "Vissteiger", count: 0, cost: { wood: 30 }, provides: { job_fisher: 2 }, desc: "Een plek om enorme hoeveelheden vis te vangen.", unlocked: false, stream: "Vissen" },
             boat_builder: { name: "Botenbouwer", count: 0, cost: { wood: 200 }, provides: { job_fisher: 3, max_wood: 100 }, desc: "Kano's voor dieper water.", unlocked: false, stream: "Vissen" },
-            guard_tower: { name: "Uitkijktoren", count: 0, cost: { wood: 300, stone: 100 }, provides: { job_scout_job: 5, max_intel: 100 }, desc: "Versterkte verkenning en veiligheid.", unlocked: true, stream: "Militairisme" },
-            scribe_hut: { name: "Schrijvershut", count: 0, cost: { wood: 200, food: 100 }, provides: { job_scribe: 2, max_researchPoints: 500 }, desc: "Klerken verwerken informatie sneller.", unlocked: true, stream: "Schrift" },
+            guard_tower: { name: "Uitkijktoren", count: 0, cost: { wood: 300, stone: 100 }, provides: { job_scout_job: 5, max_intel: 100 }, desc: "Versterkte verkenning en veiligheid.", unlocked: false, stream: "Militairisme" },
+            scribe_hut: { name: "Schrijvershut", count: 0, cost: { wood: 200, food: 100 }, provides: { job_scribe: 2, max_researchPoints: 500 }, desc: "Klerken verwerken informatie sneller.", unlocked: false, stream: "Schrift" },
             library: { name: "Bibliotheek", count: 0, cost: { wood: 500, stone: 200 }, provides: { job_teacher: 5, max_researchPoints: 1500 }, desc: "Het absolute kenniscentrum van Tijdperk 2.", unlocked: false, stream: "Schrift" },
-            market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: true, stream: "Handel" },
+            market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: false, stream: "Handel" },
             trading_post: { name: "Handelspost", count: 0, cost: { wood: 400, stone: 200 }, provides: { max_gold: 1500, job_merchant: 5 }, desc: "Knooppunt voor verre handelaren.", unlocked: false, stream: "Handel" },
-            // Era 3 Streams
             iron_mine: { name: "IJzermijn", count: 0, cost: { wood: 500, stone: 500 }, provides: { job_blacksmith: 2 }, desc: "Een diepe mijn voor sterker metaal.", unlocked: false, stream: "Smeedkunst" },
             forge: { name: "Smidse", count: 0, cost: { brick: 200, beam: 200, gold: 500 }, provides: { max_brick: 1000, job_blacksmith: 5 }, desc: "Hier worden ijzeren voorwerpen gesmeed.", unlocked: false, stream: "Smeedkunst" },
             academy: { name: "Academie", count: 0, cost: { wood: 800, stone: 400, gold: 200 }, provides: { job_philosopher: 2, max_researchPoints: 2000 }, desc: "Een plek voor denkers.", unlocked: false, stream: "Filosofie" },
             forum: { name: "Forum", count: 0, cost: { brick: 500, gold: 1000 }, provides: { job_philosopher: 5, max_intel: 500 }, desc: "Publiek debat versterkt de kennis.", unlocked: false, stream: "Filosofie" },
             harbor: { name: "Haven", count: 0, cost: { beam: 500, stone: 1000, gold: 2000 }, provides: { max_gold: 5000, job_navigator: 5 }, desc: "Een enorm handelsknooppunt over zee.", unlocked: false, stream: "Navigatie" },
-            // Era 4 Streams
             colosseum: { name: "Colosseum", count: 0, cost: { brick: 2000, stone: 5000 }, provides: { job_gladiator: 5, max_population: 50 }, desc: "Gladiatorengevechten leveren massief goud op.", unlocked: false, stream: "Verovering" },
             siege_workshop: { name: "Belegeringswerkplaats", count: 0, cost: { wood: 3000, beam: 1000 }, provides: { job_gladiator: 2, max_gold: 5000 }, desc: "Bouwt wapens voor de verovering.", unlocked: false, stream: "Verovering" },
             senate_house: { name: "Senaatsgebouw", count: 0, cost: { stone: 2000, gold: 3000 }, provides: { job_senator: 5, max_intel: 1000 }, desc: "Het politieke hart van je rijk.", unlocked: false, stream: "Democratie" },
             public_baths: { name: "Badhuis", count: 0, cost: { stone: 4000, brick: 1000 }, provides: { max_population: 100, job_senator: 2 }, desc: "Verbetert de publieke hygiëne enorm.", unlocked: false, stream: "Democratie" },
             paved_road: { name: "Verharde Weg", count: 0, cost: { stone: 5000, brick: 5000 }, provides: { job_engineer: 3, max_stone: 10000 }, desc: "Grootschalige logistiek.", unlocked: false, stream: "Wegenbouw" },
             aqueduct: { name: "Aquaduct", count: 0, cost: { brick: 8000, gold: 2000 }, provides: { max_food: 10000, job_engineer: 2 }, desc: "Voorziet steden van vers water.", unlocked: false, stream: "Wegenbouw" },
-            hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
+            hut: { name: "Hut", count: 0, cost: { wood: 10 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: false },
             house: { name: "Huis", count: 0, cost: { beam: 30, brick: 40 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
-            farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
-            lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2, max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
+            farm_plot: { name: "Akker", count: 0, cost: { wood: 15, stone: 5 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: false },
+            lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 25 }, provides: { job_woodcutter: 2, max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: false },
             wood_workshop: { name: "Houtbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_woodworker: 1, max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
-            stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_stone_worker: 1, max_brick: 50 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
+            stone_workshop: { name: "Steenbewerkerij", count: 0, cost: { wood: 5000, stone: 2000 }, provides: { job_stoneworker: 1, max_brick: 50 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
             warehouse: { name: "Magazijn", count: 0, cost: { wood: 75, stone: 25 }, provides: { max_wood: 200, max_food: 200, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor grondstoffen.", unlocked: false },
             quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 50, food: 20 }, provides: { job_miner: 2, max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
-            school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research punten genereren.", unlocked: false },
+            school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research genereren.", unlocked: false },
             irrigation_system: { name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
             scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3, max_intel: 50 }, desc: "Traint inwoners om de wereld te verkennen en vergroot opslag voor Intel (+50).", unlocked: false },
-            //barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 5 }, desc: "Huisvesting voor je leger. Elke kazerne biedt plek aan 5 soldaten.", unlocked: false }
-            bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false }
+            barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger.", unlocked: false },
+            bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false },
+            silo: { name: "Silo", count: 0, cost: { wood: 100, stone: 50 }, provides: { max_food: 500 }, desc: "Een grote opslagplaats voor voedsel.", unlocked: false }
         },
         jobs: {
-            farmer: { count: 0 },
-            woodcutter: { count: 0 },
-            woodworker: { count: 0 },
-            miner: { count: 0 },
-            stoneworker: { count: 0 },
-            teacher: { count: 0 },
-            scout_job: { count: 0 },
-            //soldier: { count: 0 }
-            banker: { count: 0 },
-            hunter: { count: 0 },
-            firekeeper: { count: 0 },
-            fisher: { count: 0 },
-            scribe: { count: 0 },
-            merchant: { count: 0 },
-            blacksmith: { count: 0 },
-            philosopher: { count: 0 },
-            navigator: { count: 0 },
-            gladiator: { count: 0 },
-            senator: { count: 0 },
-            engineer: { count: 0 }
+            farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
+            woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -1 }, unlocked: false },
+            woodworker: { name: "Timmerman", count: 0, max: 0, effect: { wood: -3, food: -1, beam: 0.5 }, unlocked: false },
+            miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1.5 }, unlocked: false },
+            stoneworker: { name: "Metselaar", count: 0, max: 0, effect: { stone: -3, food: -1, brick: 0.5 }, unlocked: false },
+            teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 }, unlocked: false },
+            scout_job: { name: "Verkenner", count: 0, max: 0, effect: { intel: 1, food: -2 }, unlocked: false },
+            soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -0.1, food: -2 }, unlocked: false },
+            banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false },
+            hunter: { name: "Jager", count: 0, max: 0, effect: { food: 1.5, intel: 0.2 }, unlocked: false, stream: "Jagen" },
+            firekeeper: { name: "Vuurbewaarder", count: 0, max: 0, effect: { researchPoints: 0.5, wood: -0.5 }, unlocked: false, stream: "Vuurbeheersing" },
+            fisher: { name: "Visser", count: 0, max: 0, effect: { food: 3 }, unlocked: false, stream: "Vissen" },
+            scribe: { name: "Klerk", count: 0, max: 0, effect: { researchPoints: 2, food: -1 }, unlocked: false, stream: "Schrift" },
+            merchant: { name: "Marktkoopman", count: 0, max: 0, effect: { gold: 0.5, food: -0.5 }, unlocked: false, stream: "Handel" },
+            blacksmith: { name: "Smid", count: 0, max: 0, effect: { brick: -0.5, gold: 1, food: -2 }, unlocked: false, stream: "Smeedkunst" },
+            philosopher: { name: "Filosoof", count: 0, max: 0, effect: { researchPoints: 5, intel: 1, food: -1 }, unlocked: false, stream: "Filosofie" },
+            navigator: { name: "Navigator", count: 0, max: 0, effect: { gold: 3, intel: 2, food: -2 }, unlocked: false, stream: "Navigatie" },
+            gladiator: { name: "Gladiator", count: 0, max: 0, effect: { gold: 4, food: -3 }, unlocked: false, stream: "Verovering" },
+            senator: { name: "Senator", count: 0, max: 0, effect: { intel: 3, researchPoints: 5, gold: -2 }, unlocked: false, stream: "Democratie" },
+            engineer: { name: "Ingenieur", count: 0, max: 0, effect: { stone: 5, brick: 5, food: -2 }, unlocked: false, stream: "Wegenbouw" }
         },
         research: {
-            cooking: { unlocked: false },
-            fishing_nets: { unlocked: false },
-            spear_crafting: { unlocked: false },
-            bronze_weapons: { unlocked: false },
-            record_keeping: { unlocked: false },
-            currency: { unlocked: false },
-            iron_working: { unlocked: false },
-            advanced_smelting: { unlocked: false },
-            logic_philosophy: { unlocked: false },
-            ethics: { unlocked: false },
-            shipbuilding: { unlocked: false },
-            astronomy: { unlocked: false },
-            military_engineering: { unlocked: false },
-            gladiator_combats: { unlocked: false },
-            civic_duty: { unlocked: false },
-            constitution: { unlocked: false },
-            surveying: { unlocked: false },
-            hydraulics: { unlocked: false },
-            toolmaking: { unlocked: false },
-            // agriculture: { unlocked: false },
-            education: { unlocked: false },
-            warehouse: { unlocked: false },
-            irrigation_tech: { unlocked: false },
-            plow_invention: { unlocked: false },
-            wood_tech: { unlocked: false },
-            axe_tech: { unlocked: false },
-            expeditions: { unlocked: false },
-            medium_expeditions: { unlocked: false },
-            hard_expeditions: { unlocked: false },
-            expert_expeditions: { unlocked: false },
-            banking: { unlocked: false },
-            knight_training: { unlocked: false },
-            commander_tactics: { unlocked: false },
-            wood_workshop: { unlocked: false },
-            stone_workshop: { unlocked: false },
-            houses: { unlocked: false }
+            food_storage: { unlocked: false, researched: false, affects: ["food"] },
+            cooking: { unlocked: false, researched: false, affects: ["food"] },
+            fishing_nets: { unlocked: false, researched: false, affects: ["food"] },
+            spear_crafting: { unlocked: false, researched: false, affects: ["intel"] },
+            bronze_weapons: { unlocked: false, researched: false, affects: ["gold"] },
+            record_keeping: { unlocked: false, researched: false, affects: ["researchPoints"] },
+            currency: { unlocked: false, researched: false, affects: ["gold"] },
+            iron_working: { unlocked: false, researched: false, affects: ["stone"] },
+            advanced_smelting: { unlocked: false, researched: false, affects: ["brick"] },
+            logic_philosophy: { unlocked: false, researched: false, affects: ["researchPoints"] },
+            ethics: { unlocked: false, researched: false, affects: ["intel", "researchPoints"] },
+            shipbuilding: { unlocked: false, researched: false, affects: ["intel"] },
+            astronomy: { unlocked: false, researched: false, affects: ["gold", "intel"] },
+            military_engineering: { unlocked: false, researched: false, affects: ["gold"] },
+            gladiator_combats: { unlocked: false, researched: false, affects: ["gold"] },
+            civic_duty: { unlocked: false, researched: false, affects: ["researchPoints"] },
+            constitution: { unlocked: false, researched: false, affects: ["intel", "researchPoints"] },
+            surveying: { unlocked: false, researched: false, affects: ["stone"] },
+            hydraulics: { unlocked: false, researched: false, affects: ["food"] },
+            toolmaking: { unlocked: false, researched: false, affects: ["stone"] },
+            education: { unlocked: false, researched: false, affects: ["researchPoints"] },
+            warehouse: { unlocked: false, researched: false, affects: ["food", "wood", "stone"] },
+            irrigation_tech: { unlocked: false, researched: false, affects: ["food"] },
+            plow_invention: { unlocked: false, researched: false, affects: ["food"] },
+            wood_tech: { unlocked: false, researched: false, affects: ["wood"] },
+            axe_tech: { unlocked: false, researched: false, affects: ["wood"] },
+            expeditions: { unlocked: false, researched: false, affects: ["intel"] },
+            medium_expeditions: { unlocked: false, researched: false, affects: ["intel"] },
+            hard_expeditions: { unlocked: false, researched: false, affects: ["intel"] },
+            expert_expeditions: { unlocked: false, researched: false, affects: ["intel"] },
+            banking: { unlocked: false, researched: false, affects: ["gold"] },
+            knight_training: { unlocked: false, researched: false, affects: ["food", "gold"] },
+            commander_tactics: { unlocked: false, researched: false, affects: ["food", "gold"] },
+            wood_workshop: { unlocked: false, researched: false, affects: ["wood", "beam"] },
+            stone_workshop: { unlocked: false, researched: false, affects: ["stone", "brick"] },
+            houses: { unlocked: false, researched: false, affects: ["population"] }
         },
-
         military: {
             attackPower: 0,
             defensePower: 0,
@@ -753,19 +790,27 @@ function getInitialState() {
             }
         },
         expeditions: {
-            active: false,
-            timer: 0,
-            currentType: null,
-            unlocked: false
+            active: false, timer: 0, currentType: null, unlocked: false,
+            types: {
+                easy: { name: "Korte Verkenning", duration: 10, cost: { food: 100, intel: 50 }, successRate: 0.9, requirements: () => true },
+                medium: { name: "Handelsroute Zoeken", duration: 20, cost: { food: 300, gold: 100, intel: 150 }, successRate: 0.75, requirements: () => game.research.medium_expeditions.researched },
+                hard: { name: "Diplomatieke Missie", duration: 30, cost: { food: 800, gold: 300, intel: 400 }, successRate: 0.6, requirements: () => game.research.hard_expeditions.researched },
+                expert: { name: "Verre Expeditie", duration: 40, cost: { food: 2000, gold: 1500, intel: 800 }, successRate: 0.4, requirements: () => game.research.expert_expeditions.researched }
+            }
         },
-        diplomacy: { discoveredTribes: {} },
-        settings: { showManualActions: true },
-        achievements: {
-            first_steps: false,          // 100 max pop
-            flint_monument: false,       // Steentijd voltooid
-            iron_discovery: false        // Voorbereiding voor later
+        diplomacy: { unlocked: false, discoveredTribes: {} },
+        prestige: {
+            points: 0,
+            totalEarned: 0,
+            upgrades: {
+                starter_pack: { name: "Starter Pakket", level: 0, max: 10, cost: 5, desc: "Begin elke run met +500 van alle basis grondstoffen en opslag." },
+                efficient_scouting: { name: "Efficiënte Verkenning", level: 0, max: 5, cost: 10, desc: "Expedities zijn 5% sneller per level." },
+                diplomatic_charm: { name: "Diplomatieke Charme", level: 0, max: 5, cost: 15, desc: "Handelsopbrengsten zijn 10% hoger per level." },
+                meditation: { name: "Meditatie", level: 0, max: 10, cost: 5, desc: "Offline productie is 10% effectiever per level." },
+                sunDail: { name: "Zonnewijzer", level: 0, max: 24, cost: 10, desc: "Verhoogt de maximale offline tijd met 1 uur per level." }
+            }
         },
-        // PRESTIGE WORDT HIER NIET GERESET, die bewaren we apart
+        achievements: { first_steps: false, flint_monument: false, iron_discovery: false },
         lastTick: Date.now()
     };
 }
@@ -773,123 +818,110 @@ function getInitialState() {
 // --- OPSLAAN & LADEN ---
 function saveGame() {
     game.lastTick = Date.now();
-    //localStorage.setItem('civBuilderSave', JSON.stringify(game));
     localStorage.setItem('myGameSave', JSON.stringify(game));
     console.log("Game Saved");
+    if (typeof addToLog === 'function') {
+        addToLog("Spel opgeslagen.", "info");
+    }
 }
+
 function loadGame() {
     const saved = localStorage.getItem('myGameSave');
     if (!saved) return;
 
     const loadedData = JSON.parse(saved);
+    const initialState = getInitialState();
 
-    // Gebruik Object.assign of een loop om de basis 'game' te vullen met loadedData
-    game.era = loadedData.era || 1;
-    game.currentStreams = loadedData.currentStreams || {};
+    // 1. Era & Calendar
+    game.era = loadedData.era || initialState.era;
+    game.currentStreams = loadedData.currentStreams || initialState.currentStreams;
+    if (loadedData.calendar) game.calendar = loadedData.calendar;
 
-    // Belangrijk voor Prestige:
+    // 2. Prestige
     if (loadedData.prestige) {
+        if (!game.prestige) game.prestige = initialState.prestige;
         game.prestige.points = loadedData.prestige.points || 0;
         game.prestige.totalEarned = loadedData.prestige.totalEarned || 0;
-        game.prestige.unlockedStreams = loadedData.prestige.unlockedStreams || {};
-
-        // Laad de levels van de upgrades in de bestaande structuur
-        for (let key in loadedData.prestige.upgrades) {
-            if (game.prestige.upgrades[key]) {
-                game.prestige.upgrades[key].level = loadedData.prestige.upgrades[key].level || 0;
+        if (loadedData.prestige.upgrades) {
+            for (let key in loadedData.prestige.upgrades) {
+                if (game.prestige.upgrades[key]) {
+                    game.prestige.upgrades[key].level = loadedData.prestige.upgrades[key].level || 0;
+                }
             }
         }
     }
 
-
-    // Loop door resources in de opgeslagen data
-    for (let resKey in loadedData.resources) {
-        // Check of deze resource ook in onze nieuwe code bestaat
-        if (game.resources[resKey]) {
-            game.resources[resKey].amount = loadedData.resources[resKey].amount;
-            game.resources[resKey].discovered = loadedData.resources[resKey].discovered;
-            // We laden NIET de 'max' of 'perSec', die worden opnieuw berekend
+    // 3. Resources
+    for (let resKey in game.resources) {
+        if (loadedData.resources && loadedData.resources[resKey]) {
+            game.resources[resKey].amount = loadedData.resources[resKey].amount || 0;
+            game.resources[resKey].discovered = loadedData.resources[resKey].discovered || false;
         }
     }
 
-    // Doe hetzelfde voor gebouwen (aantallen laden)
-    for (let bKey in loadedData.buildings) {
-        if (game.buildings[bKey]) {
-            game.buildings[bKey].count = loadedData.buildings[bKey].count;
-            game.buildings[bKey].unlocked = loadedData.buildings[bKey].unlocked;
+    // 4. Buildings
+    for (let bKey in game.buildings) {
+        if (loadedData.buildings && loadedData.buildings[bKey]) {
+            game.buildings[bKey].count = loadedData.buildings[bKey].count || 0;
+            if (loadedData.buildings[bKey].unlocked !== undefined) {
+                game.buildings[bKey].unlocked = loadedData.buildings[bKey].unlocked;
+            }
         }
     }
 
-    // Voor research
-    for (let rKey in loadedData.research) {
-        if (game.research[rKey]) {
-            game.research[rKey].unlocked = loadedData.research[rKey].unlocked;
-            game.research[rKey].researched = loadedData.research[rKey].researched; // Voeg deze toe!
+    // 5. Research
+    for (let rKey in game.research) {
+        if (loadedData.research && loadedData.research[rKey]) {
+            if (loadedData.research[rKey].unlocked !== undefined) {
+                game.research[rKey].unlocked = loadedData.research[rKey].unlocked;
+            }
+            if (loadedData.research[rKey].researched !== undefined) {
+                game.research[rKey].researched = loadedData.research[rKey].researched;
+            }
         }
     }
 
-    // En voor de volken in diplomatie
-    // --- Diplomatie laden ---
+    // 6. Jobs
+    for (let jKey in game.jobs) {
+        if (loadedData.jobs && loadedData.jobs[jKey]) {
+            game.jobs[jKey].count = loadedData.jobs[jKey].count || 0;
+            if (loadedData.jobs[jKey].unlocked !== undefined) {
+                game.jobs[jKey].unlocked = loadedData.jobs[jKey].unlocked;
+            }
+        }
+    }
+
+    // 7. Diplomacy
     if (loadedData.diplomacy) {
         game.diplomacy.unlocked = loadedData.diplomacy.unlocked || false;
-
-        // Laad de ontdekte volken
-        if (loadedData.diplomacy.discoveredTribes) {
-            for (let tKey in loadedData.diplomacy.discoveredTribes) {
-                // We zetten de data over naar ons actuele game object
-                game.diplomacy.discoveredTribes[tKey] = loadedData.diplomacy.discoveredTribes[tKey];
-
-                // Fix voor save compatibility: Voeg missende properties vanuit templates toe
-                if (game.tribeTemplates[tKey]) {
-                    if (!game.diplomacy.discoveredTribes[tKey].tradeCost) game.diplomacy.discoveredTribes[tKey].tradeCost = game.tribeTemplates[tKey].tradeCost;
-                    if (!game.diplomacy.discoveredTribes[tKey].tradeYield) game.diplomacy.discoveredTribes[tKey].tradeYield = game.tribeTemplates[tKey].tradeYield;
-                    // Support legacy "resources" key just in case it's missing in some paths, but prefer tradeYield
-                }
-            }
-        }
-    }
-    // Voor de jobs
-    for (let jKey in loadedData.jobs) {
-        if (game.jobs[jKey]) {
-            game.jobs[jKey].count = loadedData.jobs[jKey].count;
-            game.jobs[jKey].unlocked = loadedData.jobs[jKey].unlocked;
-        }
-    }
-    // --- Militaire data laden ---
-    if (loadedData.military) {
-        game.military.attackPower = loadedData.military.attackPower || 0;
-        game.military.defensePower = loadedData.military.defensePower || 0;
-
-        if (loadedData.military.units) {
-            for (let key in loadedData.military.units) {
-                if (game.military.units[key]) {
-                    const loadedUnit = loadedData.military.units[key];
-                    // Zorg dat alle nieuwe variabelen correct worden ingeladen
-                    game.military.units[key].total = loadedUnit.total || 0;
-                    game.military.units[key].assignedOff = loadedUnit.assignedOff || 0;
-                    game.military.units[key].assignedDef = loadedUnit.assignedDef || 0;
-                }
-            }
-        }
+        game.diplomacy.discoveredTribes = loadedData.diplomacy.discoveredTribes || {};
     }
 
-    // -- Achievements laden --
-    if (loadedData.achievements) {
-        if (!game.achievements) game.achievements = {};
-        for (let aKey in loadedData.achievements) {
-            game.achievements[aKey] = loadedData.achievements[aKey];
-        }
+    // 8. Expeditions (Zorg dat types ALTIJD bestaan uit de broncode)
+    if (loadedData.expeditions) {
+        game.expeditions.active = loadedData.expeditions.active || false;
+        game.expeditions.timer = loadedData.expeditions.timer || 0;
+        game.expeditions.currentType = loadedData.expeditions.currentType || null;
+        game.expeditions.unlocked = loadedData.expeditions.unlocked || false;
+    }
+    // Herstel de types definities als ze ontbreken in de save
+    if (!game.expeditions.types || Object.keys(game.expeditions.types).length === 0) {
+        game.expeditions.types = initialState.expeditions.types;
     }
 
     recalcLimits();
     recalcRates();
     checkUnlocks();
-    if (loadedData.lastTick) {
-        game.lastTick = loadedData.lastTick;
-    } else {
-        game.lastTick = Date.now(); // Fallback als het ontbreekt
+    game.lastTick = loadedData.lastTick || Date.now();
+    console.log("Game Loaded & Fixed");
+}
+
+function hardReset() {
+    const confirmation = prompt("Type 'RESET' om je hele beschaving te wissen. Dit kan niet ongedaan worden gemaakt!");
+    if (confirmation === "RESET") {
+        localStorage.removeItem('myGameSave');
+        window.location.reload(); 
     }
-    console.log("Game Loaded");
 }
 function handleOfflineProgress() {
     const now = Date.now();
@@ -899,7 +931,7 @@ function handleOfflineProgress() {
         // Bereken eerst de rates (voor het geval ze nog niet geüpdatet zijn)
         recalcRates();
 
-        // Als de upgrade niet bestaat of level 0 is, is de multiplier 0.5
+        // Als de upgrade niet bestaat of level 0 is, is de multiplier 0.1
         let offlineEfficiency = 0.1;
         if (game.prestige.upgrades.meditation) {
             // Elke level voegt 10% toe, tot max 100%
@@ -969,11 +1001,13 @@ function showOfflineModal(seconds, summary, capped, totalSeconds) {
     modal.style.display = 'block';
 }
 
-// Helper om tijd mooi te maken
 function formatTime(seconds) {
     if (seconds < 3600) return Math.floor(seconds / 60) + "m";
     let h = Math.floor(seconds / 3600);
     let m = Math.floor((seconds % 3600) / 60);
     return `${h}u ${m}m`;
 }
-
+function getResourceIcon(key) {
+    const icons = { wood: '🌲', stone: '🧱', gold: '💰', food: '🍞', population: '👥' };
+    return icons[key] || '📦';
+}

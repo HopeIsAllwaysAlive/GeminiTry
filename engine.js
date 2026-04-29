@@ -49,15 +49,25 @@ function getSoldierMaintenance() {
 }
 
 function recalcLimits() {
-    const starterLevel = game.prestige.upgrades.starter_pack?.level || 0;
+    const starterLevel = game.prestige?.upgrades?.starter_pack?.level || 0;
     const bonus = starterLevel * 500;
     // Reset naar basis
+    if (!game.resources.wood) game.resources.wood = { amount: 0, max: 100 };
+    if (!game.resources.food) game.resources.food = { amount: 0, max: 100 };
+    if (!game.resources.stone) game.resources.stone = { amount: 0, max: 50 };
+    if (!game.resources.brick) game.resources.brick = { amount: 0, max: 50 };
+    if (!game.resources.beam) game.resources.beam = { amount: 0, max: 50 };
+    if (!game.resources.population) game.resources.population = { amount: 0, max: 0 };
+    if (!game.resources.gold) game.resources.gold = { amount: 0, max: 1000 };
+    if (!game.resources.researchPoints) game.resources.researchPoints = { amount: 0, max: 500 };
+    if (!game.resources.intel) game.resources.intel = { amount: 0, max: 100 };
+
     game.resources.wood.max = 100 + bonus;
     game.resources.food.max = 100 + bonus;
     game.resources.stone.max = 50 + bonus;
     game.resources.brick.max = 50;
     game.resources.beam.max = 50;
-    game.resources.population.max = 5;//100
+    game.resources.population.max = 0;
     game.resources.gold.max = 1000;
     game.resources.researchPoints.max = 500;
     game.resources.intel.max = 100;
@@ -70,21 +80,69 @@ function recalcLimits() {
             const val = b.provides[type] * b.count;
             if (type.startsWith("max_")) {
                 const resName = type.replace("max_", "");
-                game.resources[resName].max += val;
+                if (game.resources[resName]) {
+                    game.resources[resName].max += val;
+                }
             }
             if (type.startsWith("job_")) {
                 const jobName = type.replace("job_", "");
-                game.jobs[jobName].max += val;
+                if (game.jobs[jobName]) {
+                    game.jobs[jobName].max += val;
+                }
             }
         }
     }
 }
 
+function calculateJobYield(jobKey, resourceKey) {
+    const job = game.jobs[jobKey];
+    if (!job || !job.effect || !job.effect[resourceKey]) return 0;
+
+    let yield = job.effect[resourceKey] * job.count;
+    if (yield === 0) return 0;
+
+    let multiplier = 1;
+
+    // Job-specific multipliers
+    if (jobKey === 'woodcutter') {
+        if (game.research.axe_tech && game.research.axe_tech.unlocked) multiplier += 1;
+        if (game.research.wood_tech && game.research.wood_tech.unlocked) multiplier += 0.5;
+    } else if (jobKey === 'farmer') {
+        if (game.research.plow_invention && game.research.plow_invention.unlocked) multiplier *= 1.5;
+        if (game.buildings.irrigation_system && game.buildings.irrigation_system.count > 0) {
+            multiplier *= (1 + (0.5 * game.buildings.irrigation_system.count));
+        }
+    }
+
+    return yield * multiplier;
+}
+
 function recalcRates() {
     recalcLimits();
 
-    // 0. Basis prestige multiplier
-    const prestigeBoost = 1 + (game.prestige.points * 0.01);
+    // 0. Basis multipliers
+    const prestigePoints = game.prestige?.points || 0;
+    const prestigeBoost = 1 + (prestigePoints * 0.01);
+    
+    // Seasonal Modifiers
+    let seasonalFoodMult = 1.0;
+    let seasonalWoodMult = 1.0;
+    
+    switch(game.calendar.season) {
+        case 0: // Lente
+            seasonalFoodMult = 1.5; 
+            break;
+        case 1: // Zomer
+            seasonalFoodMult = 1.0; 
+            break;
+        case 2: // Herfst
+            seasonalWoodMult = 1.1; 
+            break;
+        case 3: // Winter
+            seasonalFoodMult = 0.25;
+            seasonalWoodMult = 0.75;
+            break;
+    }
 
     // 1. Reset alle grondstoffen perSec naar 0
     for (let resKey in game.resources) {
@@ -92,38 +150,29 @@ function recalcRates() {
     }
 
     // 2. Bevolkingsgroei & Idle consumptie
-    game.resources.population.perSec = 0.25 * prestigeBoost;
+    game.resources.population.perSec = (1 / 30) * prestigeBoost; 
     const idlePop = getIdlePopulation();
-    game.resources.food.perSec += (-0.5 * idlePop);
+    game.resources.food.perSec += (-0.5 * idlePop); 
 
     // 3. Loop over alle jobs voor dynamische berekeningen
     for (let jobKey in game.jobs) {
         const job = game.jobs[jobKey];
         if (!job.count || job.count <= 0) continue;
 
-        let multiplier = 1;
-
-        // Specifieke multipliers voor basisbanen (uit oude technieken)
-        if (jobKey === 'woodcutter') {
-            if (game.research.axe_tech && game.research.axe_tech.unlocked) multiplier += 1;
-            if (game.research.wood_tech && game.research.wood_tech.unlocked) multiplier += 0.5;
-        } else if (jobKey === 'farmer') {
-            if (game.research.plow_invention && game.research.plow_invention.unlocked) multiplier *= 1.5;
-            if (game.buildings.irrigation_system && game.buildings.irrigation_system.count > 0) {
-                multiplier *= game.buildings.irrigation_system.count;
-            }
-        }
-
-        // Toepassen van de job effecten (Zowel positief als negatief multi-resource support)
         for (let effectKey in job.effect) {
             if (!game.resources[effectKey]) continue;
-            let baseYield = job.effect[effectKey] * job.count;
+            
+            let yield = calculateJobYield(jobKey, effectKey);
 
-            if (baseYield > 0) {
-                game.resources[effectKey].perSec += (baseYield * multiplier * prestigeBoost);
+            if (yield > 0) {
+                let finalMult = prestigeBoost;
+                if (effectKey === 'food') finalMult *= seasonalFoodMult;
+                if (effectKey === 'wood') finalMult *= seasonalWoodMult;
+                
+                game.resources[effectKey].perSec += (yield * finalMult);
             } else {
-                // Consumptie schaalt met prestigeBoost (zoals stoneworker hout kostte via prestigeBoost in oude logs)
-                game.resources[effectKey].perSec += (baseYield * prestigeBoost);
+                // Negative yield (consumption)
+                game.resources[effectKey].perSec += (yield * prestigeBoost);
             }
         }
     }
@@ -188,233 +237,6 @@ function recalcRates() {
     }
 }
 
-function renderResourceDetail(key) {
-    const res = game.resources[key];
-    const job = findJobForResource(key);
-    const cJobs = findJobsForConsumption(key); // Meerdere jobs nu
-
-    // Basis waarden bepalen
-    let baseVal = job ? job.effect[key] : 0;
-    let count = job ? job.count : 0;
-    let totalBase = baseVal * count;
-
-    // Food heeft ook een consumptie component, dus we trekken dat eraf
-    let totalConsumption = 0;
-    cJobs.forEach(cJob => {
-        let cVal = cJob.effect[key];
-        let cCount = cJob.count;
-        totalConsumption += cVal * cCount;
-    });
-
-    const idlePop = getIdlePopulation();
-    const idlePopConsumption = (key === 'food') ? (-0.5 * idlePop) : 0;
-    const soldierFoodConsumption = (key === 'food') ? (-getSoldierMaintenance().food) : 0;
-
-    // Bonussen berekenen
-    let researchMult = getResearchMultiplier(key);
-    let researchaddition = researchMult * totalBase;
-
-    let prestigeMult = 1 + (game.prestige.points * 0.01);
-    let prestigeAddition = prestigeMult * researchaddition;
-
-    // Totaal berekening
-    let finalProduction = totalBase * researchMult * prestigeMult;
-    let finalValue = finalProduction + totalConsumption + idlePopConsumption + soldierFoodConsumption;
-
-    const relevantResearches = getRelevantResearches(key);
-
-    // HTML voor research lijst
-    let researchListHTML = '';
-    if (relevantResearches.length > 0) {
-        researchListHTML = `
-            <div class="breakdown-section" style="border-left: 3px solid var(--research);">
-                <h3 style="margin-bottom: 10px; color: #cba6f7;">Actieve Researches</h3>
-        `;
-
-        relevantResearches.forEach(research => {
-            const multiplier = research.effect;
-            const bonus = research.effect;//((multiplier - 1) * 100).toFixed(0); // Bijv. 1.1 -> +10%
-            const statusIcon = research.unlocked ? '✓' : '✗';
-            const statusColor = research.unlocked ? '#a6e3a1' : '#6c7086';
-
-            researchListHTML += `
-                <div class="line" style="opacity: ${research.unlocked ? '1' : '0.5'}">
-                    <span>
-                        <span style="color: ${statusColor}">${statusIcon}</span>
-                        ${research.name}
-                    </span>
-                    <span style="color: #a6e3a1">${bonus}x → +${(bonus * totalBase).toFixed(1)}</span>
-                </div>
-            `;
-        });
-
-        // Totaal research multiplier
-        researchListHTML += `
-            <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
-                <span><strong>Totaal na Research</strong></span>
-                <span style="color: #a6e3a1"><strong>+${(researchMult * totalBase).toFixed(1)}</strong></span>
-            </div>
-        `;
-        // //${researchMult.toFixed(2)}x → +
-        researchListHTML += `</div>`;
-    } else {
-        researchListHTML += `
-            <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
-                <span><strong>Totaal Multiplier</strong></span>
-                <span style="color: #a6e3a1"><strong>${researchMult.toFixed(2)}x</strong></span>
-            </div>
-        `;
-    }
-
-    // HTML voor consumptie sectie
-    let consumptionHTML = '';
-    if (cJobs.length > 0) {
-        consumptionHTML = `
-            <div class="breakdown-section" style="border-left: 3px solid var(--danger);">
-                <h3 style="margin-bottom: 10px; color: #f38ba8;">Basis Consumptie</h3>
-        `;
-
-        cJobs.forEach(cJob => {
-            let cVal = cJob.effect[key];
-            let cCount = cJob.count;
-            let cTotal = cVal * cCount;
-
-            consumptionHTML += `
-                <div class="line">
-                    <span>${cCount}x ${cJob.name}</span>
-                    <span class="rate-neg">${cTotal.toFixed(1)}</span>
-                </div>
-                <small class="sub-line">Basis: ${cVal} per eenheid</small>
-            `;
-        });
-
-        consumptionHTML += `
-                <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
-                    <span><strong>Subtotaal Consumptie</strong></span>
-                    <span class="rate-neg"><strong>${totalConsumption.toFixed(1)}</strong></span>
-                </div>
-            </div>
-        `;
-    }
-
-    // Extra consumptie voor food (idle pop + soldiers)
-    let extraConsumptionHTML = '';
-    if (key === 'food' && (idlePopConsumption !== 0 || soldierFoodConsumption !== 0)) {
-        extraConsumptionHTML = `
-            <div class="breakdown-section" style="border-left: 3px solid var(--warning);">
-                <h3 style="margin-bottom: 10px; color: #fab387;">Extra Consumptie</h3>
-        `;
-
-        if (idlePopConsumption !== 0) {
-            extraConsumptionHTML += `
-                <div class="line">
-                    <span>${idlePop}x Idle Bevolking</span>
-                    <span class="rate-neg">${idlePopConsumption.toFixed(1)}</span>
-                </div>
-                <small class="sub-line">Basis: -0.5 per persoon</small>
-            `;
-        }
-
-        if (soldierFoodConsumption !== 0) {
-            extraConsumptionHTML += `
-                <div class="line">
-                    <span>Soldaten Onderhoud</span>
-                    <span class="rate-neg">${soldierFoodConsumption.toFixed(1)}</span>
-                </div>
-            `;
-        }
-
-        extraConsumptionHTML += `</div>`;
-    }
-
-    return `
-        <div class="detail-overlay" onclick="if(event.target == this) closeDetail()">
-            <div class="detail-content panel">
-                <button class="close-btn" onclick="closeDetail()">✕</button>
-                <h2>${getResourceIcon(key)} ${game.resources[key].name.toUpperCase()} Breakdown</h2>
-                
-                <div class="breakdown-section" style="border-left: 3px solid var(--accent);">
-                    <h3 style="margin-bottom: 10px; color: #89b4fa;">Productie</h3>
-                    <div class="line">
-                        <span>${count}x ${job ? job.name : 'Basis Productie'}</span>
-                        <span class="rate-pos">+${totalBase.toFixed(1)}</span>
-                    </div>
-                    <small class="sub-line">Basis: ${baseVal} per eenheid</small>
-                </div>
-
-                ${researchListHTML}
-
-                <div class="breakdown-section" style="border-left: 3px solid var(--accent);">
-                    <h3 style="margin-bottom: 10px; color: #89b4fa;">Prestige Bonus</h3>
-                    <div class="line">
-                        <span>Prestige Punten: ${game.prestige.points}</span>
-                        <span>${prestigeMult.toFixed(2)}x → +${(prestigeAddition - researchaddition).toFixed(1)}</span>
-                    </div>
-                    <small class="sub-line">+1% per prestige punt</small>
-                    <div class="line" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #45475a;">
-                        <span><strong>Totaal na Prestigebonus</strong></span>
-                        <span class="rate-pos"><strong>+${finalProduction.toFixed(1)}</strong></span>
-                    </div>
-                </div>
-
-                ${consumptionHTML}
-                ${extraConsumptionHTML}
-
-                <hr style="border:0; border-top: 1px solid #45475a; margin: 10px 0;">
-                
-                <div class="line total">
-                    <span>NETTO TOTAAL / SEC</span>
-                    <span class="${finalValue >= 0 ? 'rate-pos' : 'rate-neg'}">${finalValue >= 0 ? '+' : ''}${finalValue.toFixed(1)}</span>
-                </div>
-
-                <div style="margin-top: 15px; font-size: 0.85em; text-align: center; color: #a6adc8;">
-                    Opslag: ${Math.floor(res.amount)} / ${res.max}
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function getResearchMultiplier(resourceKey) {
-    let mult = 1.0;
-    // Voorbeeld logica: pas aan op basis van jouw research namen
-    if (resourceKey === 'food' && game.research.plow_invention?.researched) mult += 0.5;
-    if (resourceKey === 'wood' && game.research.axe_tech?.researched) mult += 1;
-    if (resourceKey === 'wood' && game.research.wood_tech?.researched) mult += 0.5;
-    return mult;
-}
-
-// NIEUWE FUNCTIE: Vind alle researches die deze resource beïnvloeden
-function getRelevantResearches(resourceKey) {
-    let relevantResearches = [];
-
-    for (let researchKey in game.research) {
-        const research = game.research[researchKey];
-        let researchEffect = null;
-
-        // Bepaal het effect op basis van resourceKey en welke research het is
-        if (resourceKey === 'wood' && researchKey === 'axe_tech' && research.researched) {
-            researchEffect = 1.00;
-        } else if (resourceKey === 'food' && researchKey === 'plow_invention' && research.researched) {
-            researchEffect = 1.50;
-        } else if (resourceKey === 'wood' && researchKey === 'wood_tech' && research.researched) {
-            researchEffect = 0.50;
-        }
-
-        // Alleen toevoegen als er een relevant effect is
-        if (researchEffect !== null) {
-            relevantResearches.push({
-                name: research.name,
-                effect: researchEffect,
-                unlocked: research.unlocked,
-                key: researchKey
-            });
-        }
-    }
-
-    return relevantResearches;
-}
-
 function findJobForResource(resourceKey) {
     // We lopen door alle banen heen
     for (let key in game.jobs) {
@@ -450,12 +272,6 @@ function getResourceIcon(key) {
     return icons[key] || '📦';
 }
 
-function openResourceDetail(key) {
-    const modalContainer = document.getElementById('modal-container');
-    modalContainer.innerHTML = renderResourceDetail(key);
-    modalContainer.style.display = 'block';
-}
-
 function closeDetail() {
     document.getElementById('modal-container').style.display = 'none';
 }
@@ -489,12 +305,13 @@ function handleFamine() {
     }
 }
 function checkUnlocks() {
-    // Ontgrendel steenhouwerij als er genoeg hout is, ongeacht tijdperk
-    if (game.resources.wood.amount >= 30) {
-        game.buildings.quarry.unlocked = true;
-        game.jobs.miner.unlocked = true;
-        game.resources.stone.discovered = true;
-    }
+    // Reveal basic buildings based on gathered resources
+    if (game.resources.food.amount >= 5) game.buildings.hut.unlocked = true;
+    if (game.resources.food.amount >= 10) game.buildings.lumber_camp.unlocked = true;
+    if (game.resources.wood.amount >= 10) game.buildings.farm_plot.unlocked = true;
+    
+    // Flint monument unlock
+    if (game.resources.population.amount >= 20) game.buildings.flint_monument.unlocked = true;
 
     // Check Research Unlocks
     if (game.buildings.lumber_camp.count > 0) {
@@ -503,22 +320,15 @@ function checkUnlocks() {
     if (game.buildings.farm_plot.count > 0) {
         game.jobs.farmer.unlocked = true;
     }
-    if (game.research.toolmaking.unlocked) {
+    if (game.research.toolmaking.researched) {
         game.buildings.quarry.unlocked = true;
         game.jobs.miner.unlocked = true;
+        game.resources.stone.discovered = true;
     }
-    if (game.research.military_training.unlocked) {
-        game.buildings.barracks.unlocked = true;
-        game.jobs.soldier.unlocked = true;
-    }
-    /*  if (game.research.agriculture.unlocked) {
-          game.buildings.farm_plot.unlocked = true;
-      }*/
     if (game.research.expeditions.unlocked) {
         game.buildings.scout_post.unlocked = true;
         game.jobs.scout_job.unlocked = true;
         game.resources.intel.discovered = true;
-        //   game.expeditions.easy.unlocked = true;
     }
 
     // NIEUWE UNLOCKS ERA 1 STREAMS
@@ -561,6 +371,17 @@ function checkUnlocks() {
     if (game.research.gladiator_combats.unlocked) game.buildings.colosseum.unlocked = true;
     if (game.research.constitution.unlocked) game.buildings.senate_house.unlocked = true;
     if (game.research.hydraulics.unlocked) game.buildings.aqueduct.unlocked = true;
+
+    if (game.research.expert_expeditions.unlocked) {
+        game.buildings.school.unlocked = true;
+    }
+
+    if (game.buildings.farm_plot.count >= 10) {
+        game.research.food_storage.unlocked = true;
+    }
+    if (game.research.food_storage && game.research.food_storage.researched) {
+        game.buildings.silo.unlocked = true;
+    }
 
     // BASE UNLOCKS
     if (game.research.education.unlocked) {
@@ -774,6 +595,7 @@ function buyBuilding(key) {
     if (amountToBuy > 0) {
         payCost(totalCost);
         b.count += amountToBuy; // Nu tellen we ze definitief op
+        if (typeof addToLog === 'function') addToLog(`Je hebt ${amountToBuy}x ${b.name} gebouwd.`, 'success');
         recalcLimits();
         recalcRates();
         updateUI();
@@ -782,10 +604,11 @@ function buyBuilding(key) {
 
 function buyResearch(key) {
     const r = game.research[key];
-    if (canAfford(r.cost) && !r.unlocked) {
+    if (canAfford(r.cost) && !r.researched) {
         payCost(r.cost);
         r.unlocked = true;
         r.researched = true; // Markeer als voltooid
+        if (typeof addToLog === 'function') addToLog(`Onderzoek voltooid: ${r.name}`, 'info');
         checkUnlocks();
         recalcRates();
         updateUI();
@@ -1026,6 +849,27 @@ function formAlliance(tribeKey) {
     showNotification(`Alliantie gevormd met ${tribe.name}! Je krijgt nu een permanente stroom van hun specialiteiten.`, 'success');
 }
 
+function sendGift(tribeKey) {
+    const tribe = game.diplomacy.discoveredTribes[tribeKey];
+    if (tribe.isConquered) {
+        showNotification("Dit volk is al onderworpen. Een cadeau sturen heeft geen zin meer.", 'warning');
+        return;
+    }
+
+    const cost = { gold: 500 };
+    if (!canAfford(cost)) {
+        showNotification("Je hebt niet genoeg goud (500 nodig) om een cadeau te sturen.", 'error');
+        return;
+    }
+
+    payCost(cost);
+    tribe.relation += 10;
+    if (tribe.relation > 100) tribe.relation = 100;
+
+    showNotification(`Je hebt een royaal cadeau gestuurd naar ${tribe.name}. De relatie is verbeterd!`, 'success');
+    updateUI();
+}
+
 /*
 function attackTribe(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
@@ -1079,17 +923,13 @@ function triggerCounterAttack(tribeKey) {
         const loss = Math.floor(game.resources.gold.amount * 0.1); // Verlies 10% goud bij een tegenaanval
         game.resources.gold.amount = Math.max(0, game.resources.gold.amount - loss);
 
-        let msg = `❌ TEGENAANVAL DOORBROKEN!\n\nDe vijand viel direct terug aan met Kracht ${tribeAttack}, maar jouw verdediging was slechts Kracht ${Math.floor(game.military.defensePower)}.\n\nZe hebben als straf ${loss} goud geplunderd.`;
-        if (unitsLostStr !== "") {
-            msg += `\n\n💀 Verliezen tijdens de verdediging:\n${unitsLostStr}`;
-        }
-        alert(msg);
+        let msg = `❌ TEGENAANVAL DOORBROKEN! De vijand viel direct terug aan met Kracht ${tribeAttack}. Ze hebben ${loss} goud geplunderd.`;
+        if (unitsLostStr !== "") msg += ` Verliezen: ${unitsLostStr.replace(/\n/g, ', ')}`;
+        if (typeof addToLog === 'function') addToLog(msg, 'warning');
     } else {
-        let msg = `🛡️ TEGENAANVAL AFGESLAGEN!\n\nJe verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield gelukkig stand tegen de furieuze tegenaanval (Kracht ${tribeAttack}).`;
-        if (unitsLostStr !== "") {
-            msg += `\n\n💀 Verliezen tijdens de strijd:\n${unitsLostStr}`;
-        }
-        alert(msg);
+        let msg = `🛡️ TEGENAANVAL AFGESLAGEN! Je verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de tegenaanval (Kracht ${tribeAttack}).`;
+        if (unitsLostStr !== "") msg += ` Verliezen: ${unitsLostStr.replace(/\n/g, ', ')}`;
+        if (typeof addToLog === 'function') addToLog(msg, 'success');
     }
     recalcMilitary();
     updateUI();
@@ -1149,23 +989,17 @@ function attackTribe(tribeKey) {
         game.resources.stone.amount += loot.stone;
         game.resources.gold.amount += loot.gold;
 
-        let winMsg = `⚔️ OVERWINNING!\n\nJe hebt de verdediging van ${tribe.name} doorbroken!\n\nBuit:\n- ${loot.wood} Hout\n- ${loot.stone} Steen\n- ${loot.gold} Goud\n\nZe betalen vanaf nu ook elk uur tribuut.`;
-        if (unitsLostStr !== "") {
-            winMsg += `\n\n💀 Verliezen tijdens de strijd:\n${unitsLostStr}`;
-        }
-
-        alert(winMsg);
+        let winMsg = `⚔️ OVERWINNING op ${tribe.name}! Buit: ${loot.wood} Hout, ${loot.stone} Steen, ${loot.gold} Goud.`;
+        if (unitsLostStr !== "") winMsg += ` Verliezen: ${unitsLostStr.replace(/\n/g, ', ')}`;
+        if (typeof addToLog === 'function') addToLog(winMsg, 'success');
 
         tribe.isConquered = true;
         tribe.tributeAmount = 10; // 10 goud per seconde
         tribe.rebellionLevel = 0; // Begint op 0%
     } else {
-        let loseMsg = `❌ NEDERLAAG!\n\nJe aanvalsleger (Kracht: ${Math.floor(game.military.attackPower)}) was niet sterk genoeg om door de verdediging van ${tribe.name} (Kracht: ${tribeDefense}) heen te breken.\n\nJe trekt je troepen terug.`;
-        if (unitsLostStr !== "") {
-            loseMsg += `\n\n💀 Zware verliezen geleden tijdens aanval:\n${unitsLostStr}`;
-        }
-
-        alert(loseMsg);
+        let loseMsg = `❌ NEDERLAAG tegen ${tribe.name}! Je aanval (Kracht ${Math.floor(game.military.attackPower)}) faalde.`;
+        if (unitsLostStr !== "") loseMsg += ` Verliezen: ${unitsLostStr.replace(/\n/g, ', ')}`;
+        if (typeof addToLog === 'function') addToLog(loseMsg, 'warning');
 
         // Nu slaan ze meteen terug op je stad!
         triggerCounterAttack(tribeKey);
@@ -1207,21 +1041,16 @@ function triggerEnemyAttack(tribeKey) {
     }
 
     if (game.military.defensePower >= enemyPower) {
-        let msg = `🛡️ AANVAL AFGESLAGEN!\n\nJouw verdedigingsleger (Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen de invasie van ${tribe.name} (Kracht ${enemyPower}).`;
-        if (unitsLostStr !== "") {
-            msg += `\n\n💀 Verliezen tijdens de strijd:\n${unitsLostStr}`;
-        }
-        alert(msg);
+        let msg = `🛡️ AANVAL AFGESLAGEN! Jouw verdediging (Kracht ${Math.floor(game.military.defensePower)}) hield stand tegen ${tribe.name} (Kracht ${enemyPower}).`;
+        if (unitsLostStr !== "") msg += ` Verliezen: ${unitsLostStr.replace(/\n/g, ', ')}`;
+        if (typeof addToLog === 'function') addToLog(msg, 'success');
     } else {
         const goldLost = Math.floor(game.resources.gold.amount * 0.2);
         game.resources.gold.amount -= goldLost;
 
-        // Extra straf is dat het verdedigingsleger verslagen is en goud is gestolen
-        let msg = `❌ VERDEDIGING DOORBROKEN!\n\nJe verdediging (Kracht ${Math.floor(game.military.defensePower)}) was niet bestand tegen de aanval van ${tribe.name} (Kracht ${enemyPower}).\n\nZe hebben ${goldLost} goud geplunderd.`;
-        if (unitsLostStr !== "") {
-            msg += `\n\n💀 Zware verliezen geleden:\n${unitsLostStr}`;
-        }
-        alert(msg);
+        let msg = `❌ VERDEDIGING DOORBROKEN! ${tribe.name} (Kracht ${enemyPower}) plunderde ${goldLost} goud.`;
+        if (unitsLostStr !== "") msg += ` Verliezen: ${unitsLostStr.replace(/\n/g, ', ')}`;
+        if (typeof addToLog === 'function') addToLog(msg, 'warning');
     }
     recalcMilitary();
     updateUI();
@@ -1237,7 +1066,7 @@ function trainUnit(unitKey) {
     const availableSoldiers = baseSoldiers - totalTrained;
 
     if (availableSoldiers < 1) {
-        alert("Geen ongetrainde Basis Soldaten beschikbaar! Wijs meer inwoners toe aan de Kazerne.");
+        if (typeof addToLog === 'function') addToLog("Geen ongetrainde Basis Soldaten beschikbaar! Wijs meer inwoners toe aan de Kazerne.", 'warning');
         return;
     }
 
@@ -1393,7 +1222,9 @@ function checkRebellions() {
 
 function triggerRebellion(tribeKey) {
     const tribe = game.diplomacy.discoveredTribes[tribeKey];
-    alert(`🚨 REBELLIE! De bevolking van ${tribe.name} is in opstand gekomen! Je ontvangt geen tribuut meer en moet ze opnieuw onderwerpen.`);
+    if (typeof addToLog === 'function') {
+        addToLog(`🚨 REBELLIE! De bevolking van ${tribe.name} is in opstand gekomen! Je ontvangt geen tribuut meer.`, 'warning');
+    }
 
     tribe.isConquered = false;
     tribe.rebellionLevel = 0;
@@ -1414,38 +1245,35 @@ function performPrestige(isEvolution = false) {
         if (currentEra === 1) {
             if (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1 && game.resources.population.amount >= 50) {
                 newEra = 2;
-                earnedPoints = 10 + calculatePrestigePoints(); // Beloning voor overgang naar Tijdperk 2 + je stad score
+                earnedPoints = 10 + calculatePrestigePoints();
             } else {
-                return; // Niet voldaan aan de eisen
+                return;
             }
         } else {
             if (game.resources.population.amount >= 100) {
                 newEra = currentEra + 1;
                 earnedPoints = calculatePrestigePoints();
             } else {
-                return; // Niet voldaan aan de eisen
+                return;
             }
         }
     } else {
         earnedPoints = calculatePrestigePoints();
-        newEra = 1; // Volledige prestige: terug naar Tijdperk 1
+        newEra = 1;
     }
 
     // 2. Punten bijschrijven
     game.prestige.points += earnedPoints;
     game.prestige.totalEarned += earnedPoints;
 
-    // 3. Prestige Upgrades & Punten veiligstellen
-    checkAchievements(); // Forceer een check voor eventuele gemiste achievements (bijv. Vuursteen Monument nét gebouwd)
+    // 3. Prestige data veiligstellen
     const permanentPrestige = JSON.parse(JSON.stringify(game.prestige));
 
-    // Bewaar nieuw gespeelde stromen in de prestige progressie
+    // Bewaar nieuw gespeelde stromen
     if (game.currentStreams) {
         if (!permanentPrestige.unlockedStreams) permanentPrestige.unlockedStreams = {};
         for (let e in game.currentStreams) {
-            if (!permanentPrestige.unlockedStreams[e]) {
-                permanentPrestige.unlockedStreams[e] = [];
-            }
+            if (!permanentPrestige.unlockedStreams[e]) permanentPrestige.unlockedStreams[e] = [];
             const activeStream = game.currentStreams[e];
             if (!permanentPrestige.unlockedStreams[e].includes(activeStream)) {
                 permanentPrestige.unlockedStreams[e].push(activeStream);
@@ -1456,7 +1284,7 @@ function performPrestige(isEvolution = false) {
     const permanentAchievements = game.achievements ? JSON.parse(JSON.stringify(game.achievements)) : {};
     const permanentTribes = (game.diplomacy && game.diplomacy.discoveredTribes) ? JSON.parse(JSON.stringify(game.diplomacy.discoveredTribes)) : {};
 
-    // Bewaar tijdelijk de gekozen streams als dit een Evolutie is (geen volledige Prestige)
+    // Bewaar tijdelijk de gekozen streams als dit een Evolutie is
     let preservedStreams = {};
     if (newEra > currentEra && game.currentStreams) {
         preservedStreams = JSON.parse(JSON.stringify(game.currentStreams));
@@ -1474,16 +1302,20 @@ function performPrestige(isEvolution = false) {
         game.currentStreams = preservedStreams;
     }
 
-    // 6. "Starter Pack" bonus uitdelen
+    // 6. Forceer herberekening van alle caps en rates op de NIEUWE staat
+    recalcLimits();
+    recalcRates();
+
+    // 7. "Starter Pack" bonus uitdelen
     const starterLevel = game.prestige.upgrades.starter_pack.level;
     if (starterLevel > 0) {
         const bonus = starterLevel * 500;
-        game.resources.wood.amount += bonus; game.resources.wood.max += bonus;
-        game.resources.stone.amount += bonus; game.resources.stone.max += bonus;
-        game.resources.food.amount += bonus; game.resources.food.max += bonus;
+        addResource('wood', bonus);
+        addResource('stone', bonus);
+        addResource('food', bonus);
     }
 
-    // 7. Opslaan en herladen
+    // 8. Opslaan en herladen
     saveGame();
     if (newEra > currentEra) {
         alert(`Gefeliciteerd! Je stam is geëvolueerd naar Tijdperk ${newEra}! Je ontvangt ${earnedPoints} prestige punten.`);
@@ -1491,7 +1323,7 @@ function performPrestige(isEvolution = false) {
         alert(`Je bent herboren in Tijdperk ${newEra}! Je start nu met ${game.prestige.points} prestige punten en je bonussen zijn actief.`);
     }
 
-    window.location.reload(); // Dit dwingt de browser alles vers in te laden
+    window.location.reload(); 
 }
 function buyPrestigeUpgrade(key) {
     const upg = game.prestige.upgrades[key];
@@ -1502,6 +1334,25 @@ function buyPrestigeUpgrade(key) {
         renderPrestige(); // UI verversen
     }
 }
+
+// Expose functions to window for UI access
+window.buyBuilding = buyBuilding;
+window.buyResearch = buyResearch;
+window.assignJob = assignJob;
+window.startExpedition = startExpedition;
+window.toggleTradeRoute = toggleTradeRoute;
+window.demandTribute = demandTribute;
+window.formAlliance = formAlliance;
+window.sendGift = sendGift;
+window.attackTribe = attackTribe;
+window.trainUnit = trainUnit;
+window.untrainUnit = untrainUnit;
+window.assignUnit = assignUnit;
+window.performPrestige = performPrestige;
+window.buyPrestigeUpgrade = buyPrestigeUpgrade;
+window.setBuyAmount = setBuyAmount;
+window.saveGame = saveGame;
+window.hardReset = hardReset;
 
 // Helper functies voor kosten
 function getCost(item) {
@@ -1525,8 +1376,11 @@ function payCost(cost) {
 
 function setBuyAmount(amount) {
     buyAmount = amount;
-    renderJobs(); // Herteken de jobs om de knoppen te updaten
-    renderBuildings(); // Herteken de gebouwen om de knoppen te updaten
+    if (typeof renderJobs === 'function') renderJobs(); // Herteken de jobs om de knoppen te updaten
+    if (typeof renderBuildings === 'function') renderBuildings(); // Herteken de gebouwen om de knoppen te updaten
     // Optioneel: voeg een 'active' class toe aan de knoppen in de UI
 }
+
+// Initial rates calculation
+recalcRates();
 

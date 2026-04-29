@@ -1,119 +1,96 @@
 <!DOCTYPE html>
 <html lang="nl">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Civ Builder Incremental</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.4">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civ Builder: Kittens Edition</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <!-- Unified Horizontale Navigatie (Desktop: Links, Mobiel: Onder) -->
-    <nav id="unified-nav-container" class="unified-bottom-bar">
-        <!-- Wordt dynamisch opgebouwd in ui.js -->
-    </nav>
+    <div class="game-container">
+        <!-- LEFT COLUMN: Resources -->
+        <aside class="col-left">
+            <h3>Grondstoffen</h3>
+            <div id="left-resources">
+                <!-- Resources will be rendered here -->
+            </div>
+        </aside>
 
-    <div class="main-column">
-        <div id="resource-bar" class="horizontal-scroll">
-            <!-- Wordt dynamisch gevuld door updateResourceBar in ui.js -->
-        </div>
+        <!-- MIDDLE COLUMN: Content -->
+        <main class="col-mid">
+            <nav class="top-nav" id="main-nav">
+                <button onclick="showTab('jobs')" id="nav-jobs" class="active">Stad</button>
+                <button onclick="showTab('resources_tab')" id="nav-resources_tab">Grondstoffen</button>
+                <button onclick="showTab('population')" id="nav-population">Bevolking</button>
+                <button onclick="showTab('research')" id="nav-research">Onderzoek</button>
+                <button onclick="showTab('explore')" id="nav-explore">Verkennen</button>
+                <button onclick="showTab('diplomacy')" id="nav-diplomacy">Diplomatie</button>
+                <button onclick="showTab('military')" id="nav-military">Militair</button>
+                <button onclick="showTab('prestige')" id="nav-prestige">Tijdperken</button>
+                <button onclick="showTab('debug')" id="nav-debug">Voortgang</button>
+                <button onclick="showTab('settings')" id="nav-settings">Instellingen</button>
+            </nav>
+<div class="tab-content-container">
+    <div id="tab-jobs" class="tab-content active">
+    </div>
 
-        <div id="tab-content">
-            <div class="scroll-container">
-                <main>
-                    <section id="tab-jobs" class="tab-content active">
-                        <h1>Handmatige Jobs & Gebouwen</h1>
-
-                        <div class="panel" id="manual-actions-panel">
-                            <h3>Handmatige Acties</h3>
-                            <div id="manual-actions-container" class="action-grid"
-                                style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;"></div>
-                        </div>
-
-                        <div class="panel">
-                            <h3>Gebouwen (Creëer werkplekken)</h3>
-                            <div id="building-list" class="building-grid"></div>
-                        </div>
-                    </section>
-                </main>
+    <div id="tab-resources_tab" class="tab-content">
+        <h2>Grondstoffen Analyse</h2>
+        <p>Overzicht van productie, consumptie en multipliers.</p>
+        <div id="resources-analysis-container"></div>
+    </div>
 
 
-                <section id="tab-resources" class="tab-content">
-                    <h1>Goederen Overzicht</h1>
-                    <div id="resources-container" style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- Wordt gevuld door renderResources() -->
-                    </div>
-                </section>
-
-                <section id="tab-population" class="tab-content">
-                    <h1>Bevolking Management</h1>
-
-                    <!-- Populatie Dashboard -->
-                    <div class="panel"
-                        style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--accent);">
-                        <div>
-                            <div style="font-size: 0.9em; color: #a6adc8;">Vrije Bevolking</div>
-                            <div style="font-size: 2em; font-weight: bold; color: var(--green);" id="pop-idle">0</div>
-                        </div>
-                        <div style="border-right: 1px solid rgba(255,255,255,0.1); margin: 0 15px;"></div>
-                        <div>
-                            <div style="font-size: 0.9em; color: #a6adc8;">Totale Bevolking</div>
-                            <div style="font-size: 2em; font-weight: bold;" id="pop-total">0</div>
-                        </div>
-                    </div>
-
-                    <h3>Banen Toewijzen</h3>
+                <div id="tab-population" class="tab-content">
+                    <h2>Bevolking</h2>
+                    <p>Vrije inwoners: <span id="pop-idle">0</span> / Totaal: <span id="pop-total">0</span></p>
                     <div id="jobs-container"></div>
-                </section>
+                </div>
 
-                <section id="tab-research" class="tab-content">
-                    <h1>Research</h1>
-                    <p>WIP</p>
-                </section>
-                <section id="tab-explore" class="tab-content">
-                    <h1>Verkennen</h1>
-                    <p>WIP</p>
-                </section>
-                <section id="tab-diplomacy" class="tab-content">
-                    <h1>Diplomatie</h1>
-                    <p>WIP</p>
-                </section>
-                <section id="tab-military" class="tab-content">
-                    <h1>Leger</h1>
-                    <p>WIP</p>
-                </section>
-                <section id="tab-prestige" class="tab-content">
-                    <h1>Prestige</h1>
-                    <p>WIP</p>
-                </section>
-                <section id="tab-settings" class="tab-content">
-                    <h1>Instellingen</h1>
-                    <p>WIP</p>
-                </section>
-                <section id="tab-state" class="tab-content">
-                    <!-- Wordt dynamisch gevuld door renderStateTab() in ui.js -->
-                </section>
-            <!-- Einde span-content / scroll container -->
-            </div> 
+                <div id="tab-research" class="tab-content"></div>
+                <div id="tab-explore" class="tab-content"></div>
+                <div id="tab-diplomacy" class="tab-content"></div>
+                <div id="tab-military" class="tab-content"></div>
+                <div id="tab-prestige" class="tab-content"></div>
+                <div id="tab-debug" class="tab-content">
+                    <h2>Ontwikkeling & Voortgang</h2>
+                    <p>Overzicht van alle game-elementen en hun unlocks.</p>
+                    <div id="debug-container"></div>
+                </div>
+                <div id="tab-settings" class="tab-content"></div>
+            </div>
+        </main>
 
-            <!-- Desktop navigatie knoppen -->
-            <button class="nav-arrow left-arrow" onclick="changeTabDirection(-1)" title="Vorige Tab"
-                aria-label="Vorige">❮</button>
-            <button class="nav-arrow right-arrow" onclick="changeTabDirection(1)" title="Volgende Tab"
-                aria-label="Volgende">❯</button>
+        <!-- RIGHT COLUMN: Log -->
+        <aside class="col-right">
+            <div id="calendar-display">
+                Dag 0, Jaar 0 (Lente)
+            </div>
+            <div id="log-container">
+                <div class="log-msg">Welkom bij je nieuwe beschaving.</div>
+            </div>
+        </aside>
+    </div>
 
-            <div id="modal-container" style="display:none;"></div>
-        </div>
-    </div> <!-- Einde main-column -->
+    <!-- Scripts -->
+    <script src="state.js"></script>
+    <script src="engine.js"></script>
+    <script src="ui/ui_utils.js"></script>
+    <script src="ui/ui_events.js"></script>
+    <script src="ui/ui_resources.js"></script>
+    <script src="ui/ui_city.js"></script>
+    <script src="ui/ui_population.js"></script>
+    <script src="ui/ui_research.js"></script>
+    <script src="ui/ui_explore.js"></script>
+    <script src="ui/ui_diplomacy.js"></script>
+    <script src="ui/ui_military.js"></script>
+    <script src="ui/ui_prestige.js"></script>
+    <script src="ui/ui_settings.js"></script>
+    <script src="ui/ui_debug.js"></script>
+    <script src="ui.js"></script>
+    <script src="main.js"></script>
 
-    <script src="state.js?v=1.4"></script>
-    <script src="engine.js?v=1.4"></script>
-    <script src="ui.js?v=1.4"></script>
-    <script src="main.js?v=1.4"></script>
+    <!-- Modal for Era Selection (Hidden by default) -->
+    <div id="modal-container" style="display:none;"></div>
 </body>
-
 </html>
