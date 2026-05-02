@@ -2,6 +2,8 @@
 // --- INITIALISATIE ---
 document.addEventListener('DOMContentLoaded', () => {
     loadGame();
+    recalcRates(); // Forceer berekening van limieten en rates direct na laden
+    checkUnlocks();
     handleOfflineProgress();
     updateUI();
     showTab('jobs');
@@ -144,22 +146,5 @@ function importGame() {
         }
     } catch (e) {
         alert("❌ Ongeldige savecode! Check of je de hele code hebt gekopieerd.");
-    }
-}
-
-// HARDE RESET: Alles weg, inclusief Prestige
-function hardReset() {
-    const firstCheck = confirm("⚠️ GEVAAR: Dit wist je VOLLEDIGE voortgang, INCLUSIEF al je Prestige punten en upgrades.\n\nKlik alleen op OK als je letterlijk vanaf NUL wilt beginnen.");
-
-    if (firstCheck) {
-        const checkWord = prompt("Om te bevestigen dat dit geen ongeluk is, typ het woord RESET in hoofdletters:");
-
-        if (checkWord === "RESET") {
-            localStorage.removeItem('myGameSave');
-            alert("🧨 Je hele beschaving is vernietigd. De begin der tijden start nu opnieuw.");
-            window.location.reload();
-        } else {
-            alert("Harde reset geannuleerd. Je beschaving is veilig.");
-        }
     }
 }

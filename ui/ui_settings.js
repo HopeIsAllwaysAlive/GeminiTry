@@ -5,7 +5,7 @@ function renderSettings() {
         <h2>Instellingen</h2>
         <div class="panel">
             <p>Beheer je voortgang. Een Hard Reset wist alles, inclusief prestige.</p>
-            <button class="btn" onclick="saveGame()">Spel Opslaan</button>
+            <button class="btn" onclick="saveGame(true)">Spel Opslaan</button>
             <button class="btn" onclick="exportGame()">Export Save (Copy)</button>
             <button class="btn" onclick="importGame()">Import Save</button>
             <hr style="border-color: #333; margin: 20px 0;">

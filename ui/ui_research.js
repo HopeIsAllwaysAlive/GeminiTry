@@ -49,7 +49,9 @@ function renderResearchList() {
             continue;
         }
 
-        if (!r.requirement()) continue;
+        if (r.locked) continue; // Verberg uitgesloten onderzoek
+
+        if (r.requirement && !r.requirement()) continue;
         
         const canBuy = canAfford(r.cost);
         let costStr = Object.entries(r.cost).map(([res, amt]) => `${amt} ${game.resources[res]?.name || res}`).join(', ');

@@ -53,8 +53,8 @@ function updateUI() {
         case 'military':
             renderMilitary();
             break;
-        case 'prestige':
-            renderPrestige();
+        case 'workshop':
+            renderWorkshop();
             break;
         case 'debug':
             renderDebug();
@@ -121,8 +121,10 @@ function updateTabVisibility() {
         } else if (id === 'military') {
             const hasSoldiers = game.jobs.soldier && game.jobs.soldier.count > 0;
             shouldShow = (game.buildings.barracks && game.buildings.barracks.count > 0) || hasSoldiers;
-        } else if (id === 'prestige') {
-            shouldShow = (game.era > 1 || (game.prestige && game.prestige.totalEarned > 0) || (game.buildings.flint_monument && game.buildings.flint_monument.count >= 1));
+        } else if (id === 'workshop') {
+            shouldShow = (game.buildings.wood_workshop && game.buildings.wood_workshop.count > 0);
+        } else if (id === 'debug') {
+            shouldShow = true;
         }
 
         btn.style.display = shouldShow ? 'inline-block' : 'none';

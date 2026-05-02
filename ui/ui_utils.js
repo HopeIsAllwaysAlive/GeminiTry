@@ -26,15 +26,3 @@ function getResourceIcon(key) {
     const icons = { wood: '🌲', stone: '🧱', gold: '💰', food: '🍞', population: '👥', beam: '🪵', brick: '🧱', intel: '👁️', researchPoints: '🧪' };
     return icons[key] || '📦';
 }
-
-function findJobKeyForResource(resourceKey) {
-    for (let key in game.jobs) {
-        if (game.jobs[key].effect && game.jobs[key].effect[resourceKey] > 0) return key;
-    }
-    return null;
-}
-
-function findJobForResource(resourceKey) {
-    const key = findJobKeyForResource(resourceKey);
-    return key ? game.jobs[key] : null;
-}
