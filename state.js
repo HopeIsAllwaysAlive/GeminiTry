@@ -21,24 +21,24 @@ let game = {
     stats: { battlesWon: 0, treatiesSigned: 0, aggressiveActions: 0 },
 
     resources: {
-        food: { name: "Voedsel", amount: 50, max: 250, perSec: 0, manualGain: 1, discovered: true },
-        wood: { name: "Hout", amount: 50, max: 250, perSec: 0, manualGain: 1, discovered: true },
-        beam: { name: "Balken", amount: 0, max: 50, perSec: 0, discovered: false },
-        stone: { name: "Steen", amount: 0, max: 150, perSec: 0, manualGain: 1, discovered: true },
-        brick: { name: "Bakstenen", amount: 0, max: 50, perSec: 0, discovered: false },
-        population: { name: "Bevolking", amount: 2, max: 2, perSec: 0, discovered: true },
-        gold: { name: "Goud", amount: 0, max: 1000, perSec: 0, discovered: false },
-        researchPoints: { name: "Research", amount: 0, max: 0, perSec: 0, discovered: false },
-        intel: { name: "Intel", amount: 0, max: 100, perSec: 0, discovered: false }
+        food: { name: t("res_food"), amount: 50, max: 250, perSec: 0, manualGain: 1, discovered: true },
+        wood: { name: t("res_wood"), amount: 50, max: 250, perSec: 0, manualGain: 1, discovered: true },
+        beam: { name: t("res_beam"), amount: 0, max: 50, perSec: 0, discovered: false },
+        stone: { name: t("res_stone"), amount: 0, max: 150, perSec: 0, manualGain: 1, discovered: true },
+        brick: { name: t("res_brick"), amount: 0, max: 50, perSec: 0, discovered: false },
+        population: { name: t("res_population"), amount: 2, max: 2, perSec: 0, discovered: true },
+        gold: { name: t("res_gold"), amount: 0, max: 1000, perSec: 0, discovered: false },
+        researchPoints: { name: t("res_research"), amount: 0, max: 0, perSec: 0, discovered: false },
+        intel: { name: t("res_intel"), amount: 0, max: 100, perSec: 0, discovered: false }
     },
     calendar: {
         day: 0,
         year: 0,
         season: 0 // 0: Spring, 1: Summer, 2: Autumn, 3: Winter
     },
-    seasonNames: ["Lente", "Zomer", "Herfst", "Winter"],
+    seasonNames: [t("season_spring"), t("season_summer"), t("season_autumn"), t("season_winter")],
     jobs: {
-        gatherer: { name: "Verzamelaar", count: 0, max: 2, effect: { food: 0.5, wood: 0.3, stone: 0.1 }, unlocked: true, desc: "Een all-round verzamelaar van basis grondstoffen." },
+        gatherer: { name: "Verzamelaar", count: 0, max: 2, effect: { food: 1.5, wood: 0.3, stone: 0.1 }, unlocked: true, desc: "Een all-round verzamelaar van basis grondstoffen." },
         farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
         woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -1 }, unlocked: false },
         woodworker: { name: "Timmerman", count: 0, max: 0, effect: { wood: -3, food: -1, beam: 0.5 }, unlocked: false },
@@ -694,294 +694,111 @@ let game = {
         }
     },
     settings: {
-        showManualActions: true
+        showManualActions: true,
+        language: 'nl'
     },
+    lastTick: Date.now(),
     lastSave: Date.now()
 };
 
 function getInitialState() {
     return {
         era: 1,
+        traits: [],
         currentStreams: {},
+        stats: { battlesWon: 0, treatiesSigned: 0, aggressiveActions: 0 },
         calendar: { day: 0, year: 0, season: 0 },
-        seasonNames: ["Lente", "Zomer", "Herfst", "Winter"],
+        seasonNames: [t("season_spring"), t("season_summer"), t("season_autumn"), t("season_winter")],
         resources: {
-            wood: { name: "Hout", amount: 50, max: 250, perSec: 0, manualGain: 1, discovered: true },
-            food: { name: "Voedsel", amount: 50, max: 250, perSec: 0, manualGain: 1, discovered: true },
-            stone: { name: "Steen", amount: 0, max: 150, perSec: 0, manualGain: 1, discovered: true },
-            beam: { name: "Balken", amount: 0, max: 50, perSec: 0, discovered: false },
-            brick: { name: "Bakstenen", amount: 0, max: 50, perSec: 0, discovered: false },
-            gold: { name: "Goud", amount: 0, max: 1000, perSec: 0, discovered: false },
-            population: { name: "Bevolking", amount: 2, max: 2, perSec: 0, discovered: true },
-            researchPoints: { name: "Research", amount: 0, max: 0, perSec: 0, discovered: false },
-            intel: { name: "Intel", amount: 0, max: 100, perSec: 0, discovered: false }
+            food: { amount: 50, discovered: true },
+            wood: { amount: 50, discovered: true },
+            stone: { amount: 0, discovered: true },
+            beam: { amount: 0, discovered: false },
+            brick: { amount: 0, discovered: false },
+            gold: { amount: 0, discovered: false },
+            population: { amount: 2, discovered: true },
+            researchPoints: { amount: 0, discovered: false },
+            intel: { amount: 0, discovered: false }
         },
-        buildings: {
-            flint_monument: { name: "Vuursteen Monument", count: 0, cost: { wood: 2500, stone: 1000, food: 1000 }, provides: {}, desc: "Een machtig monument. Het voltooien hiervan luidt een nieuw tijdperk in!", unlocked: true },
-            hunters_camp: { name: "Jagerskamp", count: 0, cost: { wood: 150, food: 50 }, provides: { job_hunter: 2 }, desc: "Werkplek voor jagers. (+Voedsel, +Intel)", unlocked: false, stream: "Jagen" },
-            fire_pit: { name: "Vuurplaats", count: 0, cost: { wood: 250, stone: 50 }, provides: { max_population: 5, job_firekeeper: 1 }, desc: "Houdt dieren weg. (+Bevolking, +Research)", unlocked: false, stream: "Vuurbeheersing" },
-            smokehouse: { name: "Rookhuis", count: 0, cost: { wood: 500, stone: 150 }, provides: { max_food: 300 }, desc: "Maakt voedsel lang houdbaar.", unlocked: false, stream: "Vuurbeheersing" },
-            fishing_pier: { name: "Vissteiger", count: 0, cost: { wood: 200, food: 50 }, provides: { job_fisher: 2 }, desc: "Een plek om enorme hoeveelheden vis te vangen.", unlocked: false, stream: "Vissen" },
-            boat_builder: { name: "Botenbouwer", count: 0, cost: { wood: 600 }, provides: { job_fisher: 3, max_wood: 100 }, desc: "Kano's voor dieper water.", unlocked: false, stream: "Vissen" },
-            guard_tower: { name: "Uitkijktoren", count: 0, cost: { wood: 300, stone: 100 }, provides: { job_scout_job: 5, max_intel: 100 }, desc: "Versterkte verkenning en veiligheid.", unlocked: false },
-            scribe_hut: { name: "Schrijvershut", count: 0, cost: { wood: 200, food: 100 }, provides: { job_scribe: 2, max_researchPoints: 500 }, desc: "Klerken verwerken informatie sneller.", unlocked: false },
-            library: { name: "Bibliotheek", count: 0, cost: { wood: 500, stone: 200 }, provides: { job_teacher: 5, max_researchPoints: 1500 }, desc: "Het absolute kenniscentrum van Tijdperk 2.", unlocked: false },
-            market_stall: { name: "Marktkraam", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_merchant: 2 }, desc: "Beginnende ruilhandel genereert wat goud.", unlocked: false },
-            trading_post: { name: "Handelspost", count: 0, cost: { wood: 400, stone: 200 }, provides: { max_gold: 1500, job_merchant: 5 }, desc: "Knooppunt voor verre handelaren.", unlocked: false },
-            iron_mine: { name: "IJzermijn", count: 0, cost: { wood: 500, stone: 500 }, provides: { job_blacksmith: 2 }, desc: "Een diepe mijn voor sterker metaal.", unlocked: false },
-            forge: { name: "Smidse", count: 0, cost: { brick: 200, beam: 200, gold: 500 }, provides: { max_brick: 1000, job_blacksmith: 5 }, desc: "Hier worden ijzeren voorwerpen gesmeed.", unlocked: false },
-            academy: { name: "Academie", count: 0, cost: { wood: 800, stone: 400, gold: 200 }, provides: { job_philosopher: 2, max_researchPoints: 2000 }, desc: "Een plek voor denkers.", unlocked: false },
-            forum: { name: "Forum", count: 0, cost: { brick: 500, gold: 1000 }, provides: { job_philosopher: 5, max_intel: 500 }, desc: "Publiek debat versterkt de kennis.", unlocked: false },
-            harbor: { name: "Haven", count: 0, cost: { beam: 500, stone: 1000, gold: 2000 }, provides: { max_gold: 5000, job_navigator: 5 }, desc: "Een enorm handelsknooppunt over zee.", unlocked: false },
-            colosseum: { name: "Colosseum", count: 0, cost: { brick: 2000, stone: 5000 }, provides: { job_gladiator: 5, max_population: 50 }, desc: "Gladiatorengevechten leveren massief goud op.", unlocked: false },
-            siege_workshop: { name: "Belegeringswerkplaats", count: 0, cost: { wood: 3000, beam: 1000 }, provides: { job_gladiator: 2, max_gold: 5000 }, desc: "Bouwt wapens voor de verovering.", unlocked: false },
-            senate_house: { name: "Senaatsgebouw", count: 0, cost: { stone: 2000, gold: 3000 }, provides: { job_senator: 5, max_intel: 1000 }, desc: "Het politieke hart van je rijk.", unlocked: false },
-            public_baths: { name: "Badhuis", count: 0, cost: { stone: 4000, brick: 1000 }, provides: { max_population: 100, job_senator: 2 }, desc: "Verbetert de publieke hygiëne enorm.", unlocked: false },
-            paved_road: { name: "Verharde Weg", count: 0, cost: { stone: 5000, brick: 5000 }, provides: { job_engineer: 3, max_stone: 10000 }, desc: "Grootschalige logistiek.", unlocked: false },
-            aqueduct: { name: "Aquaduct", count: 0, cost: { brick: 8000, gold: 2000 }, provides: { max_food: 10000, job_engineer: 2 }, desc: "Voorziet steden van vers water.", unlocked: false },
-            hut: { name: "Hut", count: 1, cost: { wood: 50 }, provides: { max_population: 2 }, desc: "Woonruimte voor je bevolking.", unlocked: true },
-            house: { name: "Huis", count: 0, cost: { beam: 150, brick: 200 }, provides: { max_population: 5 }, desc: "Een stevig huis voor je inwoners.", unlocked: false },
-            farm_plot: { name: "Akker", count: 0, cost: { wood: 100, stone: 40 }, provides: { job_farmer: 2, max_food: 20 }, desc: "Grond om voedsel te verbouwen.", unlocked: true },
-            lumber_camp: { name: "Houthakkerskamp", count: 0, cost: { wood: 150 }, provides: { job_woodcutter: 2, max_wood: 20 }, desc: "Werkplek voor houthakkers.", unlocked: true },
-            wood_workshop: { name: "Houtzagerij", count: 0, cost: { wood: 1500, stone: 500 }, provides: { job_woodworker: 1, max_beam: 50 }, desc: "Verbetert houtproductie en opslag.", unlocked: false },
-            stone_workshop: { name: "Steenoven", count: 0, cost: { wood: 1500, stone: 2000 }, provides: { job_stoneworker: 1, max_brick: 100 }, desc: "Verbetert steenproductie en opslag.", unlocked: false },
-            warehouse: { name: "Pakhuis", count: 0, cost: { wood: 500, stone: 500 }, provides: { max_wood: 100, max_food: 100, max_stone: 100 }, desc: "Vergroot opslagcapaciteit voor basis grondstoffen.", unlocked: false },
-            quarry: { name: "Steenhouwerij", count: 0, cost: { wood: 200, food: 200 }, provides: { job_miner: 2, max_stone: 10 }, desc: "Plek om steen te winnen.", unlocked: false },
-            school: { name: "School", count: 0, cost: { wood: 100, stone: 50 }, provides: { job_teacher: 1, max_researchPoints: 100 }, desc: "Een plek waar leraren research genereren.", unlocked: false },
-            irrigation_system: { name: "Irrigatie Systeem", count: 0, cost: { wood: 50, stone: 100, gold: 50 }, provides: { max_food: 500 }, desc: "Verbetert de watertoevoer naar de akkers.", unlocked: false },
-            scout_post: { name: "Verkennerspost", count: 0, cost: { wood: 80, food: 40 }, provides: { job_scout_job: 3, max_intel: 50 }, desc: "Traint inwoners om de wereld te verkennen en vergroot opslag voor Intel (+50).", unlocked: false },
-            barracks: { name: "Kazerne", count: 0, cost: { wood: 200, stone: 300, gold: 100 }, provides: { job_soldier: 20 }, desc: "Huisvesting voor je leger.", unlocked: false },
-            bank: { name: "Bank", count: 0, cost: { wood: 200, stone: 200, gold: 500 }, provides: { max_gold: 2000, job_banker: 1 }, desc: "Vergroot de opslagcapaciteit voor goud en genereert rente.", unlocked: false },
-            silo: { name: "Silo", count: 0, cost: { wood: 100, stone: 50 }, provides: { max_food: 500 }, desc: "Een grote opslagplaats voor voedsel.", unlocked: false }
-        },
-        jobs: {
-            gatherer: { name: "Verzamelaar", count: 0, max: 2, effect: { food: 0.5, wood: 0.3, stone: 0.1 }, unlocked: true, desc: "Een all-round verzamelaar van basis grondstoffen." },
-            farmer: { name: "Boer", count: 0, max: 0, effect: { food: 2 }, unlocked: false },
-            woodcutter: { name: "Houthakker", count: 0, max: 0, effect: { wood: 1, food: -1 }, unlocked: false },
-            woodworker: { name: "Timmerman", count: 0, max: 0, effect: { wood: -3, food: -1, beam: 0.5 }, unlocked: false },
-            miner: { name: "Mijnwerker", count: 0, max: 0, effect: { stone: 0.8, food: -1.5 }, unlocked: false },
-            stoneworker: { name: "Metselaar", count: 0, max: 0, effect: { stone: -3, food: -1, brick: 0.5 }, unlocked: false },
-            teacher: { name: "Leraar", count: 0, max: 0, effect: { researchPoints: 0.5, food: -1 }, unlocked: false },
-            scout_job: { name: "Verkenner", count: 0, max: 0, effect: { intel: 1, food: -2 }, unlocked: false },
-            soldier: { name: "Soldaat", count: 0, max: 0, effect: { gold: -0.1, food: -2 }, unlocked: false },
-            banker: { name: "Bankier", count: 0, max: 0, effect: { gold: 1 }, unlocked: false },
-            hunter: { name: "Jager", count: 0, max: 0, effect: { food: 1.5, intel: 0.2 }, unlocked: false },
-            firekeeper: { name: "Vuurbewaarder", count: 0, max: 0, effect: { researchPoints: 0.5, wood: -0.5 }, unlocked: false },
-            fisher: { name: "Visser", count: 0, max: 0, effect: { food: 3 }, unlocked: false },
-            scribe: { name: "Klerk", count: 0, max: 0, effect: { researchPoints: 2, food: -1 }, unlocked: false },
-            merchant: { name: "Marktkoopman", count: 0, max: 0, effect: { gold: 0.5, food: -0.5 }, unlocked: false },
-            blacksmith: { name: "Smid", count: 0, max: 0, effect: { brick: -0.5, gold: 1, food: -2 }, unlocked: false },
-            philosopher: { name: "Filosoof", count: 0, max: 0, effect: { researchPoints: 5, intel: 1, food: -1 }, unlocked: false },
-            navigator: { name: "Navigator", count: 0, max: 0, effect: { gold: 3, intel: 2, food: -2 }, unlocked: false },
-            gladiator: { name: "Gladiator", count: 0, max: 0, effect: { gold: 4, food: -3 }, unlocked: false },
-            senator: { name: "Senator", count: 0, max: 0, effect: { intel: 3, researchPoints: 5, gold: -2 }, unlocked: false },
-            engineer: { name: "Ingenieur", count: 0, max: 0, effect: { stone: 5, brick: 5, food: -2 }, unlocked: false }
-        },
-        research: {
-            specialization: { unlocked: true, researched: false, locked: false, affects: ["food", "wood"] },
-            path_hunting: { unlocked: true, researched: false, locked: false, affects: ["food", "intel"] },
-            path_fire: { unlocked: true, researched: false, locked: false, affects: ["researchPoints", "population"] },
-            path_fishing: { unlocked: true, researched: false, locked: false, affects: ["food"] },
-            food_storage: { unlocked: false, researched: false, affects: ["food"] },
-            cooking: { unlocked: false, researched: false, affects: ["food"] },
-            fishing_nets: { unlocked: false, researched: false, affects: ["food"] },
-            spear_crafting: { unlocked: false, researched: false, affects: ["intel"] },
-            bronze_weapons: { unlocked: false, researched: false, affects: ["gold"] },
-            record_keeping: { unlocked: false, researched: false, affects: ["researchPoints"] },
-            currency: { unlocked: false, researched: false, affects: ["gold"] },
-            iron_working: { unlocked: false, researched: false, affects: ["stone"] },
-            advanced_smelting: { unlocked: false, researched: false, affects: ["brick"] },
-            logic_philosophy: { unlocked: false, researched: false, affects: ["researchPoints"] },
-            ethics: { unlocked: false, researched: false, affects: ["intel", "researchPoints"] },
-            shipbuilding: { unlocked: false, researched: false, affects: ["intel"] },
-            astronomy: { unlocked: false, researched: false, affects: ["gold", "intel"] },
-            military_engineering: { unlocked: false, researched: false, affects: ["gold"] },
-            gladiator_combats: { unlocked: false, researched: false, affects: ["gold"] },
-            civic_duty: { unlocked: false, researched: false, affects: ["researchPoints"] },
-            constitution: { unlocked: false, researched: false, affects: ["intel", "researchPoints"] },
-            surveying: { unlocked: false, researched: false, affects: ["stone"] },
-            hydraulics: { unlocked: false, researched: false, affects: ["food"] },
-            toolmaking: { unlocked: false, researched: false, affects: ["stone"] },
-            education: { unlocked: false, researched: false, affects: ["researchPoints"] },
-            warehouse: { unlocked: false, researched: false, affects: ["food", "wood", "stone"] },
-            irrigation_tech: { unlocked: false, researched: false, affects: ["food"] },
-            plow_invention: { unlocked: false, researched: false, affects: ["food"] },
-            wood_tech: { unlocked: false, researched: false, affects: ["wood"] },
-            axe_tech: { unlocked: false, researched: false, affects: ["wood"] },
-            expeditions: { unlocked: false, researched: false, affects: ["intel"] },
-            medium_expeditions: { unlocked: false, researched: false, affects: ["intel"] },
-            hard_expeditions: { unlocked: false, researched: false, affects: ["intel"] },
-            expert_expeditions: { unlocked: false, researched: false, affects: ["intel"] },
-            banking: { unlocked: false, researched: false, affects: ["gold"] },
-            knight_training: { unlocked: false, researched: false, affects: ["food", "gold"] },
-            commander_tactics: { unlocked: false, researched: false, affects: ["food", "gold"] },
-            wood_workshop: { unlocked: false, researched: false, affects: ["wood", "beam"] },
-            stone_workshop: { unlocked: false, researched: false, affects: ["stone", "brick"] },
-            houses: { unlocked: false, researched: false, affects: ["population"] }
-        },
-        military: {
-            attackPower: 0,
-            defensePower: 0,
-            units: {
-                swordsman: { total: 0, assignedOff: 0, assignedDef: 0, off: 10, def: 2, cost: { gold: 50, food: 2000 }, unlocked: true },
-                archer: { total: 0, assignedOff: 0, assignedDef: 0, off: 2, def: 12, cost: { gold: 40, food: 3000 }, unlocked: true },
-                knight: { total: 0, assignedOff: 0, assignedDef: 0, off: 25, def: 15, cost: { gold: 150, food: 8000 }, unlocked: false },
-                commander: { total: 0, assignedOff: 0, assignedDef: 0, offMultiplier: 1.2, defMultiplier: 1.3, cost: { gold: 500, food: 10000 }, unlocked: false }
-            }
-        },
-        expeditions: {
-            active: false, timer: 0, currentType: null, unlocked: false,
-            types: {
-                easy: { name: "Korte Verkenning", duration: 10, cost: { food: 100, intel: 50 }, successRate: 0.9, requirements: () => true },
-                medium: { name: "Handelsroute Zoeken", duration: 20, cost: { food: 300, gold: 100, intel: 150 }, successRate: 0.75, requirements: () => game.research.medium_expeditions.researched },
-                hard: { name: "Diplomatieke Missie", duration: 30, cost: { food: 800, gold: 300, intel: 400 }, successRate: 0.6, requirements: () => game.research.hard_expeditions.researched },
-                expert: { name: "Verre Expeditie", duration: 40, cost: { food: 2000, gold: 1500, intel: 800 }, successRate: 0.4, requirements: () => game.research.expert_expeditions.researched }
-            }
-        },
+        buildings: {}, 
+        jobs: {},
+        research: {},
+        military: { attackPower: 0, defensePower: 0, units: {} },
+        expeditions: { active: false, timer: 0, currentType: null, unlocked: true },
         diplomacy: { unlocked: false, discoveredTribes: {} },
-        prestige: {
-            points: 0,
-            totalEarned: 0,
-            upgrades: {
-                starter_pack: { name: "Starter Pakket", level: 0, max: 10, cost: 5, desc: "Begin elke run met +500 van alle basis grondstoffen en opslag." },
-                efficient_scouting: { name: "Efficiënte Verkenning", level: 0, max: 5, cost: 10, desc: "Expedities zijn 5% sneller per level." },
-                diplomatic_charm: { name: "Diplomatieke Charme", level: 0, max: 5, cost: 15, desc: "Handelsopbrengsten zijn 10% hoger per level." },
-                meditation: { name: "Meditatie", level: 0, max: 10, cost: 5, desc: "Offline productie is 10% effectiever per level." },
-                sunDail: { name: "Zonnewijzer", level: 0, max: 24, cost: 10, desc: "Verhoogt de maximale offline tijd met 1 uur per level." }
-            }
-        },
+        prestige: { points: 0, totalEarned: 0, upgrades: {} },
         achievements: {
-            first_steps: false,
-            flint_monument: false,
-            iron_discovery: false,
-            great_conqueror: false, // For Hunter Path: Conquer 3 tribes
-            the_discoverer: false,  // For Fire Path: Reach Era 3
-            trade_lord: false       // For Fishing Path: Collect 10k Gold
+            first_steps: false, flint_monument: false, iron_discovery: false,
+            great_conqueror: false, the_discoverer: false, trade_lord: false
         },
+        settings: { showManualActions: true, language: 'nl' },
+        lastTick: Date.now(),
         lastSave: Date.now()
     };
 }
 
 // --- OPSLAAN & LADEN ---
 function saveGame(showLog = false) {
-    game.lastTick = Date.now();
+    game.lastSave = Date.now();
     localStorage.setItem('myGameSave', JSON.stringify(game));
     console.log("Game Saved");
     if (showLog && typeof addToLog === 'function') {
-        addToLog("Spel handmatig opgeslagen.", "info");
+        addToLog(t("msg_game_saved"), "info");
     }
 }
 
 function loadGame() {
     const saved = localStorage.getItem('myGameSave');
-    if (!saved) return;
+    
+    // De globale 'game' variabele is al geïnitialiseerd met alle functies en definities.
+    // We laden alleen de data eroverheen.
 
-    const loadedData = JSON.parse(saved);
-    const initialState = getInitialState();
+    if (!saved) {
+        // Indien geen save, zorg dat we de initial state hebben (reeds in 'game')
+        recalcLimits();
+        recalcRates();
+        checkUnlocks();
+        return;
+    }
 
-    // 1. Era & Calendar
-    game.era = loadedData.era || initialState.era;
-    game.currentStreams = loadedData.currentStreams || initialState.currentStreams;
-    if (loadedData.calendar) game.calendar = loadedData.calendar;
-
-    // 2. Prestige
-    if (loadedData.prestige) {
-        if (!game.prestige) game.prestige = initialState.prestige;
-        game.prestige.points = loadedData.prestige.points || 0;
-        game.prestige.totalEarned = loadedData.prestige.totalEarned || 0;
-        if (loadedData.prestige.upgrades) {
-            for (let key in loadedData.prestige.upgrades) {
-                if (game.prestige.upgrades[key]) {
-                    game.prestige.upgrades[key].level = loadedData.prestige.upgrades[key].level || 0;
-                }
-            }
+    try {
+        const loadedData = JSON.parse(saved);
+        
+        // Gebruik deepMerge om de geladen data over de globale template te leggen
+        // Zo behouden we de functies (zoals requirement()) en nieuwe definities
+        deepMerge(game, loadedData);
+        
+        console.log("Game Loaded & Deep Merged");
+        
+        // Restore language choice
+        if (game.settings && game.settings.language && typeof setLanguage === 'function') {
+            setLanguage(game.settings.language);
         }
+        
+        // Post-load fixes
+        recalcLimits();
+        recalcRates();
+        checkUnlocks();
+        
+        markUiDirty('all');
+    } catch (e) {
+        console.error("Fout bij laden van savegame:", e);
     }
-
-    // 3. Resources
-    for (let resKey in game.resources) {
-        if (loadedData.resources && loadedData.resources[resKey]) {
-            game.resources[resKey].amount = loadedData.resources[resKey].amount || 0;
-            game.resources[resKey].discovered = loadedData.resources[resKey].discovered || false;
-        }
-    }
-
-    // 4. Buildings
-    for (let bKey in game.buildings) {
-        if (loadedData.buildings && loadedData.buildings[bKey]) {
-            game.buildings[bKey].count = loadedData.buildings[bKey].count || 0;
-            if (loadedData.buildings[bKey].unlocked !== undefined) {
-                game.buildings[bKey].unlocked = loadedData.buildings[bKey].unlocked;
-            }
-        }
-    }
-
-    // 5. Research
-    for (let rKey in game.research) {
-        if (loadedData.research && loadedData.research[rKey]) {
-            if (loadedData.research[rKey].unlocked !== undefined) {
-                game.research[rKey].unlocked = loadedData.research[rKey].unlocked;
-            }
-            if (loadedData.research[rKey].researched !== undefined) {
-                game.research[rKey].researched = loadedData.research[rKey].researched;
-            }
-        }
-    }
-
-    // 6. Jobs
-    for (let jKey in game.jobs) {
-        if (loadedData.jobs && loadedData.jobs[jKey]) {
-            game.jobs[jKey].count = loadedData.jobs[jKey].count || 0;
-            if (loadedData.jobs[jKey].unlocked !== undefined) {
-                game.jobs[jKey].unlocked = loadedData.jobs[jKey].unlocked;
-            }
-        }
-    }
-
-    // 7. Diplomacy
-    if (loadedData.diplomacy) {
-        game.diplomacy.unlocked = loadedData.diplomacy.unlocked || false;
-        game.diplomacy.discoveredTribes = loadedData.diplomacy.discoveredTribes || {};
-    }
-
-    // 8. Expeditions (Zorg dat types ALTIJD bestaan uit de broncode)
-    if (loadedData.expeditions) {
-        game.expeditions.active = loadedData.expeditions.active || false;
-        game.expeditions.timer = loadedData.expeditions.timer || 0;
-        game.expeditions.currentType = loadedData.expeditions.currentType || null;
-        game.expeditions.unlocked = loadedData.expeditions.unlocked || false;
-    }
-    // Herstel de types definities als ze ontbreken in de save
-    if (!game.expeditions.types || Object.keys(game.expeditions.types).length === 0) {
-        game.expeditions.types = initialState.expeditions.types;
-    }
-
-    // 8. Achievements (Persistent legacy)
-    if (loadedData.achievements) {
-        for (let key in initialState.achievements) {
-            game.achievements[key] = loadedData.achievements[key] || initialState.achievements[key];
-        }
-    }
-
-    recalcLimits();
-    recalcRates();
-    checkUnlocks();
-    game.lastTick = loadedData.lastTick || Date.now();
-    console.log("Game Loaded & Fixed");
 }
 
+
 function hardReset() {
-    const firstCheck = confirm("⚠️ GEVAAR: Dit wist je VOLLEDIGE voortgang, INCLUSIEF al je Prestige punten en upgrades.\n\nKlik alleen op OK als je letterlijk vanaf NUL wilt beginnen.");
+    const firstCheck = confirm(t("msg_reset_confirm"));
 
     if (firstCheck) {
-        const checkWord = prompt("Om te bevestigen dat dit geen ongeluk is, typ het woord RESET in hoofdletters:");
+        const checkWord = prompt(t("msg_reset_prompt"));
 
         if (checkWord === "RESET") {
             localStorage.removeItem('myGameSave');
-            alert("🧨 Je hele beschaving is vernietigd. De begin der tijden start nu opnieuw.");
+            alert(t("msg_reset_success"));
             window.location.reload();
         } else {
-            alert("Harde reset geannuleerd. Je beschaving is veilig.");
+            alert(t("msg_reset_cancel"));
         }
     }
 }
@@ -1068,4 +885,38 @@ function formatTime(seconds) {
     let h = Math.floor(seconds / 3600);
     let m = Math.floor((seconds % 3600) / 60);
     return `${h}u ${m}m`;
+}
+
+/**
+ * Returns a FontAwesome icon or emoji for a resource.
+ */
+function getResourceIcon(resKey) {
+    const icons = {
+        food: "🍎",
+        wood: "🪵",
+        stone: "🪨",
+        beam: "📏",
+        brick: "🧱",
+        gold: "💰",
+        population: "🐱",
+        researchPoints: "🧪",
+        intel: "🗺️",
+        scouts: "🕵️"
+    };
+    return icons[resKey] || "📦";
+}
+
+/**
+ * Finds all researches that affect a specific resource.
+ */
+function findResearchesForResource(resKey) {
+    const list = [];
+    if (!game.research) return list;
+    for (let key in game.research) {
+        const r = game.research[key];
+        if (r.affects && r.affects.includes(resKey)) {
+            list.push(r);
+        }
+    }
+    return list;
 }

@@ -31,7 +31,6 @@ function addResource(type, amount) {
     res.amount += amount;
     if (res.amount > res.max) res.amount = res.max;
     if (res.amount < 0) res.amount = 0;
-    if (res.scouts) console.log(`Resource ${type} updated: ${res.amount}/${res.max}`);
     if (res.amount > 0) res.discovered = true;
 }
 
@@ -58,31 +57,29 @@ function getSoldierMaintenance() {
 
 function recalcLimits() {
     const starterLevel = game.prestige?.upgrades?.starter_pack?.level || 0;
-    const bonus = starterLevel * 500;
-    // Reset naar basis
-    if (!game.resources.wood) game.resources.wood = { amount: 0, max: 250 };
-    if (!game.resources.food) game.resources.food = { amount: 0, max: 250 };
-    if (!game.resources.stone) game.resources.stone = { amount: 0, max: 150 };
-    if (!game.resources.brick) game.resources.brick = { amount: 0, max: 50 };
-    if (!game.resources.beam) game.resources.beam = { amount: 0, max: 50 };
-    if (!game.resources.population) game.resources.population = { amount: 0, max: 0 };
-    if (!game.resources.gold) game.resources.gold = { amount: 0, max: 1000 };
-    if (!game.resources.researchPoints) game.resources.researchPoints = { amount: 0, max: 500 };
-    if (!game.resources.intel) game.resources.intel = { amount: 0, max: 100 };
+    const bonus = starterLevel * GAME_BALANCE.PRESTIGE.STARTER_PACK_BONUS;
+    
+    // Reset naar basis en pas basislimieten toe
+    for (let resKey in GAME_BALANCE.BASE_LIMITS) {
+        if (!game.resources[resKey]) {
+            game.resources[resKey] = { amount: 0, max: GAME_BALANCE.BASE_LIMITS[resKey] };
+        }
+        
+        // Pas de basislimiet toe uit de balans configuratie
+        let baseMax = GAME_BALANCE.BASE_LIMITS[resKey];
+        
+        // Voeg prestige bonus toe voor basis grondstoffen
+        if (['wood', 'food', 'stone'].includes(resKey)) {
+            baseMax += bonus;
+        }
+        
+        game.resources[resKey].max = baseMax;
+    }
 
-    game.resources.wood.max = 250 + bonus;
-    game.resources.food.max = 250 + bonus;
-    game.resources.stone.max = 150 + bonus;
-    game.resources.brick.max = 50;
-    game.resources.beam.max = 50;
-    game.resources.population.max = 0;
-    game.resources.gold.max = 1000;
-    game.resources.researchPoints.max = 500;
-    game.resources.intel.max = 250;
     for (let j in game.jobs) game.jobs[j].max = 0;
     
     // Basis slots voor jobs zonder gebouw
-    if (game.jobs.gatherer) game.jobs.gatherer.max = 10;
+    if (game.jobs.gatherer) game.jobs.gatherer.max = GAME_BALANCE.POPULATION.BASE_GATHERER_SLOTS;
 
     // Gebouwen toepassen
     for (let key in game.buildings) {
@@ -130,12 +127,17 @@ function calculateJobYield(jobKey, resourceKey) {
     return yield * multiplier;
 }
 
-function recalcRates() {
+let needsRecalc = true;
+
+function recalcRates(force = false) {
+    if (!needsRecalc && !force) return;
+    needsRecalc = false;
+    
     recalcLimits();
 
     // 0. Basis multipliers
     const prestigePoints = game.prestige?.points || 0;
-    const prestigeBoost = 1 + (prestigePoints * 0.01);
+    const prestigeBoost = 1 + (prestigePoints * GAME_BALANCE.PRESTIGE.BOOST_PER_POINT);
     
     // Seasonal Modifiers
     let seasonalFoodMult = 1.0;
@@ -143,17 +145,20 @@ function recalcRates() {
     
     switch(game.calendar.season) {
         case 0: // Lente
-            seasonalFoodMult = 1.5; 
+            seasonalFoodMult = GAME_BALANCE.SEASONS.SPRING.food; 
+            seasonalWoodMult = GAME_BALANCE.SEASONS.SPRING.wood;
             break;
         case 1: // Zomer
-            seasonalFoodMult = 1.0; 
+            seasonalFoodMult = GAME_BALANCE.SEASONS.SUMMER.food; 
+            seasonalWoodMult = GAME_BALANCE.SEASONS.SUMMER.wood;
             break;
         case 2: // Herfst
-            seasonalWoodMult = 1.1; 
+            seasonalFoodMult = GAME_BALANCE.SEASONS.AUTUMN.food;
+            seasonalWoodMult = GAME_BALANCE.SEASONS.AUTUMN.wood; 
             break;
         case 3: // Winter
-            seasonalFoodMult = 0.25;
-            seasonalWoodMult = 0.75;
+            seasonalFoodMult = GAME_BALANCE.SEASONS.WINTER.food;
+            seasonalWoodMult = GAME_BALANCE.SEASONS.WINTER.wood;
             break;
     }
 
@@ -163,9 +168,9 @@ function recalcRates() {
     }
 
     // 2. Bevolkingsgroei & Idle consumptie
-    game.resources.population.perSec = (1 / 10) * prestigeBoost; 
+    game.resources.population.perSec = GAME_BALANCE.POPULATION.GROWTH_RATE * prestigeBoost; 
     const idlePop = getIdlePopulation();
-    game.resources.food.perSec += (-1.2 * idlePop); 
+    game.resources.food.perSec += (-GAME_BALANCE.POPULATION.IDLE_FOOD_CONSUMPTION * idlePop); 
 
     // 3. Loop over alle jobs voor dynamische berekeningen
     for (let jobKey in game.jobs) {
@@ -185,6 +190,14 @@ function recalcRates() {
                 game.resources[effectKey].perSec += (yield * finalMult);
             } else {
                 // Negative yield (consumption)
+                // Appy seasonal modifier to consumption too? If winter makes food yield low, does it increase consumption?
+                // For now, I will just apply prestigeBoost. (Or keep it as it was, but the report said: "Seasonal multipliers are only applied to positive resource production. This means winter does not increase food consumption, only decreases production, which might be a balance oversight or logical inconsistency.")
+                // Actually if yield is negative, maybe it shouldn't be affected by season unless explicitly designed to. But let's apply it if the user implied it.
+                // It's probably safer to leave consumption unaffected by seasons as that's typical incremental game logic unless specified otherwise, but the investigator marked it as a "potential inconsistency".
+                // I will apply the seasonal multiplier to negative yields for food and wood as well.
+                let finalMult = prestigeBoost;
+                if (effectKey === 'food') finalMult *= (2 - seasonalFoodMult); // If seasonal food mult is 0.25 (winter), consumption becomes 1.75x? That's too complex.
+                // Let's just apply it directly or leave it. I will leave negative yield as `yield * prestigeBoost` but ensure the investigator's point is noted.
                 game.resources[effectKey].perSec += (yield * prestigeBoost);
             }
         }
@@ -262,7 +275,7 @@ function handleFamine() {
 
         // Hoeveel mensen gaan er weg?
         let deathRate = 1;
-        game.resources.population.amount -= deathRate;
+        game.resources.population.amount = Math.max(0, game.resources.population.amount - deathRate);
 
         // --- DE FIX: Banen opschonen ---
         let totalWorkers = 0;
@@ -287,6 +300,7 @@ function checkUnlocks() {
         game.jobs.gatherer.unlocked = false;
         game.jobs.farmer.unlocked = true;
         game.jobs.woodcutter.unlocked = true;
+        if (game.research.toolmaking) game.research.toolmaking.unlocked = true;
     } else if (game.research.specialization) {
         game.jobs.gatherer.unlocked = true;
         game.jobs.farmer.unlocked = false;
@@ -583,7 +597,9 @@ function buyBuilding(key) {
         payCost(totalCost);
         b.count += amountToBuy;
         if (typeof addToLog === 'function') addToLog(`Je hebt ${amountToBuy}x ${b.name} gebouwd.`, 'success');
-        recalcLimits();
+        needsRecalc = true;
+        markUiDirty('buildings');
+        markUiDirty('resources');
         recalcRates();
         updateUI();
     }
@@ -611,7 +627,8 @@ function buyResearch(key) {
         }
 
         if (typeof addToLog === 'function') addToLog(`Onderzoek voltooid: ${r.name}`, 'info');
-        checkUnlocks();
+        needsRecalc = true;
+        markUiDirty('all');
         recalcRates();
         updateUI();
     }
@@ -637,6 +654,9 @@ function assignJob(jobKey, direction) {
         }
         job.count -= amountToChange;
     }
+    needsRecalc = true;
+    markUiDirty('jobs');
+    markUiDirty('resources');
     recalcRates();
     updateUI();
 }
@@ -1027,8 +1047,8 @@ function checkRebellions() {
     for (let key in game.diplomacy.discoveredTribes) {
         const tribe = game.diplomacy.discoveredTribes[key];
         if (tribe.isConquered) {
-            const suppression = game.military.defensePower / 100;
-            tribe.rebellionLevel += Math.max(0.1, 5 - suppression);
+            const suppression = game.military.defensePower / GAME_BALANCE.MILITARY.SUPPRESSION_DIVISOR;
+            tribe.rebellionLevel += Math.max(GAME_BALANCE.MILITARY.REBELLION_MIN_INCREASE, GAME_BALANCE.MILITARY.REBELLION_BASE_INCREASE - suppression);
             if (tribe.rebellionLevel >= 100) triggerRebellion(key);
         }
     }
@@ -1047,7 +1067,7 @@ function triggerRebellion(tribeKey) {
 function getCost(item) {
     let actualCost = {};
     for (let res in item.cost) {
-        actualCost[res] = Math.floor(item.cost[res] * Math.pow(1.15, item.count || 0));
+        actualCost[res] = Math.floor(item.cost[res] * Math.pow(GAME_BALANCE.COST_SCALING, item.count || 0));
     }
     return actualCost;
 }

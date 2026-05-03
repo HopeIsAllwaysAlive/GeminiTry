@@ -1,50 +1,63 @@
 // --- GAME LOOP ---
+function gameTick() {
+    // 1. Logic
+    recalcRates(); // Bereken eerst de actuele productie/consumptie als er wijzigingen zijn
+    
+    // Calendar
+    game.calendar.day++;
+    if (game.calendar.day >= 100) {
+        game.calendar.day = 0;
+        game.calendar.season++;
+        if (game.calendar.season >= 4) {
+            game.calendar.season = 0;
+            game.calendar.year++;
+            if (typeof addToLog === 'function') addToLog(`${t("label_year")} ${game.calendar.year} is begonnen.`, 'info');
+        }
+        if (typeof addToLog === 'function') addToLog(`Het seizoen is nu ${game.seasonNames[game.calendar.season]}.`, 'info');
+        markUiDirty('all'); // Seizoenwissel beïnvloedt vaak alles
+    }
+
+    // Resources & Groei
+    for (let key in game.resources) {
+        if (key === 'scouts') continue;
+        if (game.resources[key].perSec !== 0) {
+            addResource(key, game.resources[key].perSec);
+            markUiDirty('resources');
+        }
+    }
+    
+    if (game.resources.food.amount <= 0) {
+        game.resources.food.amount = 0;
+        handleFamine();
+        markUiDirty('population');
+    }
+
+    if (game.expeditions.active && game.expeditions.timer > 0) {
+        game.expeditions.timer--;
+        markUiDirty('explore');
+        if (game.expeditions.timer <= 0) {
+            completeExpedition();
+        }
+    }
+
+    // 2. Unlocks
+    checkUnlocks();
+
+    // 3. UI Update (alleen wat dirty is)
+    updateUI();
+}
+
 // --- INITIALISATIE ---
 document.addEventListener('DOMContentLoaded', () => {
     loadGame();
-    recalcRates(); // Forceer berekening van limieten en rates direct na laden
+    recalcRates(true); // Forceer berekening direct na laden
     checkUnlocks();
     handleOfflineProgress();
+    markUiDirty('all');
     updateUI();
     showTab('jobs');
 
-    setInterval(() => {
-        recalcRates(); // Bereken eerst de actuele productie/consumptie
-
-        // Calendar
-        game.calendar.day++;
-        if (game.calendar.day >= 100) {
-            game.calendar.day = 0;
-            game.calendar.season++;
-            if (game.calendar.season >= 4) {
-                game.calendar.season = 0;
-                game.calendar.year++;
-                if (typeof addToLog === 'function') addToLog(`Jaar ${game.calendar.year} is begonnen.`, 'info');
-            }
-            if (typeof addToLog === 'function') addToLog(`Het seizoen is nu ${game.seasonNames[game.calendar.season]}.`, 'info');
-        }
-
-        // Resources & Groei
-        for (let key in game.resources) {
-            if (key === 'scouts') continue;  // Skip scouts
-            addResource(key, game.resources[key].perSec);
-        }
-        if (game.resources.food.amount <= 0) {
-            game.resources.food.amount = 0;
-            // Mensen vertrekken of sterven bij honger
-            handleFamine();
-        }
-
-        if (game.expeditions.active && game.expeditions.timer > 0) {
-            game.expeditions.timer--;
-            if (game.expeditions.timer <= 0) {
-                completeExpedition();
-            }
-        }
-        checkUnlocks();
-        renderExplore();
-        updateUI();
-    }, 1000);
+    setInterval(gameTick, 1000);
 
     // Auto-save elke 30 seconden
     setInterval(saveGame, 30000);
@@ -58,10 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         for (let key in game.diplomacy.discoveredTribes) {
             const tribe = game.diplomacy.discoveredTribes[key];
-
-            // Alleen tribes met een zeer slechte relatie vallen aan
             if (tribe.relation < 20 && !tribe.isConquered) {
-                // 5% kans elke minuut op een aanval
                 if (Math.random() < 0.05) {
                     triggerEnemyAttack(key);
                 }
@@ -92,16 +102,18 @@ const gameEvents = [
 ];
 
 function triggerRandomEvent() {
-    // 10% kans elke minuut (of hoe vaak je de functie ook aanroept)
+    // 10% kans elke minuut
     if (Math.random() < 0.1) {
         const event = gameEvents[Math.floor(Math.random() * gameEvents.length)];
         event.action();
         if (typeof addToLog === 'function') {
             addToLog(`EVENT: ${event.title} - ${event.text}`, 'info');
         }
+        markUiDirty('all');
         updateUI();
     }
 }
+
 // EXPORT: Maakt een code van je savegame
 async function exportGame() {
     try {
@@ -110,7 +122,6 @@ async function exportGame() {
             await navigator.clipboard.writeText(saveString);
             alert("💾 Savecode succesvol gekopieerd naar je klembord!");
         } else {
-            // Fallback for older browsers / insecure contexts
             const ta = document.createElement('textarea');
             ta.value = saveString;
             ta.style.position = 'absolute';

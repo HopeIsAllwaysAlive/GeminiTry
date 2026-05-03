@@ -1,20 +1,38 @@
 // --- UI RESOURCES TAB ---
 
 function renderResourcesTab() {
+    if (!window.uiDirty.all && !window.uiDirty.resources) return;
+
+    const header = document.getElementById('resources-analysis-header');
+    if (header) {
+        header.innerHTML = `
+            <h2>${t("label_resources")}</h2>
+            <p>${t("desc_resources_analysis")}</p>
+        `;
+    }
+
     const container = document.getElementById('resources-analysis-container');
     if (!container) return;
 
     let html = '<div class="grid-container">';
     
-    // Seasonal Modifiers
+    // Seasonal Modifiers from Balance
+    const season = game.calendar.season;
     let seasonalFoodMult = 1.0;
     let seasonalWoodMult = 1.0;
-    if (game.calendar && game.calendar.season !== undefined) {
-        switch(game.calendar.season) {
-            case 0: seasonalFoodMult = 1.5; break;
-            case 2: seasonalWoodMult = 1.1; break;
-            case 3: seasonalFoodMult = 0.25; seasonalWoodMult = 0.75; break;
-        }
+    
+    if (season === 0) {
+        seasonalFoodMult = GAME_BALANCE.SEASONS.SPRING.food;
+        seasonalWoodMult = GAME_BALANCE.SEASONS.SPRING.wood;
+    } else if (season === 1) {
+        seasonalFoodMult = GAME_BALANCE.SEASONS.SUMMER.food;
+        seasonalWoodMult = GAME_BALANCE.SEASONS.SUMMER.wood;
+    } else if (season === 2) {
+        seasonalFoodMult = GAME_BALANCE.SEASONS.AUTUMN.food;
+        seasonalWoodMult = GAME_BALANCE.SEASONS.AUTUMN.wood;
+    } else if (season === 3) {
+        seasonalFoodMult = GAME_BALANCE.SEASONS.WINTER.food;
+        seasonalWoodMult = GAME_BALANCE.SEASONS.WINTER.wood;
     }
 
     for (let key in game.resources) {
@@ -40,8 +58,7 @@ function renderResourcesTab() {
             
             // Apply multipliers (to match calculateJobYield in engine.js)
             let multiplier = 1;
-            let detailLine = `<div class="res-row"><small>${job.name}:</small> <span>+${baseYield.toFixed(2)}/s</span></div>`;
-
+            
             if (jobKey === 'woodcutter' && key === 'wood') {
                 if (game.research.axe_tech && game.research.axe_tech.unlocked) multiplier += 1;
                 if (game.research.wood_tech && game.research.wood_tech.unlocked) multiplier += 0.5;
@@ -53,9 +70,7 @@ function renderResourcesTab() {
             }
 
             let finalYield = baseYield * multiplier;
-            if (multiplier !== 1) {
-                detailLine = `<div class="res-row"><small>${job.name} (incl. bonus):</small> <span>+${finalYield.toFixed(2)}/s</span></div>`;
-            }
+            let detailLine = `<div class="res-row"><small>${job.name}:</small> <span>+${finalYield.toFixed(2)}/s</span></div>`;
             prodLines.push(detailLine);
 
             // Seasonal Impact per job
@@ -66,7 +81,7 @@ function renderResourcesTab() {
             if (seasonMult !== 1.0) {
                 let seasonImpact = finalYield * (seasonMult - 1);
                 let perc = ((seasonMult - 1) * 100).toFixed(0);
-                prodLines.push(`<div class="res-row" style="padding-left: 10px; opacity: 0.8;"><small>└ Seizoen (${perc > 0 ? '+' : ''}${perc}%):</small> <span class="${seasonImpact > 0 ? 'rate-pos' : 'rate-neg'}">${seasonImpact > 0 ? '+' : ''}${seasonImpact.toFixed(2)}/s</span></div>`);
+                prodLines.push(`<div class="res-row" style="padding-left: 10px; opacity: 0.8;"><small>└ ${t("season_" + ["spring", "summer", "autumn", "winter"][season])} (${perc > 0 ? '+' : ''}${perc}%):</small> <span class="${seasonImpact > 0 ? 'rate-pos' : 'rate-neg'}">${seasonImpact > 0 ? '+' : ''}${seasonImpact.toFixed(2)}/s</span></div>`);
             }
         });
 
@@ -79,7 +94,7 @@ function renderResourcesTab() {
 
         if (key === 'food') {
             const idle = getIdlePopulation();
-            if (idle > 0) consHtml += `<div class="res-row"><small>Idle Bevolking:</small> <span class="rate-neg">${(-1.2 * idle).toFixed(2)}/s</span></div>`;
+            if (idle > 0) consHtml += `<div class="res-row"><small>${t("label_idle_pop", "Idle Bevolking")}:</small> <span class="rate-neg">${(-GAME_BALANCE.POPULATION.IDLE_FOOD_CONSUMPTION * idle).toFixed(2)}/s</span></div>`;
         }
 
         html += `
@@ -89,11 +104,11 @@ function renderResourcesTab() {
                     <strong>Netto: <span class="${res.perSec >= 0 ? 'rate-pos' : 'rate-neg'}">${res.perSec >= 0 ? '+' : ''}${res.perSec.toFixed(2)}/s</span></strong>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 2px;">
-                    ${prodLines.join('') || '<small style="opacity:0.5;">Geen passieve productie</small>'}
+                    ${prodLines.join('') || `<small style="opacity:0.5;">${t("label_no_production", "Geen passieve productie")}</small>`}
                     ${consHtml}
                 </div>
                 <div style="margin-top: 12px; font-size: 0.8em; opacity: 0.7; border-top: 1px solid #333; padding-top: 8px; display: flex; justify-content: space-between;">
-                    <span>Opslag:</span>
+                    <span>${t("label_storage", "Opslag")}:</span>
                     <span>${Math.floor(res.amount)} / ${res.max}</span>
                 </div>
             </div>
@@ -101,4 +116,16 @@ function renderResourcesTab() {
     }
     html += '</div>';
     container.innerHTML = html;
+    window.uiDirty.resources = false;
+}
+
+function findJobsForConsumption(resKey) {
+    const list = [];
+    for (let jKey in game.jobs) {
+        const j = game.jobs[jKey];
+        if (j.effect && j.effect[resKey] < 0) {
+            list.push(j);
+        }
+    }
+    return list;
 }

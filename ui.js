@@ -9,7 +9,7 @@ function addToLog(message, type = 'info') {
 
     const msgEl = document.createElement('div');
     msgEl.className = `log-msg log-${type}`;
-    msgEl.innerText = `[Dag ${game.calendar.day}] ${message}`;
+    msgEl.innerText = `[${t("label_day")} ${game.calendar.day}] ${message}`;
     
     logContainer.prepend(msgEl);
 
@@ -24,43 +24,43 @@ window.showNotification = (msg, type) => addToLog(msg, type === 'error' ? 'warni
 window.showFloatingText = (e, text) => addToLog(text, 'success');
 
 function updateUI() {
-    if (isStreamModalOpen) return;
+    if (typeof isStreamModalOpen !== 'undefined' && isStreamModalOpen) return;
 
     renderCalendar();
     renderLeftResources();
-    renderActiveEvent();
+    if (typeof renderActiveEvent === 'function') renderActiveEvent();
     updateTabVisibility();
 
     switch (window.currentTab) {
         case 'jobs':
-            renderCity();
+            if (typeof renderCity === 'function') renderCity();
             break;
         case 'resources_tab':
-            renderResourcesTab();
+            if (typeof renderResourcesTab === 'function') renderResourcesTab();
             break;
         case 'population':
-            renderJobs();
+            if (typeof renderJobs === 'function') renderJobs();
             break;
         case 'research':
-            renderResearch();
+            if (typeof renderResearch === 'function') renderResearch();
             break;
         case 'explore':
-            renderExplore();
+            if (typeof renderExplore === 'function') renderExplore();
             break;
         case 'diplomacy':
-            renderDiplomacy();
+            if (typeof renderDiplomacy === 'function') renderDiplomacy();
             break;
         case 'military':
-            renderMilitary();
+            if (typeof renderMilitary === 'function') renderMilitary();
             break;
         case 'workshop':
-            renderWorkshop();
+            if (typeof renderWorkshop === 'function') renderWorkshop();
             break;
         case 'debug':
-            renderDebug();
+            if (typeof renderDebug === 'function') renderDebug();
             break;
         case 'settings':
-            renderSettings();
+            if (typeof renderSettings === 'function') renderSettings();
             break;
     }
 }
@@ -72,11 +72,11 @@ function renderCalendar() {
     
     // Add seasonal impact percentages to calendar display
     let impactStr = "";
-    if (game.calendar.season === 0) impactStr = " (+50% Voedsel)";
-    else if (game.calendar.season === 2) impactStr = " (+10% Hout)";
-    else if (game.calendar.season === 3) impactStr = " (-75% Voedsel, -25% Hout)";
+    if (game.calendar.season === 0) impactStr = ` (+50% ${t("res_food")})`;
+    else if (game.calendar.season === 2) impactStr = ` (+10% ${t("res_wood")})`;
+    else if (game.calendar.season === 3) impactStr = ` (-75% ${t("res_food")}, -25% ${t("res_wood")})`;
 
-    el.innerText = `Dag ${game.calendar.day}, Jaar ${game.calendar.year} - ${season}${impactStr}`;
+    el.innerText = `${t("label_day")} ${game.calendar.day}, ${t("label_year")} ${game.calendar.year} - ${season}${impactStr}`;
 }
 
 function renderLeftResources() {
@@ -129,6 +129,20 @@ function updateTabVisibility() {
 
         btn.style.display = shouldShow ? 'inline-block' : 'none';
         btn.classList.toggle('active', id === window.currentTab);
+        
+        // Localize tab labels if we have them
+        const tabLabels = {
+            'jobs': t("label_jobs"),
+            'resources_tab': t("label_resources", "Resources"),
+            'population': t("label_population", "Population"),
+            'research': t("label_research"),
+            'explore': t("label_explore", "Explore"),
+            'diplomacy': t("label_diplomacy", "Diplomacy"),
+            'military': t("label_military", "Military"),
+            'workshop': t("label_workshop", "Workshop"),
+            'settings': t("label_settings")
+        };
+        if (tabLabels[id]) btn.innerText = tabLabels[id];
     });
 }
 

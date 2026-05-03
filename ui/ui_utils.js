@@ -1,28 +1,62 @@
-// --- UI UTILITIES ---
+// --- UTILITIES ---
 
-function findResearchesForResource(resourceKey) {
-    let list = [];
-    for (let key in game.research) {
-        const r = game.research[key];
-        if (r.affects && r.affects.includes(resourceKey)) {
-            list.push(r);
+/**
+ * Deep merge two objects.
+ * @param {Object} target - The target object to merge into.
+ * @param {Object} source - The source object to merge from.
+ * @returns {Object} The merged object.
+ */
+function deepMerge(target, source) {
+    for (const key in source) {
+        if (source[key] instanceof Object && !Array.isArray(source[key]) && key in target && target[key] instanceof Object && !Array.isArray(target[key])) {
+            deepMerge(target[key], source[key]);
+        } else {
+            target[key] = source[key];
         }
     }
-    return list;
+    return target;
 }
 
-function findJobsForConsumption(resourceKey) {
-    let consumingJobs = [];
-    for (let key in game.jobs) {
-        let cjob = game.jobs[key];
-        if (cjob.effect && cjob.effect[resourceKey] < 0) {
-            consumingJobs.push(cjob);
-        }
+/**
+ * Translation helper.
+ * Supports placeholders: t("key", value1, value2) replaces {0}, {1} etc.
+ */
+function t(key, ...args) {
+    let translation = key;
+    if (window.TRANSLATIONS && window.TRANSLATIONS[key]) {
+        translation = window.TRANSLATIONS[key];
     }
-    return consumingJobs;
+    
+    // Replace {0}, {1} etc with args
+    if (args.length > 0) {
+        args.forEach((arg, i) => {
+            translation = translation.replace(`{${i}}`, arg);
+        });
+    }
+    
+    return translation;
 }
 
-function getResourceIcon(key) {
-    const icons = { wood: '🌲', stone: '🧱', gold: '💰', food: '🍞', population: '👥', beam: '🪵', brick: '🧱', intel: '👁️', researchPoints: '🧪' };
-    return icons[key] || '📦';
+/**
+ * Global "dirty" flags for UI updates
+ */
+window.uiDirty = {
+    resources: true,
+    jobs: true,
+    buildings: true,
+    research: true,
+    explore: true,
+    diplomacy: true,
+    military: true,
+    prestige: true,
+    debug: true,
+    all: true
+};
+
+function markUiDirty(category = 'all') {
+    if (category === 'all') {
+        for (let key in window.uiDirty) window.uiDirty[key] = true;
+    } else if (window.uiDirty[category] !== undefined) {
+        window.uiDirty[category] = true;
+    }
 }
