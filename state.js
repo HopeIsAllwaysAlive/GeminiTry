@@ -16,7 +16,7 @@ const TRAIT_DEFINITIONS = {
 // --- DE DATA (HET BREIN VAN DE GAME) ---
 let game = {
 
-    era: 1, 
+    era: 1,
     traits: [],
     stats: { battlesWon: 0, treatiesSigned: 0, aggressiveActions: 0 },
 
@@ -62,7 +62,7 @@ let game = {
         gladiator: { name: "Gladiator", count: 0, max: 0, effect: { gold: 4, food: -3 }, unlocked: false },
         senator: { name: "Senator", count: 0, max: 0, effect: { intel: 3, researchPoints: 5, gold: -2 }, unlocked: false },
         engineer: { name: "Ingenieur", count: 0, max: 0, effect: { stone: 5, brick: 5, food: -2 }, unlocked: false },
-// Era 5
+        // Era 5
         knight_lord: { name: "Ridderlijk Heer", count: 0, max: 0, effect: { gold: 3, food: 2, intel: -1 }, unlocked: false },
         monk: { name: "Monnik", count: 0, max: 0, effect: { researchPoints: 8, intel: 2, food: -2 }, unlocked: false },
         artisan: { name: "Ambachtsman", count: 0, max: 0, effect: { brick: 4, beam: 4, gold: 2, food: -3 }, unlocked: false },
@@ -119,7 +119,7 @@ let game = {
         public_baths: { name: "Badhuis", count: 0, cost: { stone: 4000, brick: 1000 }, provides: { max_population: 100, job_senator: 2 }, desc: "Verbetert de publieke hygiëne enorm.", unlocked: false },
         paved_road: { name: "Verharde Weg", count: 0, cost: { stone: 5000, brick: 5000 }, provides: { job_engineer: 3, max_stone: 10000 }, desc: "Grootschalige logistiek.", unlocked: false },
         aqueduct: { name: "Aquaduct", count: 0, cost: { brick: 8000, gold: 2000 }, provides: { max_food: 10000, job_engineer: 2 }, desc: "Voorziet steden van vers water.", unlocked: false },
-// Era 5 Streams
+        // Era 5 Streams
         castle: { name: "Kasteel", count: 0, cost: { stone: 10000, wood: 5000 }, provides: { job_knight_lord: 5, max_population: 100 }, desc: "Een machtig fort voor ridders.", unlocked: false },
         feudal_estate: { name: "Feodaal Landgoed", count: 0, cost: { gold: 5000, food: 10000 }, provides: { job_knight_lord: 2, max_food: 15000 }, desc: "Uitgestrekte landerijen.", unlocked: false },
         monastery: { name: "Klooster", count: 0, cost: { stone: 8000, wood: 4000 }, provides: { job_monk: 5, max_researchPoints: 5000 }, desc: "Een plek voor stilte en studie.", unlocked: false },
@@ -396,7 +396,7 @@ let game = {
             requirement: () => game.buildings.paved_road && game.buildings.paved_road.count >= 1,
             affects: ["food"]
         },
-// Era 5 Streams
+        // Era 5 Streams
         vassalage: { name: "Vassallage", desc: "Speelt Kasteel vrij.", cost: { gold: 4000, researchPoints: 6000 }, unlocked: false, requirement: () => game.era >= 5, affects: ["population"] },
         chivalry: { name: "Ridderorde", desc: "Speelt Feodaal Landgoed vrij.", cost: { food: 5000, researchPoints: 8000 }, unlocked: false, requirement: () => game.buildings.castle && game.buildings.castle.count >= 1, affects: ["food"] },
         divine_right: { name: "Goddelijk Recht", desc: "Speelt het Klooster vrij.", cost: { researchPoints: 5000, intel: 2000 }, unlocked: false, requirement: () => game.era >= 5, affects: ["researchPoints"] },
@@ -637,7 +637,7 @@ let game = {
     },
     diplomacy: {
         unlocked: false,
-        discoveredTribes: {} 
+        discoveredTribes: {}
     },
     // Een 'bibliotheek' met mogelijke volken die je kunt ontdekken
     tribeTemplates: {
@@ -775,7 +775,8 @@ function getInitialState() {
             navigator: { name: "Navigator", count: 0, max: 0, effect: { gold: 3, intel: 2, food: -2 }, unlocked: false },
             gladiator: { name: "Gladiator", count: 0, max: 0, effect: { gold: 4, food: -3 }, unlocked: false },
             senator: { name: "Senator", count: 0, max: 0, effect: { intel: 3, researchPoints: 5, gold: -2 }, unlocked: false },
-            engineer: { name: "Ingenieur", count: 0, max: 0, effect: { stone: 5, brick: 5, food: -2 }, unlocked: false }        },
+            engineer: { name: "Ingenieur", count: 0, max: 0, effect: { stone: 5, brick: 5, food: -2 }, unlocked: false }
+        },
         research: {
             specialization: { unlocked: true, researched: false, locked: false, affects: ["food", "wood"] },
             path_hunting: { unlocked: true, researched: false, locked: false, affects: ["food", "intel"] },
@@ -849,16 +850,16 @@ function getInitialState() {
                 sunDail: { name: "Zonnewijzer", level: 0, max: 24, cost: 10, desc: "Verhoogt de maximale offline tijd met 1 uur per level." }
             }
         },
-        achievements: { 
-            first_steps: false, 
-            flint_monument: false, 
+        achievements: {
+            first_steps: false,
+            flint_monument: false,
             iron_discovery: false,
             great_conqueror: false, // For Hunter Path: Conquer 3 tribes
             the_discoverer: false,  // For Fire Path: Reach Era 3
             trade_lord: false       // For Fishing Path: Collect 10k Gold
         },
         lastSave: Date.now()
-        };
+    };
 }
 
 // --- OPSLAAN & LADEN ---
