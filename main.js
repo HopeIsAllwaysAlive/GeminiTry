@@ -14,6 +14,7 @@ function gameTick() {
             if (typeof addToLog === 'function') addToLog(`${t("label_year")} ${game.calendar.year} is begonnen.`, 'info');
         }
         if (typeof addToLog === 'function') addToLog(`Het seizoen is nu ${game.seasonNames[game.calendar.season]}.`, 'info');
+        needsRecalc = true;
         markUiDirty('all'); // Seizoenwissel beïnvloedt vaak alles
     }
 
