@@ -53,6 +53,9 @@ function updateUI() {
         case 'military':
             if (typeof renderMilitary === 'function') renderMilitary();
             break;
+        case 'prestige':
+            if (typeof renderPrestige === 'function') renderPrestige();
+            break;
         case 'workshop':
             if (typeof renderWorkshop === 'function') renderWorkshop();
             break;
@@ -123,6 +126,8 @@ function updateTabVisibility() {
             shouldShow = (game.buildings.barracks && game.buildings.barracks.count > 0) || hasSoldiers;
         } else if (id === 'workshop') {
             shouldShow = (game.buildings.wood_workshop && game.buildings.wood_workshop.count > 0);
+        } else if (id === 'prestige') {
+            shouldShow = (game.era > 1 || (game.prestige && game.prestige.totalEarned > 0) || (game.buildings.flint_monument && game.buildings.flint_monument.count > 0));
         } else if (id === 'debug') {
             shouldShow = true;
         }
