@@ -466,7 +466,7 @@ let game = {
             desc: "Maakt het mogelijk om een Pakhuis te bouwen voor extra basisopslag.",
             cost: { researchPoints: 50 },
             unlocked: false,
-            requirement: () => game.research.education.researched,
+            requirement: () => game.research.education.unlocked,
             affects: ["food", "wood", "stone"]
         },
         storage_house: {
@@ -482,7 +482,7 @@ let game = {
             desc: "Maakt het bouwen van irrigatiesystemen mogelijk.",
             cost: { researchPoints: 50, gold: 20 },
             unlocked: false,
-            requirement: () => game.research.plow_invention.researched,
+            requirement: () => game.research.plow_invention.unlocked,
             affects: ["food"]
         },
         plow_invention: {
@@ -506,7 +506,7 @@ let game = {
             desc: "Verbeterde expedities die handelsroutes kunnen vinden.",
             cost: { researchPoints: 150, gold: 200 },
             unlocked: false,
-            requirement: () => game.research.expeditions.researched,
+            requirement: () => game.research.expeditions.unlocked,
             affects: ["intel"]
         },
         hard_expeditions: {
@@ -514,7 +514,7 @@ let game = {
             desc: "Geavanceerde expedities die diplomatieke contacten kunnen leggen.",
             cost: { researchPoints: 300, gold: 500 },
             unlocked: false,
-            requirement: () => game.research.medium_expeditions.researched,
+            requirement: () => game.research.medium_expeditions.unlocked,
             affects: ["intel"]
         },
         expert_expeditions: {
@@ -522,7 +522,7 @@ let game = {
             desc: "Expert expedities die unieke ontdekkingen kunnen doen.",
             cost: { researchPoints: 500, gold: 1000 },
             unlocked: false,
-            requirement: () => game.research.hard_expeditions.researched,
+            requirement: () => game.research.hard_expeditions.unlocked,
             affects: ["intel"]
         },
         banking: {
@@ -546,7 +546,7 @@ let game = {
             desc: "Ontgrendelt de Commandant eenheid die de kracht van je leger verhoogt.",
             cost: { researchPoints: 400, gold: 600 },
             unlocked: false,
-            requirement: () => game.research.knight_training.researched,
+            requirement: () => game.research.knight_training.unlocked,
             affects: ["food", "gold"]
         },
         wood_tech: {
@@ -594,7 +594,7 @@ let game = {
             desc: "Verhoogt de opbrengst van alle actieve handelsroutes met 20%.",
             cost: { researchPoints: 800, gold: 1500 },
             unlocked: false,
-            requirement: () => game.buildings.bank.count >= 5 && game.diplomacy.researched,
+            requirement: () => game.buildings.bank.count >= 5 && game.diplomacy.unlocked,
             affects: ["gold"]
         }
     },

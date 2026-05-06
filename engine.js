@@ -113,10 +113,10 @@ function calculateJobYield(jobKey, resourceKey) {
 
     // Job-specific multipliers
     if (jobKey === 'woodcutter' && resourceKey === 'wood') {
-        if (game.research.axe_tech && game.research.axe_tech.unlocked) multiplier += 1;
-        if (game.research.wood_tech && game.research.wood_tech.unlocked) multiplier += 0.5;
+        if (game.research.axe_tech && game.research.axe_tech.researched) multiplier += 1;
+        if (game.research.wood_tech && game.research.wood_tech.researched) multiplier += 0.5;
     } else if (jobKey === 'farmer' && resourceKey === 'food') {
-        if (game.research.plow_invention && game.research.plow_invention.unlocked) multiplier *= 1.5;
+        if (game.research.plow_invention && game.research.plow_invention.researched) multiplier *= 1.5;
         if (game.buildings.irrigation_system && game.buildings.irrigation_system.count > 0) {
             multiplier *= (1 + (0.5 * game.buildings.irrigation_system.count));
         }
@@ -359,36 +359,36 @@ function checkUnlocks() {
         if (game.buildings.scribe_hut.count > 0) game.jobs.scribe.unlocked = true;
         if (game.buildings.market_stall.count > 0) game.jobs.merchant.unlocked = true;
 
-        if (game.research.record_keeping && game.research.record_keeping.unlocked) game.buildings.library.unlocked = true;
-        if (game.research.currency && game.research.currency.unlocked) game.buildings.trading_post.unlocked = true;
+        if (game.research.record_keeping && game.research.record_keeping.researched) game.buildings.library.unlocked = true;
+        if (game.research.currency && game.research.currency.researched) game.buildings.trading_post.unlocked = true;
 
         // NIEUWE UNLOCKS ERA 3 STREAMS
-        if (game.research.iron_working && game.research.iron_working.unlocked) game.buildings.iron_mine.unlocked = true;
-        if (game.research.logic_philosophy && game.research.logic_philosophy.unlocked) game.buildings.academy.unlocked = true;
-        if (game.research.shipbuilding && game.research.shipbuilding.unlocked) game.buildings.shipyard.unlocked = true;
+        if (game.research.iron_working && game.research.iron_working.researched) game.buildings.iron_mine.unlocked = true;
+        if (game.research.logic_philosophy && game.research.logic_philosophy.researched) game.buildings.academy.unlocked = true;
+        if (game.research.shipbuilding && game.research.shipbuilding.researched) game.buildings.shipyard.unlocked = true;
 
         if (game.buildings.iron_mine.count > 0) game.jobs.blacksmith.unlocked = true;
         if (game.buildings.academy.count > 0) game.jobs.philosopher.unlocked = true;
         if (game.buildings.shipyard.count > 0) game.jobs.navigator.unlocked = true;
 
-        if (game.research.advanced_smelting && game.research.advanced_smelting.unlocked) game.buildings.forge.unlocked = true;
-        if (game.research.ethics && game.research.ethics.unlocked) game.buildings.forum.unlocked = true;
-        if (game.research.astronomy && game.research.astronomy.unlocked) game.buildings.harbor.unlocked = true;
+        if (game.research.advanced_smelting && game.research.advanced_smelting.researched) game.buildings.forge.unlocked = true;
+        if (game.research.ethics && game.research.ethics.researched) game.buildings.forum.unlocked = true;
+        if (game.research.astronomy && game.research.astronomy.researched) game.buildings.harbor.unlocked = true;
 
         // NIEUWE UNLOCKS ERA 4 STREAMS
-        if (game.research.military_engineering && game.research.military_engineering.unlocked) game.buildings.siege_workshop.unlocked = true;
-        if (game.research.civic_duty && game.research.civic_duty.unlocked) game.buildings.public_baths.unlocked = true;
-        if (game.research.surveying && game.research.surveying.unlocked) game.buildings.paved_road.unlocked = true;
+        if (game.research.military_engineering && game.research.military_engineering.researched) game.buildings.siege_workshop.unlocked = true;
+        if (game.research.civic_duty && game.research.civic_duty.researched) game.buildings.public_baths.unlocked = true;
+        if (game.research.surveying && game.research.surveying.researched) game.buildings.paved_road.unlocked = true;
 
         if (game.buildings.siege_workshop.count > 0) game.jobs.gladiator.unlocked = true;
         if (game.buildings.public_baths.count > 0) game.jobs.senator.unlocked = true;
         if (game.buildings.paved_road.count > 0) game.jobs.engineer.unlocked = true;
 
-        if (game.research.gladiator_combats && game.research.gladiator_combats.unlocked) game.buildings.colosseum.unlocked = true;
-        if (game.research.constitution && game.research.constitution.unlocked) game.buildings.senate_house.unlocked = true;
-        if (game.research.hydraulics && game.research.hydraulics.unlocked) game.buildings.aqueduct.unlocked = true;
+        if (game.research.gladiator_combats && game.research.gladiator_combats.researched) game.buildings.colosseum.unlocked = true;
+        if (game.research.constitution && game.research.constitution.researched) game.buildings.senate_house.unlocked = true;
+        if (game.research.hydraulics && game.research.hydraulics.researched) game.buildings.aqueduct.unlocked = true;
 
-        if (game.research.expert_expeditions && game.research.expert_expeditions.unlocked) {
+        if (game.research.expert_expeditions && game.research.expert_expeditions.researched) {
             game.buildings.school.unlocked = true;
         }
 
@@ -400,41 +400,41 @@ function checkUnlocks() {
         }
 
         // BASE UNLOCKS
-        if (game.research.education && game.research.education.unlocked) {
+        if (game.research.education && game.research.education.researched) {
             game.buildings.school.unlocked = true;
             game.jobs.teacher.unlocked = true;
             game.resources.researchPoints.discovered = true;
         }
-        if (game.research.irrigation_tech && game.research.irrigation_tech.unlocked) {
+        if (game.research.irrigation_tech && game.research.irrigation_tech.researched) {
             game.buildings.irrigation_system.unlocked = true;
         }
-        if (game.research.warehouse && game.research.warehouse.unlocked) {
+        if (game.research.warehouse && game.research.warehouse.researched) {
             game.buildings.warehouse.unlocked = true;
         }
-        if (game.research.storage_house && game.research.storage_house.unlocked) {
+        if (game.research.storage_house && game.research.storage_house.researched) {
             game.buildings.storage_house.unlocked = true;
         }
-        if (game.research.banking && game.research.banking.unlocked) {
+        if (game.research.banking && game.research.banking.researched) {
             game.buildings.bank.unlocked = true;
             game.jobs.banker.unlocked = true;
         }
-        if (game.research.knight_training && game.research.knight_training.unlocked) {
+        if (game.research.knight_training && game.research.knight_training.researched) {
             game.military.units.knight.unlocked = true;
         }
-        if (game.research.commander_tactics && game.research.commander_tactics.unlocked) {
+        if (game.research.commander_tactics && game.research.commander_tactics.researched) {
             game.military.units.commander.unlocked = true;
         }
-        if (game.research.wood_workshop && game.research.wood_workshop.unlocked) {
+        if (game.research.wood_workshop && game.research.wood_workshop.researched) {
             game.resources.beam.discovered = true;
             game.buildings.wood_workshop.unlocked = true;
             game.jobs.woodworker.unlocked = true;
         }
-        if (game.research.stone_workshop && game.research.stone_workshop.unlocked) {
+        if (game.research.stone_workshop && game.research.stone_workshop.researched) {
             game.resources.brick.discovered = true;
             game.buildings.stone_workshop.unlocked = true;
             game.jobs.stoneworker.unlocked = true;
         }
-        if (game.research.houses && game.research.houses.unlocked) {
+        if (game.research.houses && game.research.houses.researched) {
             game.buildings.house.unlocked = true;
         }
     }
@@ -1087,6 +1087,45 @@ function setBuyAmount(amount) {
     buyAmount = amount;
     if (typeof renderJobs === 'function') renderJobs();
     if (typeof renderBuildings === 'function') renderBuildings();
+}
+
+function performPrestige(isEvolution) {
+    const earned = calculatePrestigePoints();
+    
+    // Save metadata
+    const points = game.prestige.points + earned;
+    const totalEarned = game.prestige.totalEarned + earned;
+    const upgrades = JSON.parse(JSON.stringify(game.prestige.upgrades));
+    const achievements = JSON.parse(JSON.stringify(game.achievements));
+    const stats = JSON.parse(JSON.stringify(game.stats));
+    const newEra = isEvolution ? (game.era + 1) : 1;
+    
+    const prestigeData = {
+        era: newEra,
+        prestige: {
+            points: points,
+            totalEarned: totalEarned,
+            upgrades: upgrades,
+            unlockedStreams: game.prestige.unlockedStreams || {}
+        },
+        achievements: achievements,
+        stats: stats,
+        settings: { ...game.settings }
+    };
+    
+    localStorage.setItem('myGameSave', JSON.stringify(prestigeData));
+    window.location.reload();
+}
+
+function buyPrestigeUpgrade(key) {
+    const upg = game.prestige.upgrades[key];
+    if (game.prestige.points >= upg.cost && upg.level < upg.max) {
+        game.prestige.points -= upg.cost;
+        upg.level++;
+        if (typeof addToLog === 'function') addToLog(`Upgrade gekocht: ${upg.name} (Niveau ${upg.level})`, 'success');
+        recalcRates();
+        updateUI();
+    }
 }
 
 recalcRates();
