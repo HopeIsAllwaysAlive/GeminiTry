@@ -50,7 +50,6 @@ function renderResearchList() {
         }
 
         if (r.locked) continue; // Verberg uitgesloten onderzoek
-        if (!r.unlocked) continue; // VERBETERING: Verberg als nog niet ontgrendeld
 
         if (r.requirement && !r.requirement()) continue;
         
